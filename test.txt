@@ -1,130 +1,521 @@
-program -> declList
-declList -> declList decl
-declList -> decl
-decl -> varDecl
-decl -> funDecl
-varDecl -> typeSpec varDeclList ;
-scopedVarDecl -> static typeSpec varDeclList ;
-scopedVarDecl -> typeSpec varDeclList ;
-varDeclList -> varDeclList , varDeclInit
-varDeclList -> varDeclInit
-varDeclInit -> varDeclId
-varDeclInit -> varDeclId : simpleExp
-varDeclId -> ID
-varDeclId -> ID [ NUMCONST ]
-typeSpec -> int
-typeSpec -> bool
-typeSpec -> char
-funDecl -> typeSpec ID ( parms ) stmt
-funDecl -> ID ( parms ) stmt
-parms -> parmList
-parms -> ''
-parmList -> parmList ; parmTypeList
-parmList -> parmTypeList
-parmTypeList -> typeSpec parmIdList
-parmIdList -> parmIdList , parmId
-parmIdList -> parmId
-parmId->ID
-parmId->IID [ ]
-stmt -> expStmt
-stmt -> compoundStmt
-stmt -> selectStmt
-stmt -> iterStmt
-stmt -> returnStmt
-stmt -> breakStmt
-expStmt -> exp ;
-expStmt -> ;
-compoundStmt -> { localDecls stmtList }
-localDecls -> localDecls scopedVarDecl
-localDecls -> ''
-stmtList -> stmtList stmt
-stmtList -> ''
-selectStmt -> if simpleExp then stmt
-selectStmt -> if simpleExp then stmt else stmt
-iterStmt -> while simpleExp do stmt
-iterStmt -> for ID = iterRange do stmt
-iterRange -> simpleExp to simpleExp
-iterRange -> simpleExp to simpleExp by simpleExp
-returnStmt -> return ;
-returnStmt -> return exp ;
-breakStmt -> break ;
-exp -> mutable = exp
-exp -> mutable + = exp
-exp -> mutable - = exp
-exp -> mutable * = exp
-exp -> mutable / = exp
-exp -> mutable + +
-exp -> mutable - -
-exp -> simpleExp
-simpleExp -> simpleExp or andExp
-simpleExp -> andExp
-andExp -> andExp and unaryRelExp
-andExp -> unaryRelExp
-unaryRelExp -> not unaryRelExp
-unaryRelExp -> relExp
-relExp -> minmaxExp relop minmaxExp
-relExp -> minmaxExp
-relop -> <=
-relop -> <
-relop -> >
-relop -> >=
-relop -> ==
-relop -> !=
-minmaxExp -> minmaxExp minmaxop sumExp
-minmaxExp -> sumExp
-minmaxop -> : > :
-minmaxop -> : < :
-sumExp -> sumExp sumop mulExp
-sumExp -> mulExp
-sumop-> +
-sumop-> -
-mulExp -> mulExp mulop unaryExp
-mulExp -> unaryExp
-mulop -> *
-mulop -> /
-mulop -> %
-unaryExp -> unaryop unaryExp
-unaryExp -> factor
-unaryop -> -
-unaryop -> *
-unaryop -> ?
-factor -> immutable
-factor -> mutable
-mutable -> ID
-mutable -> ID [ exp ]
-immutable -> ( exp )
-immutable -> call
-immutable -> constant
-call-> ID ( args )
-args -> argList
-args -> ''
-argList -> argList , exp
-argList -> exp
-constant -> NUMCONST
-constant -> CHARCONST
-constant -> STRINGCONST
-constant -> true
-constant -> false
-return -> a
-or -> |
-and -> &
-not -> !
-ID -> x
-NUMCONST -> 1
-CHARCONST -> o
-if -> i
-else -> e
-for -> f
-while -> w
-do -> d
-break -> r
-then -> t
-to -> 2
-by -> b
-static -> s
-int -> 0
-bool -> 3
-char -> 4
-STRINGCONST -> 5
-true -> y
-false -> z
+    enum TestNonLALRPath {
+        C1,
+        C2,
+        C3,
+        C4,
+    }
+    #[automatically_derived]
+    impl ::core::fmt::Debug for TestNonLALRPath {
+        #[inline]
+        fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+            ::core::fmt::Formatter::write_str(
+                f,
+                match self {
+                    TestNonLALRPath::C1 => "C1",
+                    TestNonLALRPath::C2 => "C2",
+                    TestNonLALRPath::C3 => "C3",
+                    TestNonLALRPath::C4 => "C4",
+                },
+            )
+        }
+    }
+    #[automatically_derived]
+    impl ::core::marker::StructuralPartialEq for TestNonLALRPath {}
+    #[automatically_derived]
+    impl ::core::cmp::PartialEq for TestNonLALRPath {
+        #[inline]
+        fn eq(&self, other: &TestNonLALRPath) -> bool {
+            let __self_discr = ::core::intrinsics::discriminant_value(self);
+            let __arg1_discr = ::core::intrinsics::discriminant_value(other);
+            __self_discr == __arg1_discr
+        }
+    }
+    #[automatically_derived]
+    impl ::core::cmp::Eq for TestNonLALRPath {
+        #[inline]
+        #[doc(hidden)]
+        #[coverage(off)]
+        fn assert_fields_are_eq(&self) {}
+    }
+    enum TestNonLALRDfaStates {
+        S5(char),
+        S7(char),
+        S12,
+        S6(char),
+        S9(char),
+        S10(()),
+        S8(()),
+        S3(char),
+        S2(()),
+        S4(()),
+        S1(char),
+        S0(char),
+        S11(TestNonLALRPath),
+        T(TestNonLALRPath),
+    }
+    #[automatically_derived]
+    impl ::core::fmt::Debug for TestNonLALRDfaStates {
+        #[inline]
+        fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+            match self {
+                TestNonLALRDfaStates::S5(__self_0) => {
+                    ::core::fmt::Formatter::debug_tuple_field1_finish(f, "S5", &__self_0)
+                }
+                TestNonLALRDfaStates::S7(__self_0) => {
+                    ::core::fmt::Formatter::debug_tuple_field1_finish(f, "S7", &__self_0)
+                }
+                TestNonLALRDfaStates::S12 => ::core::fmt::Formatter::write_str(f, "S12"),
+                TestNonLALRDfaStates::S6(__self_0) => {
+                    ::core::fmt::Formatter::debug_tuple_field1_finish(f, "S6", &__self_0)
+                }
+                TestNonLALRDfaStates::S9(__self_0) => {
+                    ::core::fmt::Formatter::debug_tuple_field1_finish(f, "S9", &__self_0)
+                }
+                TestNonLALRDfaStates::S10(__self_0) => {
+                    ::core::fmt::Formatter::debug_tuple_field1_finish(
+                        f,
+                        "S10",
+                        &__self_0,
+                    )
+                }
+                TestNonLALRDfaStates::S8(__self_0) => {
+                    ::core::fmt::Formatter::debug_tuple_field1_finish(f, "S8", &__self_0)
+                }
+                TestNonLALRDfaStates::S3(__self_0) => {
+                    ::core::fmt::Formatter::debug_tuple_field1_finish(f, "S3", &__self_0)
+                }
+                TestNonLALRDfaStates::S2(__self_0) => {
+                    ::core::fmt::Formatter::debug_tuple_field1_finish(f, "S2", &__self_0)
+                }
+                TestNonLALRDfaStates::S4(__self_0) => {
+                    ::core::fmt::Formatter::debug_tuple_field1_finish(f, "S4", &__self_0)
+                }
+                TestNonLALRDfaStates::S1(__self_0) => {
+                    ::core::fmt::Formatter::debug_tuple_field1_finish(f, "S1", &__self_0)
+                }
+                TestNonLALRDfaStates::S0(__self_0) => {
+                    ::core::fmt::Formatter::debug_tuple_field1_finish(f, "S0", &__self_0)
+                }
+                TestNonLALRDfaStates::S11(__self_0) => {
+                    ::core::fmt::Formatter::debug_tuple_field1_finish(
+                        f,
+                        "S11",
+                        &__self_0,
+                    )
+                }
+                TestNonLALRDfaStates::T(__self_0) => {
+                    ::core::fmt::Formatter::debug_tuple_field1_finish(f, "T", &__self_0)
+                }
+            }
+        }
+    }
+    struct TestNonLALR {}
+    impl TestNonLALR {
+        /// Parses an input stream according to the grammar, returning the
+        /// constructed object from a correctly formatted input, or None if the
+        /// input was not a sentential form of the grammar.
+        ///
+        /// This variant of parse uses an iterator over references to the
+        /// terminal type.
+        pub fn parse_ref<'a, I: Iterator<Item = &'a char>>(
+            mut input_stream: std::iter::Peekable<I>,
+        ) -> Option<(TestNonLALRPath, std::iter::Peekable<I>)> {
+            let mut states = ::alloc::boxed::box_assume_init_into_vec_unsafe(
+                ::alloc::intrinsics::write_box_via_move(
+                    ::alloc::boxed::Box::new_uninit(),
+                    [TestNonLALRDfaStates::S12],
+                ),
+            );
+            loop {
+                let state = states.last().unwrap();
+                let next_token = input_stream.peek();
+                match (state, next_token) {
+                    (TestNonLALRDfaStates::S5(_), Some(&_term_val @ 'd')) => {
+                        input_stream.next();
+                        states.push(TestNonLALRDfaStates::S0(*_term_val));
+                    }
+                    (TestNonLALRDfaStates::S7(_), _) => {
+                        let __parser_generator_impl_v1 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S7(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S8(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { TestNonLALRPath::C1 };
+                        match states.last() {
+                            Some(TestNonLALRDfaStates::S12) => {
+                                states.push(TestNonLALRDfaStates::S11(cons));
+                            }
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        }
+                    }
+                    (TestNonLALRDfaStates::S12, Some(&_term_val @ 'd')) => {
+                        input_stream.next();
+                        states.push(TestNonLALRDfaStates::S6(*_term_val));
+                    }
+                    (TestNonLALRDfaStates::S12, Some(&_term_val @ 'b')) => {
+                        input_stream.next();
+                        states.push(TestNonLALRDfaStates::S5(*_term_val));
+                    }
+                    (TestNonLALRDfaStates::S6(_), Some('c')) => {
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S6(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { () };
+                        match states.last() {
+                            Some(TestNonLALRDfaStates::S12) => {
+                                states.push(TestNonLALRDfaStates::S10(cons));
+                            }
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        }
+                    }
+                    (TestNonLALRDfaStates::S6(_), Some('a')) => {
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S6(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { () };
+                        match states.last() {
+                            Some(TestNonLALRDfaStates::S12) => {
+                                states.push(TestNonLALRDfaStates::S8(cons));
+                            }
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        }
+                    }
+                    (TestNonLALRDfaStates::S9(_), _) => {
+                        let __parser_generator_impl_v1 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S9(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S10(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { TestNonLALRPath::C3 };
+                        match states.last() {
+                            Some(TestNonLALRDfaStates::S12) => {
+                                states.push(TestNonLALRDfaStates::S11(cons));
+                            }
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        }
+                    }
+                    (TestNonLALRDfaStates::S10(_), Some(&_term_val @ 'c')) => {
+                        input_stream.next();
+                        states.push(TestNonLALRDfaStates::S9(*_term_val));
+                    }
+                    (TestNonLALRDfaStates::S8(_), Some(&_term_val @ 'a')) => {
+                        input_stream.next();
+                        states.push(TestNonLALRDfaStates::S7(*_term_val));
+                    }
+                    (TestNonLALRDfaStates::S3(_), _) => {
+                        let __parser_generator_impl_v2 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S3(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let __parser_generator_impl_v1 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S4(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S5(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { TestNonLALRPath::C4 };
+                        match states.last() {
+                            Some(TestNonLALRDfaStates::S12) => {
+                                states.push(TestNonLALRDfaStates::S11(cons));
+                            }
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        }
+                    }
+                    (TestNonLALRDfaStates::S2(_), Some(&_term_val @ 'c')) => {
+                        input_stream.next();
+                        states.push(TestNonLALRDfaStates::S1(*_term_val));
+                    }
+                    (TestNonLALRDfaStates::S4(_), Some(&_term_val @ 'a')) => {
+                        input_stream.next();
+                        states.push(TestNonLALRDfaStates::S3(*_term_val));
+                    }
+                    (TestNonLALRDfaStates::S1(_), _) => {
+                        let __parser_generator_impl_v2 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S1(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let __parser_generator_impl_v1 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S2(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S5(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { TestNonLALRPath::C2 };
+                        match states.last() {
+                            Some(TestNonLALRDfaStates::S12) => {
+                                states.push(TestNonLALRDfaStates::S11(cons));
+                            }
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        }
+                    }
+                    (TestNonLALRDfaStates::S0(_), Some('a')) => {
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S0(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { () };
+                        match states.last() {
+                            Some(TestNonLALRDfaStates::S5(_)) => {
+                                states.push(TestNonLALRDfaStates::S4(cons));
+                            }
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        }
+                    }
+                    (TestNonLALRDfaStates::S0(_), Some('c')) => {
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S0(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { () };
+                        match states.last() {
+                            Some(TestNonLALRDfaStates::S5(_)) => {
+                                states.push(TestNonLALRDfaStates::S2(cons));
+                            }
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        }
+                    }
+                    (TestNonLALRDfaStates::S11(_), _) => {
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S11(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { __parser_generator_impl_v0 };
+                        return Some((cons, input_stream));
+                    }
+                    _ => {
+                        match next_token {
+                            Some(token) => {
+                                {
+                                    ::std::io::_eprint(
+                                        format_args!("Unexpected token \"{0}\"\n", token),
+                                    );
+                                };
+                            }
+                            None => {
+                                {
+                                    ::std::io::_eprint(
+                                        format_args!("Unexpected end of input\n"),
+                                    );
+                                };
+                            }
+                        }
+                        return None;
+                    }
+                }
+            }
+        }
+        /// Parses an input stream according to the grammar, returning the
+        /// constructed object from a correctly formatted input, or None if the
+        /// input was not a sentential form of the grammar.
+        pub fn parse<I: Iterator<Item = char>>(
+            mut input_stream: std::iter::Peekable<I>,
+        ) -> Option<(TestNonLALRPath, std::iter::Peekable<I>)> {
+            let mut states = ::alloc::boxed::box_assume_init_into_vec_unsafe(
+                ::alloc::intrinsics::write_box_via_move(
+                    ::alloc::boxed::Box::new_uninit(),
+                    [TestNonLALRDfaStates::S12],
+                ),
+            );
+            loop {
+                let state = states.last().unwrap();
+                let next_token = input_stream.peek();
+                match (state, next_token) {
+                    (TestNonLALRDfaStates::S5(_), Some(&_term_val @ 'd')) => {
+                        input_stream.next();
+                        states.push(TestNonLALRDfaStates::S0(_term_val));
+                    }
+                    (TestNonLALRDfaStates::S7(_), _) => {
+                        let __parser_generator_impl_v1 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S7(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S8(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { TestNonLALRPath::C1 };
+                        match states.last() {
+                            Some(TestNonLALRDfaStates::S12) => {
+                                states.push(TestNonLALRDfaStates::S11(cons));
+                            }
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        }
+                    }
+                    (TestNonLALRDfaStates::S12, Some(&_term_val @ 'd')) => {
+                        input_stream.next();
+                        states.push(TestNonLALRDfaStates::S6(_term_val));
+                    }
+                    (TestNonLALRDfaStates::S12, Some(&_term_val @ 'b')) => {
+                        input_stream.next();
+                        states.push(TestNonLALRDfaStates::S5(_term_val));
+                    }
+                    (TestNonLALRDfaStates::S6(_), Some('c')) => {
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S6(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { () };
+                        match states.last() {
+                            Some(TestNonLALRDfaStates::S12) => {
+                                states.push(TestNonLALRDfaStates::S10(cons));
+                            }
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        }
+                    }
+                    (TestNonLALRDfaStates::S6(_), Some('a')) => {
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S6(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { () };
+                        match states.last() {
+                            Some(TestNonLALRDfaStates::S12) => {
+                                states.push(TestNonLALRDfaStates::S8(cons));
+                            }
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        }
+                    }
+                    (TestNonLALRDfaStates::S9(_), _) => {
+                        let __parser_generator_impl_v1 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S9(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S10(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { TestNonLALRPath::C3 };
+                        match states.last() {
+                            Some(TestNonLALRDfaStates::S12) => {
+                                states.push(TestNonLALRDfaStates::S11(cons));
+                            }
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        }
+                    }
+                    (TestNonLALRDfaStates::S10(_), Some(&_term_val @ 'c')) => {
+                        input_stream.next();
+                        states.push(TestNonLALRDfaStates::S9(_term_val));
+                    }
+                    (TestNonLALRDfaStates::S8(_), Some(&_term_val @ 'a')) => {
+                        input_stream.next();
+                        states.push(TestNonLALRDfaStates::S7(_term_val));
+                    }
+                    (TestNonLALRDfaStates::S3(_), _) => {
+                        let __parser_generator_impl_v2 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S3(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let __parser_generator_impl_v1 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S4(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S5(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { TestNonLALRPath::C4 };
+                        match states.last() {
+                            Some(TestNonLALRDfaStates::S12) => {
+                                states.push(TestNonLALRDfaStates::S11(cons));
+                            }
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        }
+                    }
+                    (TestNonLALRDfaStates::S2(_), Some(&_term_val @ 'c')) => {
+                        input_stream.next();
+                        states.push(TestNonLALRDfaStates::S1(_term_val));
+                    }
+                    (TestNonLALRDfaStates::S4(_), Some(&_term_val @ 'a')) => {
+                        input_stream.next();
+                        states.push(TestNonLALRDfaStates::S3(_term_val));
+                    }
+                    (TestNonLALRDfaStates::S1(_), _) => {
+                        let __parser_generator_impl_v2 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S1(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let __parser_generator_impl_v1 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S2(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S5(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { TestNonLALRPath::C2 };
+                        match states.last() {
+                            Some(TestNonLALRDfaStates::S12) => {
+                                states.push(TestNonLALRDfaStates::S11(cons));
+                            }
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        }
+                    }
+                    (TestNonLALRDfaStates::S0(_), Some('a')) => {
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S0(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { () };
+                        match states.last() {
+                            Some(TestNonLALRDfaStates::S5(_)) => {
+                                states.push(TestNonLALRDfaStates::S4(cons));
+                            }
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        }
+                    }
+                    (TestNonLALRDfaStates::S0(_), Some('c')) => {
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S0(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { () };
+                        match states.last() {
+                            Some(TestNonLALRDfaStates::S5(_)) => {
+                                states.push(TestNonLALRDfaStates::S2(cons));
+                            }
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        }
+                    }
+                    (TestNonLALRDfaStates::S11(_), _) => {
+                        let __parser_generator_impl_v0 = match states.pop() {
+                            Some(TestNonLALRDfaStates::S11(val)) => val,
+                            _ => unsafe { std::hint::unreachable_unchecked() }
+                        };
+                        let cons = { __parser_generator_impl_v0 };
+                        return Some((cons, input_stream));
+                    }
+                    _ => {
+                        match next_token {
+                            Some(token) => {
+                                {
+                                    ::std::io::_eprint(
+                                        format_args!("Unexpected token \"{0}\"\n", token),
+                                    );
+                                };
+                            }
+                            None => {
+                                {
+                                    ::std::io::_eprint(
+                                        format_args!("Unexpected end of input\n"),
+                                    );
+                                };
+                            }
+                        }
+                        return None;
+                    }
+                }
+            }
+        }
+    }
