@@ -1,37 +1,31 @@
 use crate::{
   grammar::ProductionNode,
-  indexed_grammar::{IndexedGrammar, IndexedProductionRule},
+  indexed_grammar::{IndexedGrammar, ProductionRuleId},
 };
 
-#[derive(Debug, PartialEq, Eq)]
-struct ProductionPosition<'a, T> {
-  production: &'a IndexedProductionRule<T>,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct ProductionPosition {
+  production_id: ProductionRuleId,
   position: usize,
 }
 
-impl<'a, T> Clone for ProductionPosition<'a, T> {
-  fn clone(&self) -> Self {
-    *self
-  }
-}
-impl<'a, T> Copy for ProductionPosition<'a, T> {}
-
-fn closure<'a, T>(
-  position: ProductionPosition<'a, T>,
-  grammar: &'a IndexedGrammar<T>,
-) -> impl Iterator<Item = ProductionPosition<'a, T>> {
+fn closure<T>(
+  position: ProductionPosition,
+  grammar: &IndexedGrammar<T>,
+) -> impl Iterator<Item = ProductionPosition> {
   let mut positions = Vec::new();
   let mut stack = vec![position];
   while let Some(pos) = stack.pop() {
-    positions.push(pos.clone());
-    if pos.position >= pos.production.rule().len() {
+    positions.push(pos);
+    let production = grammar.production_rule(pos.production_id);
+    if pos.position >= production.rule().len() {
       continue;
     }
 
-    if let ProductionNode::Production(label) = &pos.production.rule()[pos.position] {
-      for production in grammar.productions_for_label(*label) {
+    if let ProductionNode::Production(label) = &production.rule()[pos.position] {
+      for production_id in grammar.productions_for_label(*label) {
         stack.push(ProductionPosition {
-          production,
+          production_id,
           position: 0,
         });
       }
@@ -48,7 +42,7 @@ mod tests {
 
   use crate::{
     grammar::{Grammar, ProductionNode, ProductionRule, Terminal},
-    indexed_grammar::{IndexedGrammar, IndexedProductionRule, ProductionLabel},
+    indexed_grammar::{IndexedGrammar, ProductionLabel},
     table_builder::{ProductionPosition, closure},
   };
 
@@ -60,11 +54,18 @@ mod tests {
     ]);
 
     let indexed = IndexedGrammar::build(&grammar);
-    let production = &indexed.productions_for_label(ProductionLabel::new(0))[0];
+    let production_id_a = indexed
+      .productions_for_label(ProductionLabel::new(0))
+      .next()
+      .unwrap();
+    let production_id_b = indexed
+      .productions_for_label(ProductionLabel::new(1))
+      .next()
+      .unwrap();
     expect_that!(
       closure(
         ProductionPosition {
-          production,
+          production_id: production_id_a,
           position: 0
         },
         &indexed
@@ -72,15 +73,55 @@ mod tests {
       .collect_vec(),
       unordered_elements_are![
         &ProductionPosition {
-          production: &IndexedProductionRule::new(vec![ProductionNode::Production(
-            ProductionLabel::new(1)
-          )]),
+          production_id: production_id_a,
           position: 0
         },
         &ProductionPosition {
-          production: &IndexedProductionRule::new(vec![ProductionNode::Terminal(
-            Terminal::Symbol('a')
-          )]),
+          production_id: production_id_b,
+          position: 0
+        }
+      ]
+    );
+  }
+
+  #[gtest]
+  fn test_nonzero_pos_closure() {
+    let grammar = Grammar::new(vec![
+      ProductionRule::new(
+        'A',
+        vec![
+          ProductionNode::Terminal(Terminal::Symbol('a')),
+          ProductionNode::Production('B'),
+        ],
+      ),
+      ProductionRule::new('B', vec![ProductionNode::Terminal(Terminal::Symbol('a'))]),
+    ]);
+
+    let indexed = IndexedGrammar::build(&grammar);
+    let production_id_a = indexed
+      .productions_for_label(ProductionLabel::new(0))
+      .next()
+      .unwrap();
+    let production_id_b = indexed
+      .productions_for_label(ProductionLabel::new(1))
+      .next()
+      .unwrap();
+    expect_that!(
+      closure(
+        ProductionPosition {
+          production_id: production_id_a,
+          position: 0
+        },
+        &indexed
+      )
+      .collect_vec(),
+      unordered_elements_are![
+        &ProductionPosition {
+          production_id: production_id_a,
+          position: 0
+        },
+        &ProductionPosition {
+          production_id: production_id_b,
           position: 0
         }
       ]

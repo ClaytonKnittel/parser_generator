@@ -1,11 +1,8 @@
-use std::{
-  collections::{HashMap, hash_map::Entry},
-  hash::Hash,
-};
+use std::{collections::HashMap, hash::Hash};
 
 use itertools::Itertools;
 
-use crate::grammar::{Grammar, ProductionNode, ProductionRule};
+use crate::grammar::{Grammar, ProductionNode};
 
 /// Each production label is given a unique ID densely packed starting from 0.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -21,6 +18,12 @@ impl ProductionLabel {
     self.0
   }
 }
+
+/// Each particular instance of a production rule is given a unique ID densely
+/// packed starting from 0. This is just the index into
+/// `IndexedGrammar::rules`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ProductionRuleId(usize);
 
 struct RuleRange {
   start_index: usize,
@@ -116,9 +119,16 @@ impl<T> IndexedGrammar<T> {
   }
 
   /// Returns a range over the production rules for a particular production label.
-  pub fn productions_for_label(&self, label: ProductionLabel) -> &[IndexedProductionRule<T>] {
+  pub fn productions_for_label(
+    &self,
+    label: ProductionLabel,
+  ) -> impl Iterator<Item = ProductionRuleId> {
     let range = &self.rule_offset_map[label.0];
-    &self.rules[range.start_index..range.end_index]
+    (range.start_index..range.end_index).map(ProductionRuleId)
+  }
+
+  pub fn production_rule(&self, id: ProductionRuleId) -> &IndexedProductionRule<T> {
+    &self.rules[id.0]
   }
 }
 
@@ -131,6 +141,16 @@ mod tests {
     indexed_grammar::{IndexedGrammar, IndexedProductionRule, ProductionLabel},
   };
 
+  fn production_rules<T>(
+    grammar: &IndexedGrammar<T>,
+    label: ProductionLabel,
+  ) -> Vec<&IndexedProductionRule<T>> {
+    grammar
+      .productions_for_label(label)
+      .map(|id| grammar.production_rule(id))
+      .collect()
+  }
+
   #[gtest]
   fn test_one_rule() {
     let grammar = Grammar::new(vec![ProductionRule::new(
@@ -141,10 +161,10 @@ mod tests {
     let indexed_grammar = IndexedGrammar::build(&grammar);
     assert_eq!(indexed_grammar.labels_count(), 1);
     expect_that!(
-      indexed_grammar.productions_for_label(ProductionLabel(0)),
-      elements_are![&IndexedProductionRule::new(vec![ProductionNode::Terminal(
-        Terminal::Symbol('a')
-      )])]
+      production_rules(&indexed_grammar, ProductionLabel(0)),
+      elements_are![&&IndexedProductionRule::new(vec![
+        ProductionNode::Terminal(Terminal::Symbol('a'))
+      ])]
     );
   }
 
@@ -158,16 +178,16 @@ mod tests {
     let indexed_grammar = IndexedGrammar::build(&grammar);
     assert_eq!(indexed_grammar.labels_count(), 2);
     expect_that!(
-      indexed_grammar.productions_for_label(ProductionLabel(0)),
-      elements_are![&IndexedProductionRule::new(vec![ProductionNode::Terminal(
-        Terminal::Symbol('a')
-      )])]
+      production_rules(&indexed_grammar, ProductionLabel(0)),
+      elements_are![&&IndexedProductionRule::new(vec![
+        ProductionNode::Terminal(Terminal::Symbol('a'))
+      ])]
     );
     expect_that!(
-      indexed_grammar.productions_for_label(ProductionLabel(1)),
-      elements_are![&IndexedProductionRule::new(vec![ProductionNode::Terminal(
-        Terminal::Symbol('b')
-      )])]
+      production_rules(&indexed_grammar, ProductionLabel(1)),
+      elements_are![&&IndexedProductionRule::new(vec![
+        ProductionNode::Terminal(Terminal::Symbol('b'))
+      ])]
     );
   }
 
@@ -181,10 +201,10 @@ mod tests {
     let indexed_grammar = IndexedGrammar::build(&grammar);
     assert_eq!(indexed_grammar.labels_count(), 1);
     expect_that!(
-      indexed_grammar.productions_for_label(ProductionLabel(0)),
+      production_rules(&indexed_grammar, ProductionLabel(0)),
       elements_are![
-        &IndexedProductionRule::new(vec![ProductionNode::Terminal(Terminal::Symbol('a'))]),
-        &IndexedProductionRule::new(vec![ProductionNode::Terminal(Terminal::Symbol('b'))])
+        &&IndexedProductionRule::new(vec![ProductionNode::Terminal(Terminal::Symbol('a'))]),
+        &&IndexedProductionRule::new(vec![ProductionNode::Terminal(Terminal::Symbol('b'))])
       ]
     );
   }
