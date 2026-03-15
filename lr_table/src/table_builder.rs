@@ -86,16 +86,11 @@ mod tests {
 
   #[gtest]
   fn test_nonzero_pos_closure() {
-    let grammar = Grammar::new(vec![
-      ProductionRule::new(
-        'A',
-        vec![
-          ProductionNode::Terminal(Terminal::Symbol('a')),
-          ProductionNode::Production('B'),
-        ],
-      ),
-      ProductionRule::new('B', vec![ProductionNode::Terminal(Terminal::Symbol('a'))]),
-    ]);
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> a B
+         B -> a"#,
+    )
+    .unwrap();
 
     let indexed = IndexedGrammar::build(&grammar);
     let production_id_a = indexed
@@ -110,7 +105,7 @@ mod tests {
       closure(
         ProductionPosition {
           production_id: production_id_a,
-          position: 0
+          position: 1
         },
         &indexed
       )
@@ -118,7 +113,7 @@ mod tests {
       unordered_elements_are![
         &ProductionPosition {
           production_id: production_id_a,
-          position: 0
+          position: 1
         },
         &ProductionPosition {
           production_id: production_id_b,

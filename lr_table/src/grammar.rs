@@ -17,7 +17,7 @@ pub enum ProductionNode<T, L> {
   Production(L),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProductionRule<T, L> {
   symbol: L,
   rule: Vec<ProductionNode<T, L>>,
@@ -60,7 +60,10 @@ impl Grammar<String, String> {
           let (production, rule) = line
             .split_once("->")
             .ok_or_else(|| LRTableError::new(format!("Line \"{line}\" missing \"->\"")))?;
-          let production = production.trim_end();
+          let production = production.trim();
+          if !production.chars().all(|c| c.is_ascii_uppercase()) {
+            return Err(LRTableError::new(format!("Production label \"{production}\" is not all ASCII uppercase")).into());
+          }
 
           Ok(ProductionRule::new(
             production.to_owned(),
@@ -83,5 +86,35 @@ impl Grammar<String, String> {
         })
         .collect::<Result<_, _>>()?,
     ))
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use googletest::prelude::*;
+
+  use crate::grammar::{Grammar, ProductionNode, ProductionRule, Terminal};
+
+  #[gtest]
+  fn test_parse_from_str() {
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> B
+         B -> c"#,
+    )
+    .unwrap();
+
+    expect_that!(
+      grammar.productions(),
+      unordered_elements_are![
+        &ProductionRule::new(
+          "A".to_owned(),
+          vec![ProductionNode::Production("B".to_owned())]
+        ),
+        &ProductionRule::new(
+          "B".to_owned(),
+          vec![ProductionNode::Terminal(Terminal::Symbol("c".to_owned()))]
+        )
+      ]
+    );
   }
 }
