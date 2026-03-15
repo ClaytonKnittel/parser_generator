@@ -1,4 +1,6 @@
-use crate::grammar::Grammar;
+use std::hash::Hash;
+
+use crate::{grammar::Grammar, indexed_grammar::IndexedGrammar};
 
 struct StateId(usize);
 
@@ -16,7 +18,8 @@ pub struct LRTable {
 }
 
 impl LRTable {
-  pub fn build<T, L>(grammar: &Grammar<T, L>) -> Self {
+  pub fn build<T: Clone, L: Clone + Eq + Hash>(grammar: &Grammar<T, L>) -> Self {
+    let indexed_grammar = IndexedGrammar::build(grammar);
     todo!();
   }
 }

@@ -11,6 +11,17 @@ use crate::grammar::{Grammar, ProductionNode, ProductionRule};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ProductionLabel(usize);
 
+impl ProductionLabel {
+  #[cfg(test)]
+  pub(crate) fn new(id: usize) -> Self {
+    Self(id)
+  }
+
+  pub fn id(&self) -> usize {
+    self.0
+  }
+}
+
 struct RuleRange {
   start_index: usize,
   end_index: usize,
@@ -22,8 +33,12 @@ pub struct IndexedProductionRule<T> {
 }
 
 impl<T> IndexedProductionRule<T> {
-  fn new(rule: Vec<ProductionNode<T, ProductionLabel>>) -> Self {
+  pub fn new(rule: Vec<ProductionNode<T, ProductionLabel>>) -> Self {
     Self { rule }
+  }
+
+  pub fn rule(&self) -> &[ProductionNode<T, ProductionLabel>] {
+    &self.rule
   }
 }
 
@@ -92,7 +107,9 @@ impl<T: Clone> IndexedGrammar<T> {
       rule_offset_map,
     }
   }
+}
 
+impl<T> IndexedGrammar<T> {
   #[cfg(test)]
   fn labels_count(&self) -> usize {
     self.rule_offset_map.len()
