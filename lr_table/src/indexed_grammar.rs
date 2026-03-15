@@ -93,6 +93,11 @@ impl<T: Clone> IndexedGrammar<T> {
     }
   }
 
+  #[cfg(test)]
+  fn labels_count(&self) -> usize {
+    self.rule_offset_map.len()
+  }
+
   /// Returns a range over the production rules for a particular production label.
   pub fn productions_for_label(&self, label: ProductionLabel) -> &[IndexedProductionRule<T>] {
     let range = &self.rule_offset_map[label.0];
@@ -117,6 +122,7 @@ mod tests {
     )]);
 
     let indexed_grammar = IndexedGrammar::build(&grammar);
+    assert_eq!(indexed_grammar.labels_count(), 1);
     expect_that!(
       indexed_grammar.productions_for_label(ProductionLabel(0)),
       elements_are![&IndexedProductionRule::new(vec![ProductionNode::Terminal(
@@ -133,6 +139,7 @@ mod tests {
     ]);
 
     let indexed_grammar = IndexedGrammar::build(&grammar);
+    assert_eq!(indexed_grammar.labels_count(), 2);
     expect_that!(
       indexed_grammar.productions_for_label(ProductionLabel(0)),
       elements_are![&IndexedProductionRule::new(vec![ProductionNode::Terminal(
@@ -155,6 +162,7 @@ mod tests {
     ]);
 
     let indexed_grammar = IndexedGrammar::build(&grammar);
+    assert_eq!(indexed_grammar.labels_count(), 1);
     expect_that!(
       indexed_grammar.productions_for_label(ProductionLabel(0)),
       elements_are![
