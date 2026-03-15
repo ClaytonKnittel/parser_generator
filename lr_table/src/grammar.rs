@@ -1,14 +1,17 @@
+#[derive(Clone, Copy)]
 pub enum Terminal<T> {
   EndOfStream,
   Epsilon,
   Symbol(T),
 }
 
+#[derive(Clone)]
 pub enum ProductionNode<T, L> {
   Terminal(Terminal<T>),
   Production(L),
 }
 
+#[derive(Clone)]
 pub struct ProductionRule<T, L> {
   symbol: L,
   rule: Vec<ProductionNode<T, L>>,
