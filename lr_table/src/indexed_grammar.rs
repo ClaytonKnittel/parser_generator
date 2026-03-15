@@ -8,7 +8,7 @@ use itertools::Itertools;
 use crate::grammar::{Grammar, ProductionNode, ProductionRule};
 
 /// Each production label is given a unique ID densely packed starting from 0.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ProductionLabel(usize);
 
 struct RuleRange {
@@ -85,6 +85,15 @@ impl<T: Clone> IndexedGrammar<T> {
       rule_offset_map,
     }
   }
+
+  /// Returns a range over the production rules for a particular production label.
+  pub fn productions_for_label(
+    &self,
+    label: ProductionLabel,
+  ) -> &[ProductionRule<T, ProductionLabel>] {
+    let range = &self.rule_offset_map[label.0];
+    &self.rules[range.start_index..range.end_index]
+  }
 }
 
 #[cfg(test)]
@@ -93,7 +102,7 @@ mod tests {
 
   use crate::{
     grammar::{Grammar, ProductionNode, ProductionRule, Terminal},
-    indexed_grammar::IndexedGrammar,
+    indexed_grammar::{IndexedGrammar, ProductionLabel},
   };
 
   #[gtest]
@@ -104,5 +113,12 @@ mod tests {
     )]);
 
     let indexed_grammar = IndexedGrammar::build(&grammar);
+    expect_that!(
+      indexed_grammar.productions_for_label(ProductionLabel(0)),
+      elements_are![&ProductionRule::new(
+        ProductionLabel(0),
+        vec![ProductionNode::Terminal(Terminal::Symbol('a'))]
+      )]
+    );
   }
 }
