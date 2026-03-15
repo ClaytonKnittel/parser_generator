@@ -137,7 +137,7 @@ mod tests {
   use googletest::prelude::*;
 
   use crate::{
-    grammar::{Grammar, ProductionNode, ProductionRule, Terminal},
+    grammar::{Grammar, ProductionNode, Terminal},
     indexed_grammar::{IndexedGrammar, IndexedProductionRule, ProductionLabel},
   };
 
@@ -153,58 +153,61 @@ mod tests {
 
   #[gtest]
   fn test_one_rule() {
-    let grammar = Grammar::new(vec![ProductionRule::new(
-      'A',
-      vec![ProductionNode::Terminal(Terminal::Symbol('a'))],
-    )]);
+    let grammar = Grammar::from_grammar_str("A -> a").unwrap();
 
     let indexed_grammar = IndexedGrammar::build(&grammar);
     assert_eq!(indexed_grammar.labels_count(), 1);
     expect_that!(
       production_rules(&indexed_grammar, ProductionLabel(0)),
       elements_are![&&IndexedProductionRule::new(vec![
-        ProductionNode::Terminal(Terminal::Symbol('a'))
+        ProductionNode::Terminal(Terminal::Symbol("a".to_owned()))
       ])]
     );
   }
 
   #[gtest]
   fn test_two_productions() {
-    let grammar = Grammar::new(vec![
-      ProductionRule::new('A', vec![ProductionNode::Terminal(Terminal::Symbol('a'))]),
-      ProductionRule::new('B', vec![ProductionNode::Terminal(Terminal::Symbol('b'))]),
-    ]);
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> a
+         B -> b"#,
+    )
+    .unwrap();
 
     let indexed_grammar = IndexedGrammar::build(&grammar);
     assert_eq!(indexed_grammar.labels_count(), 2);
     expect_that!(
       production_rules(&indexed_grammar, ProductionLabel(0)),
       elements_are![&&IndexedProductionRule::new(vec![
-        ProductionNode::Terminal(Terminal::Symbol('a'))
+        ProductionNode::Terminal(Terminal::Symbol("a".to_owned()))
       ])]
     );
     expect_that!(
       production_rules(&indexed_grammar, ProductionLabel(1)),
       elements_are![&&IndexedProductionRule::new(vec![
-        ProductionNode::Terminal(Terminal::Symbol('b'))
+        ProductionNode::Terminal(Terminal::Symbol("b".to_owned()))
       ])]
     );
   }
 
   #[gtest]
   fn test_two_rules() {
-    let grammar = Grammar::new(vec![
-      ProductionRule::new('A', vec![ProductionNode::Terminal(Terminal::Symbol('a'))]),
-      ProductionRule::new('A', vec![ProductionNode::Terminal(Terminal::Symbol('b'))]),
-    ]);
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> a
+         A -> b"#,
+    )
+    .unwrap();
 
     let indexed_grammar = IndexedGrammar::build(&grammar);
     assert_eq!(indexed_grammar.labels_count(), 1);
     expect_that!(
       production_rules(&indexed_grammar, ProductionLabel(0)),
       elements_are![
-        &&IndexedProductionRule::new(vec![ProductionNode::Terminal(Terminal::Symbol('a'))]),
-        &&IndexedProductionRule::new(vec![ProductionNode::Terminal(Terminal::Symbol('b'))])
+        &&IndexedProductionRule::new(vec![ProductionNode::Terminal(Terminal::Symbol(
+          "a".to_owned()
+        ))]),
+        &&IndexedProductionRule::new(vec![ProductionNode::Terminal(Terminal::Symbol(
+          "b".to_owned()
+        ))])
       ]
     );
   }

@@ -41,17 +41,18 @@ mod tests {
   use itertools::Itertools;
 
   use crate::{
-    grammar::{Grammar, ProductionNode, ProductionRule, Terminal},
+    grammar::Grammar,
     indexed_grammar::{IndexedGrammar, ProductionLabel},
     table_builder::{ProductionPosition, closure},
   };
 
   #[gtest]
   fn test_small_closure() {
-    let grammar = Grammar::new(vec![
-      ProductionRule::new('A', vec![ProductionNode::Production('B')]),
-      ProductionRule::new('B', vec![ProductionNode::Terminal(Terminal::Symbol('a'))]),
-    ]);
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> B
+         B -> a"#,
+    )
+    .unwrap();
 
     let indexed = IndexedGrammar::build(&grammar);
     let production_id_a = indexed
