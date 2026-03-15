@@ -16,8 +16,19 @@ struct RuleRange {
   end_index: usize,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct IndexedProductionRule<T> {
+  rule: Vec<ProductionNode<T, ProductionLabel>>,
+}
+
+impl<T> IndexedProductionRule<T> {
+  fn new(rule: Vec<ProductionNode<T, ProductionLabel>>) -> Self {
+    Self { rule }
+  }
+}
+
 pub struct IndexedGrammar<T> {
-  rules: Vec<ProductionRule<T, ProductionLabel>>,
+  rules: Vec<IndexedProductionRule<T>>,
   /// A map from `ProductionLabel` -> `RuleRange`
   rule_offset_map: Vec<RuleRange>,
 }
@@ -45,13 +56,9 @@ impl<T: Clone> IndexedGrammar<T> {
 
     let rules = label_groups
       .iter()
-      .enumerate()
-      .flat_map(|(i, group)| {
-        let label = ProductionLabel(i);
-        let label_map = &label_map;
-        group.iter().map(move |production| {
-          ProductionRule::new(
-            label,
+      .flat_map(|group| {
+        group.iter().map(|production| {
+          IndexedProductionRule::new(
             production
               .rule()
               .iter()
@@ -87,10 +94,7 @@ impl<T: Clone> IndexedGrammar<T> {
   }
 
   /// Returns a range over the production rules for a particular production label.
-  pub fn productions_for_label(
-    &self,
-    label: ProductionLabel,
-  ) -> &[ProductionRule<T, ProductionLabel>] {
+  pub fn productions_for_label(&self, label: ProductionLabel) -> &[IndexedProductionRule<T>] {
     let range = &self.rule_offset_map[label.0];
     &self.rules[range.start_index..range.end_index]
   }
@@ -102,7 +106,7 @@ mod tests {
 
   use crate::{
     grammar::{Grammar, ProductionNode, ProductionRule, Terminal},
-    indexed_grammar::{IndexedGrammar, ProductionLabel},
+    indexed_grammar::{IndexedGrammar, IndexedProductionRule, ProductionLabel},
   };
 
   #[gtest]
@@ -115,10 +119,9 @@ mod tests {
     let indexed_grammar = IndexedGrammar::build(&grammar);
     expect_that!(
       indexed_grammar.productions_for_label(ProductionLabel(0)),
-      elements_are![&ProductionRule::new(
-        ProductionLabel(0),
-        vec![ProductionNode::Terminal(Terminal::Symbol('a'))]
-      )]
+      elements_are![&IndexedProductionRule::new(vec![ProductionNode::Terminal(
+        Terminal::Symbol('a')
+      )])]
     );
   }
 }

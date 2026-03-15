@@ -11,7 +11,7 @@ pub enum ProductionNode<T, L> {
   Production(L),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct ProductionRule<T, L> {
   symbol: L,
   rule: Vec<ProductionNode<T, L>>,
