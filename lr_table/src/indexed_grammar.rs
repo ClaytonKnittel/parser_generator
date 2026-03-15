@@ -124,4 +124,43 @@ mod tests {
       )])]
     );
   }
+
+  #[gtest]
+  fn test_two_productions() {
+    let grammar = Grammar::new(vec![
+      ProductionRule::new('A', vec![ProductionNode::Terminal(Terminal::Symbol('a'))]),
+      ProductionRule::new('B', vec![ProductionNode::Terminal(Terminal::Symbol('b'))]),
+    ]);
+
+    let indexed_grammar = IndexedGrammar::build(&grammar);
+    expect_that!(
+      indexed_grammar.productions_for_label(ProductionLabel(0)),
+      elements_are![&IndexedProductionRule::new(vec![ProductionNode::Terminal(
+        Terminal::Symbol('a')
+      )])]
+    );
+    expect_that!(
+      indexed_grammar.productions_for_label(ProductionLabel(1)),
+      elements_are![&IndexedProductionRule::new(vec![ProductionNode::Terminal(
+        Terminal::Symbol('b')
+      )])]
+    );
+  }
+
+  #[gtest]
+  fn test_two_rules() {
+    let grammar = Grammar::new(vec![
+      ProductionRule::new('A', vec![ProductionNode::Terminal(Terminal::Symbol('a'))]),
+      ProductionRule::new('A', vec![ProductionNode::Terminal(Terminal::Symbol('b'))]),
+    ]);
+
+    let indexed_grammar = IndexedGrammar::build(&grammar);
+    expect_that!(
+      indexed_grammar.productions_for_label(ProductionLabel(0)),
+      elements_are![
+        &IndexedProductionRule::new(vec![ProductionNode::Terminal(Terminal::Symbol('a'))]),
+        &IndexedProductionRule::new(vec![ProductionNode::Terminal(Terminal::Symbol('b'))])
+      ]
+    );
+  }
 }
