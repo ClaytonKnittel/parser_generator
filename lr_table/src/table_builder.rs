@@ -1,4 +1,9 @@
-use std::{fmt::Debug, marker::PhantomData};
+use std::{
+  fmt::{Debug, Display},
+  marker::PhantomData,
+};
+
+use itertools::Itertools;
 
 use crate::{
   bit_set::BitSet,
@@ -37,9 +42,25 @@ impl<T> Clone for ProductionPosition<T> {
   }
 }
 
-impl<T> Debug for ProductionPosition<T> {
+impl<T: Vocabulary + Display> Display for ProductionPosition<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{:?} at {}", self.production_id, self.position)
+    write!(
+      f,
+      "{:?} at {} [{}]",
+      self.production_id,
+      self.position,
+      self
+        .token_set
+        .for_each()
+        .map(AugmentedVocab::<T>::from_ordinal)
+        .join("/")
+    )
+  }
+}
+
+impl<T: Vocabulary + Display> Debug for ProductionPosition<T> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{self}")
   }
 }
 
@@ -79,14 +100,14 @@ fn closure<T: Vocabulary>(
   positions.into_iter()
 }
 
-fn generate_actions<T: Vocabulary>(indexed_grammar: &IndexedGrammar<T>) {
+fn generate_actions<T: Vocabulary + Display>(indexed_grammar: &IndexedGrammar<T>) {
   let root_label = indexed_grammar.root_production_label();
   let first_id = indexed_grammar
     .productions_for_label(root_label)
     .next()
     .unwrap();
   for x in closure(ProductionPosition::new(first_id, 0), indexed_grammar) {
-    println!("Position: {x:?}");
+    println!("Position: {x}");
   }
 }
 

@@ -1,3 +1,5 @@
+use crate::iter_ones::IterOnes;
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct BitSet {
   bits: Vec<u64>,
@@ -32,5 +34,13 @@ impl BitSet {
     debug_assert!(bit < self.len);
     let (index, shift) = Self::pos(bit);
     self.bits[index] &= !(1 << shift);
+  }
+
+  pub fn for_each(&self) -> impl Iterator<Item = usize> {
+    self.bits.iter().enumerate().flat_map(|(index, mask)| {
+      mask
+        .iter_ones()
+        .map(move |bit| index * u64::BITS as usize + bit as usize)
+    })
   }
 }
