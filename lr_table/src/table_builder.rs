@@ -9,6 +9,15 @@ struct ProductionPosition {
   position: usize,
 }
 
+impl ProductionPosition {
+  fn new(production_id: ProductionRuleId, position: usize) -> Self {
+    Self {
+      production_id,
+      position,
+    }
+  }
+}
+
 fn closure<T>(
   position: ProductionPosition,
   grammar: &IndexedGrammar<T>,
@@ -54,9 +63,65 @@ mod tests {
 
   use crate::{
     grammar::Grammar,
-    indexed_grammar::{IndexedGrammar, ProductionLabel},
+    indexed_grammar::IndexedGrammar,
     table_builder::{ProductionPosition, closure},
   };
+
+  #[gtest]
+  fn test_no_closure() {
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> b
+         B -> a"#,
+    )
+    .unwrap();
+
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let label_a = *label_map.get("A").unwrap();
+    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    expect_that!(
+      closure(ProductionPosition::new(production_id_a, 0), &indexed).collect_vec(),
+      elements_are![&ProductionPosition::new(production_id_a, 0)]
+    );
+  }
+
+  #[gtest]
+  fn test_closure_at_end() {
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> B
+         B -> a"#,
+    )
+    .unwrap();
+
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let label_a = *label_map.get("A").unwrap();
+    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    expect_that!(
+      closure(ProductionPosition::new(production_id_a, 1), &indexed).collect_vec(),
+      elements_are![&ProductionPosition::new(production_id_a, 1)]
+    );
+  }
+
+  #[gtest]
+  fn test_closure_at_start() {
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> B
+         B -> A"#,
+    )
+    .unwrap();
+
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let label_a = *label_map.get("A").unwrap();
+    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    let label_b = *label_map.get("B").unwrap();
+    let production_id_b = indexed.productions_for_label(label_b).next().unwrap();
+    expect_that!(
+      closure(ProductionPosition::new(production_id_a, 0), &indexed).collect_vec(),
+      unordered_elements_are![
+        &ProductionPosition::new(production_id_a, 0),
+        &ProductionPosition::new(production_id_b, 0),
+      ]
+    );
+  }
 
   #[gtest]
   fn test_small_closure() {
@@ -72,23 +137,10 @@ mod tests {
     let label_b = *label_map.get("B").unwrap();
     let production_id_b = indexed.productions_for_label(label_b).next().unwrap();
     expect_that!(
-      closure(
-        ProductionPosition {
-          production_id: production_id_a,
-          position: 0
-        },
-        &indexed
-      )
-      .collect_vec(),
+      closure(ProductionPosition::new(production_id_a, 0), &indexed).collect_vec(),
       unordered_elements_are![
-        &ProductionPosition {
-          production_id: production_id_a,
-          position: 0
-        },
-        &ProductionPosition {
-          production_id: production_id_b,
-          position: 0
-        }
+        &ProductionPosition::new(production_id_a, 0),
+        &ProductionPosition::new(production_id_b, 0),
       ]
     );
   }
@@ -107,23 +159,10 @@ mod tests {
     let label_b = *label_map.get("B").unwrap();
     let production_id_b = indexed.productions_for_label(label_b).next().unwrap();
     expect_that!(
-      closure(
-        ProductionPosition {
-          production_id: production_id_a,
-          position: 1
-        },
-        &indexed
-      )
-      .collect_vec(),
+      closure(ProductionPosition::new(production_id_a, 1), &indexed).collect_vec(),
       unordered_elements_are![
-        &ProductionPosition {
-          production_id: production_id_a,
-          position: 1
-        },
-        &ProductionPosition {
-          production_id: production_id_b,
-          position: 0
-        }
+        &ProductionPosition::new(production_id_a, 1),
+        &ProductionPosition::new(production_id_b, 0),
       ]
     );
   }
@@ -151,18 +190,9 @@ mod tests {
       )
       .collect_vec(),
       unordered_elements_are![
-        &ProductionPosition {
-          production_id: production_id_a,
-          position: 1
-        },
-        &ProductionPosition {
-          production_id: production_id_a,
-          position: 0
-        },
-        &ProductionPosition {
-          production_id: production_id_b,
-          position: 0
-        }
+        &ProductionPosition::new(production_id_a, 1),
+        &ProductionPosition::new(production_id_a, 0),
+        &ProductionPosition::new(production_id_b, 0),
       ]
     );
   }
@@ -187,31 +217,12 @@ mod tests {
     let label_d = *label_map.get("D").unwrap();
     let production_id_d = indexed.productions_for_label(label_d).next().unwrap();
     expect_that!(
-      closure(
-        ProductionPosition {
-          production_id: production_id_a,
-          position: 1
-        },
-        &indexed
-      )
-      .collect_vec(),
+      closure(ProductionPosition::new(production_id_a, 1), &indexed).collect_vec(),
       unordered_elements_are![
-        &ProductionPosition {
-          production_id: production_id_a,
-          position: 1
-        },
-        &ProductionPosition {
-          production_id: production_id_b,
-          position: 0
-        },
-        &ProductionPosition {
-          production_id: production_id_c,
-          position: 0
-        },
-        &ProductionPosition {
-          production_id: production_id_d,
-          position: 0
-        }
+        &ProductionPosition::new(production_id_a, 1),
+        &ProductionPosition::new(production_id_b, 0),
+        &ProductionPosition::new(production_id_c, 0),
+        &ProductionPosition::new(production_id_d, 0),
       ]
     );
   }
