@@ -21,6 +21,18 @@ struct ProductionPosition<T> {
 }
 
 impl<T: Vocabulary> ProductionPosition<T> {
+  fn new_top_level(production_id: ProductionRuleId) -> Self {
+    let mut token_set = BitSet::new(AugmentedVocab::<T>::SIZE);
+    token_set.set(AugmentedVocab::<T>::EndOfStream.ordinal());
+
+    Self {
+      production_id,
+      position: 0,
+      token_set,
+      _phantom: PhantomData,
+    }
+  }
+
   fn new(production_id: ProductionRuleId, position: usize) -> Self {
     Self {
       production_id,
@@ -106,7 +118,7 @@ fn generate_actions<T: Vocabulary + Display>(indexed_grammar: &IndexedGrammar<T>
     .productions_for_label(root_label)
     .next()
     .unwrap();
-  for x in closure(ProductionPosition::new(first_id, 0), indexed_grammar) {
+  for x in closure(ProductionPosition::new_top_level(first_id), indexed_grammar) {
     println!("Position: {x}");
   }
 }
