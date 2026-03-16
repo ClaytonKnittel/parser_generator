@@ -1,3 +1,4 @@
+mod bit_set;
 mod error;
 pub mod grammar;
 mod indexed_grammar;

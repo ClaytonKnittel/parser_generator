@@ -2,22 +2,14 @@ use std::{collections::HashMap, hash::Hash};
 
 use itertools::Itertools;
 
-use crate::grammar::{Grammar, ProductionNode};
+use crate::{
+  bit_set::BitSet,
+  grammar::{Grammar, ProductionNode, ProductionRule},
+};
 
 /// Each production label is given a unique ID densely packed starting from 0.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ProductionLabel(usize);
-
-impl ProductionLabel {
-  #[cfg(test)]
-  pub(crate) fn new(id: usize) -> Self {
-    Self(id)
-  }
-
-  pub fn id(&self) -> usize {
-    self.0
-  }
-}
 
 /// Each particular instance of a production rule is given a unique ID densely
 /// packed starting from 0. This is just the index into
@@ -25,34 +17,33 @@ impl ProductionLabel {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ProductionRuleId(usize);
 
+pub struct ProductionRuleSet(BitSet);
+
+impl ProductionRuleSet {
+  pub fn get(&self, label: ProductionLabel) -> bool {
+    self.0.get(label.0)
+  }
+
+  pub fn set(&mut self, label: ProductionLabel) {
+    self.0.set(label.0);
+  }
+}
+
 struct RuleRange {
   start_index: usize,
   end_index: usize,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct IndexedProductionRule<T> {
-  rule: Vec<ProductionNode<T, ProductionLabel>>,
-}
-
-impl<T> IndexedProductionRule<T> {
-  pub fn new(rule: Vec<ProductionNode<T, ProductionLabel>>) -> Self {
-    Self { rule }
-  }
-
-  pub fn rule(&self) -> &[ProductionNode<T, ProductionLabel>] {
-    &self.rule
-  }
-}
-
 pub struct IndexedGrammar<T> {
-  rules: Vec<IndexedProductionRule<T>>,
+  rules: Vec<ProductionRule<T, ProductionLabel>>,
   /// A map from `ProductionLabel` -> `RuleRange`
   rule_offset_map: Vec<RuleRange>,
 }
 
 impl<T: Clone> IndexedGrammar<T> {
-  pub fn build<L: Clone + Eq + Hash>(grammar: &Grammar<T, L>) -> Self {
+  fn build_from_grammar<L: Clone + Eq + Hash>(
+    grammar: &Grammar<T, L>,
+  ) -> (Self, HashMap<L, ProductionLabel>) {
     let mut label_map = HashMap::new();
     let mut label_groups = Vec::new();
 
@@ -74,9 +65,13 @@ impl<T: Clone> IndexedGrammar<T> {
 
     let rules = label_groups
       .iter()
-      .flat_map(|group| {
-        group.iter().map(|production| {
-          IndexedProductionRule::new(
+      .enumerate()
+      .flat_map(|(index, group)| {
+        let label = ProductionLabel(index);
+        let label_map = &label_map;
+        group.iter().map(move |production| {
+          ProductionRule::new(
+            label,
             production
               .rule()
               .iter()
@@ -105,17 +100,38 @@ impl<T: Clone> IndexedGrammar<T> {
       })
       .collect_vec();
 
-    Self {
-      rules,
-      rule_offset_map,
-    }
+    (
+      Self {
+        rules,
+        rule_offset_map,
+      },
+      label_map,
+    )
+  }
+
+  #[cfg(test)]
+  pub fn build_with_label_map<L: Clone + Eq + Hash>(
+    grammar: &Grammar<T, L>,
+  ) -> (Self, HashMap<L, ProductionLabel>) {
+    Self::build_from_grammar(grammar)
+  }
+
+  pub fn build<L: Clone + Eq + Hash>(grammar: &Grammar<T, L>) -> Self {
+    Self::build_from_grammar(grammar).0
   }
 }
 
 impl<T> IndexedGrammar<T> {
-  #[cfg(test)]
+  pub fn root_production_label(&self) -> ProductionLabel {
+    ProductionLabel(0)
+  }
+
   fn labels_count(&self) -> usize {
     self.rule_offset_map.len()
+  }
+
+  pub fn production_label_set(&self) -> ProductionRuleSet {
+    ProductionRuleSet(BitSet::new(self.labels_count()))
   }
 
   /// Returns a range over the production rules for a particular production label.
@@ -127,8 +143,12 @@ impl<T> IndexedGrammar<T> {
     (range.start_index..range.end_index).map(ProductionRuleId)
   }
 
-  pub fn production_rule(&self, id: ProductionRuleId) -> &IndexedProductionRule<T> {
+  pub fn production_rule(&self, id: ProductionRuleId) -> &ProductionRule<T, ProductionLabel> {
     &self.rules[id.0]
+  }
+
+  pub fn rule_label(&self, id: ProductionRuleId) -> ProductionLabel {
+    *self.production_rule(id).symbol()
   }
 }
 
@@ -137,14 +157,14 @@ mod tests {
   use googletest::prelude::*;
 
   use crate::{
-    grammar::{Grammar, ProductionNode, Terminal},
-    indexed_grammar::{IndexedGrammar, IndexedProductionRule, ProductionLabel},
+    grammar::{Grammar, ProductionNode, ProductionRule, Terminal},
+    indexed_grammar::{IndexedGrammar, ProductionLabel},
   };
 
   fn production_rules<T>(
     grammar: &IndexedGrammar<T>,
     label: ProductionLabel,
-  ) -> Vec<&IndexedProductionRule<T>> {
+  ) -> Vec<&ProductionRule<T, ProductionLabel>> {
     grammar
       .productions_for_label(label)
       .map(|id| grammar.production_rule(id))
@@ -155,13 +175,15 @@ mod tests {
   fn test_one_rule() {
     let grammar = Grammar::from_grammar_str("A -> a").unwrap();
 
-    let indexed_grammar = IndexedGrammar::build(&grammar);
+    let (indexed_grammar, label_map) = IndexedGrammar::build_with_label_map(&grammar);
     assert_eq!(indexed_grammar.labels_count(), 1);
+    let label_a = *label_map.get("A").unwrap();
     expect_that!(
-      production_rules(&indexed_grammar, ProductionLabel(0)),
-      elements_are![&&IndexedProductionRule::new(vec![
-        ProductionNode::Terminal(Terminal::Symbol("a".to_owned()))
-      ])]
+      production_rules(&indexed_grammar, label_a),
+      elements_are![&&ProductionRule::new(
+        label_a,
+        vec![ProductionNode::Terminal(Terminal::Symbol("a".to_owned()))]
+      )]
     );
   }
 
@@ -173,19 +195,23 @@ mod tests {
     )
     .unwrap();
 
-    let indexed_grammar = IndexedGrammar::build(&grammar);
+    let (indexed_grammar, label_map) = IndexedGrammar::build_with_label_map(&grammar);
     assert_eq!(indexed_grammar.labels_count(), 2);
+    let label_a = *label_map.get("A").unwrap();
     expect_that!(
-      production_rules(&indexed_grammar, ProductionLabel(0)),
-      elements_are![&&IndexedProductionRule::new(vec![
-        ProductionNode::Terminal(Terminal::Symbol("a".to_owned()))
-      ])]
+      production_rules(&indexed_grammar, label_a),
+      elements_are![&&ProductionRule::new(
+        label_a,
+        vec![ProductionNode::Terminal(Terminal::Symbol("a".to_owned()))]
+      )]
     );
+    let label_b = *label_map.get("B").unwrap();
     expect_that!(
-      production_rules(&indexed_grammar, ProductionLabel(1)),
-      elements_are![&&IndexedProductionRule::new(vec![
-        ProductionNode::Terminal(Terminal::Symbol("b".to_owned()))
-      ])]
+      production_rules(&indexed_grammar, label_b),
+      elements_are![&&ProductionRule::new(
+        label_b,
+        vec![ProductionNode::Terminal(Terminal::Symbol("b".to_owned()))]
+      )]
     );
   }
 
@@ -197,17 +223,20 @@ mod tests {
     )
     .unwrap();
 
-    let indexed_grammar = IndexedGrammar::build(&grammar);
+    let (indexed_grammar, label_map) = IndexedGrammar::build_with_label_map(&grammar);
     assert_eq!(indexed_grammar.labels_count(), 1);
+    let label_a = *label_map.get("A").unwrap();
     expect_that!(
-      production_rules(&indexed_grammar, ProductionLabel(0)),
+      production_rules(&indexed_grammar, label_a),
       elements_are![
-        &&IndexedProductionRule::new(vec![ProductionNode::Terminal(Terminal::Symbol(
-          "a".to_owned()
-        ))]),
-        &&IndexedProductionRule::new(vec![ProductionNode::Terminal(Terminal::Symbol(
-          "b".to_owned()
-        ))])
+        &&ProductionRule::new(
+          label_a,
+          vec![ProductionNode::Terminal(Terminal::Symbol("a".to_owned()))]
+        ),
+        &&ProductionRule::new(
+          label_a,
+          vec![ProductionNode::Terminal(Terminal::Symbol("b".to_owned()))]
+        )
       ]
     );
   }
