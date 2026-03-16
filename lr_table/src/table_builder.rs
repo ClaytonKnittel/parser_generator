@@ -1,61 +1,77 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, marker::PhantomData};
 
 use crate::{
+  bit_set::BitSet,
   grammar::ProductionNode,
   indexed_grammar::{IndexedGrammar, ProductionRuleId},
+  vocabulary::{AugmentedVocab, Vocabulary},
 };
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-struct ProductionPosition {
+#[derive(PartialEq, Eq)]
+struct ProductionPosition<T> {
   production_id: ProductionRuleId,
   position: usize,
+  token_set: BitSet,
+  _phantom: PhantomData<T>,
 }
 
-impl ProductionPosition {
+impl<T: Vocabulary> ProductionPosition<T> {
   fn new(production_id: ProductionRuleId, position: usize) -> Self {
     Self {
       production_id,
       position,
+      token_set: BitSet::new(AugmentedVocab::<T>::SIZE),
+      _phantom: PhantomData,
     }
   }
 }
 
-impl Debug for ProductionPosition {
+impl<T> Clone for ProductionPosition<T> {
+  fn clone(&self) -> Self {
+    Self {
+      production_id: self.production_id,
+      position: self.position,
+      token_set: self.token_set.clone(),
+      _phantom: PhantomData,
+    }
+  }
+}
+
+impl<T> Debug for ProductionPosition<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{:?} at {}", self.production_id, self.position)
   }
 }
 
-fn closure<T>(
-  position: ProductionPosition,
+fn closure<T: Vocabulary>(
+  position: ProductionPosition<T>,
   grammar: &IndexedGrammar<T>,
-) -> impl Iterator<Item = ProductionPosition> {
+) -> impl Iterator<Item = ProductionPosition<T>> {
   let mut positions = Vec::new();
   let mut stack = vec![position];
   let mut rule_set = grammar.production_rule_set();
 
-  if position.position == 0 {
-    rule_set.set(position.production_id);
+  if stack[0].position == 0 {
+    rule_set.set(stack[0].production_id);
   }
 
   while let Some(pos) = stack.pop() {
+    let production_id = pos.production_id;
+    let position = pos.position;
     positions.push(pos);
-    let production = grammar.production_rule(pos.production_id);
-    if pos.position >= production.rule().len() {
+    let production = grammar.production_rule(production_id);
+    if position >= production.rule().len() {
       continue;
     }
 
-    if let ProductionNode::Production(label) = &production.rule()[pos.position] {
+    if let ProductionNode::Production(label) = &production.rule()[position] {
       for production_id in grammar.productions_for_label(*label) {
         if rule_set.get(production_id) {
           continue;
         }
 
         rule_set.set(production_id);
-        stack.push(ProductionPosition {
-          production_id,
-          position: 0,
-        });
+        stack.push(ProductionPosition::new(production_id, 0));
       }
     }
   }
@@ -63,7 +79,7 @@ fn closure<T>(
   positions.into_iter()
 }
 
-fn generate_actions<T>(indexed_grammar: &IndexedGrammar<T>) {
+fn generate_actions<T: Vocabulary>(indexed_grammar: &IndexedGrammar<T>) {
   let root_label = indexed_grammar.root_production_label();
   let first_id = indexed_grammar
     .productions_for_label(root_label)
@@ -215,14 +231,7 @@ mod tests {
     let label_b = *label_map.get("B").unwrap();
     let production_id_b = indexed.productions_for_label(label_b).next().unwrap();
     expect_that!(
-      closure(
-        ProductionPosition {
-          production_id: production_id_a,
-          position: 1
-        },
-        &indexed
-      )
-      .collect_vec(),
+      closure(ProductionPosition::new(production_id_a, 1), &indexed).collect_vec(),
       unordered_elements_are![
         &ProductionPosition::new(production_id_a, 1),
         &ProductionPosition::new(production_id_a, 0),

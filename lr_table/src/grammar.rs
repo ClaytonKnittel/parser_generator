@@ -1,7 +1,3 @@
-use std::collections::HashMap;
-
-use itertools::Itertools;
-
 use crate::error::{LRTableError, LRTableResult};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -51,7 +47,7 @@ impl<T, L> Grammar<T, L> {
   }
 }
 
-impl Grammar<String, String> {
+impl Grammar<u8, String> {
   pub fn from_grammar_str(grammar_str: &str) -> LRTableResult<Self> {
     Ok(Self::new(
       grammar_str
@@ -71,13 +67,14 @@ impl Grammar<String, String> {
               .trim()
               .split_ascii_whitespace()
               .map(|node| {
+                let bytes = node.as_bytes();
                 if node.chars().all(|c| c.is_ascii_uppercase()) {
                   Ok(ProductionNode::Production(node.to_owned()))
-                } else if node.chars().all(|c| c.is_ascii_lowercase()) {
-                  Ok(ProductionNode::Terminal(Terminal::Symbol(node.to_owned())))
+                } else if bytes.len() == 1 && bytes[0].is_ascii() {
+                  Ok(ProductionNode::Terminal(Terminal::Symbol(bytes[0])))
                 } else {
                   Err(LRTableError::new(format!(
-                    "Node \"{node}\" is not all ASCII uppercase (production) or lowercase (terminal)"
+                    "Node \"{node}\" is not all ASCII uppercase (production) or lowercase letter (terminal)"
                   )))
                 }
               })
@@ -112,7 +109,7 @@ mod tests {
         ),
         &ProductionRule::new(
           "B".to_owned(),
-          vec![ProductionNode::Terminal(Terminal::Symbol("c".to_owned()))]
+          vec![ProductionNode::Terminal(Terminal::Symbol(b'c'))]
         )
       ]
     );

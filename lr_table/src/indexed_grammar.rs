@@ -188,7 +188,7 @@ mod tests {
       production_rules(&indexed_grammar, label_a),
       elements_are![&&ProductionRule::new(
         label_a,
-        vec![ProductionNode::Terminal(Terminal::Symbol("a".to_owned()))]
+        vec![ProductionNode::Terminal(Terminal::Symbol(b'a'))]
       )]
     );
   }
@@ -208,7 +208,7 @@ mod tests {
       production_rules(&indexed_grammar, label_a),
       elements_are![&&ProductionRule::new(
         label_a,
-        vec![ProductionNode::Terminal(Terminal::Symbol("a".to_owned()))]
+        vec![ProductionNode::Terminal(Terminal::Symbol(b'a'))]
       )]
     );
     let label_b = *label_map.get("B").unwrap();
@@ -216,7 +216,7 @@ mod tests {
       production_rules(&indexed_grammar, label_b),
       elements_are![&&ProductionRule::new(
         label_b,
-        vec![ProductionNode::Terminal(Terminal::Symbol("b".to_owned()))]
+        vec![ProductionNode::Terminal(Terminal::Symbol(b'b'))]
       )]
     );
   }
@@ -237,11 +237,11 @@ mod tests {
       elements_are![
         &&ProductionRule::new(
           label_a,
-          vec![ProductionNode::Terminal(Terminal::Symbol("a".to_owned()))]
+          vec![ProductionNode::Terminal(Terminal::Symbol(b'a'))]
         ),
         &&ProductionRule::new(
           label_a,
-          vec![ProductionNode::Terminal(Terminal::Symbol("b".to_owned()))]
+          vec![ProductionNode::Terminal(Terminal::Symbol(b'b'))]
         )
       ]
     );
