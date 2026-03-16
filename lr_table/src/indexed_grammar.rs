@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::HashMap, fmt::Debug, hash::Hash};
 
 use itertools::Itertools;
 
@@ -14,17 +14,23 @@ pub struct ProductionLabel(usize);
 /// Each particular instance of a production rule is given a unique ID densely
 /// packed starting from 0. This is just the index into
 /// `IndexedGrammar::rules`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct ProductionRuleId(usize);
+
+impl Debug for ProductionRuleId {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "RuleId({})", self.0)
+  }
+}
 
 pub struct ProductionRuleSet(BitSet);
 
 impl ProductionRuleSet {
-  pub fn get(&self, label: ProductionLabel) -> bool {
+  pub fn get(&self, label: ProductionRuleId) -> bool {
     self.0.get(label.0)
   }
 
-  pub fn set(&mut self, label: ProductionLabel) {
+  pub fn set(&mut self, label: ProductionRuleId) {
     self.0.set(label.0);
   }
 }
@@ -130,8 +136,8 @@ impl<T> IndexedGrammar<T> {
     self.rule_offset_map.len()
   }
 
-  pub fn production_label_set(&self) -> ProductionRuleSet {
-    ProductionRuleSet(BitSet::new(self.labels_count()))
+  pub fn production_rule_set(&self) -> ProductionRuleSet {
+    ProductionRuleSet(BitSet::new(self.rules.len()))
   }
 
   /// Returns a range over the production rules for a particular production label.

@@ -13,7 +13,9 @@ enum Action {
 struct GotoAction(StateId);
 
 pub struct LRTable {
+  /// A vocab_size * num_states sized table of actions.
   action_table: Vec<Action>,
+  /// A num_production_labels * num_states sized table of goto actions.
   goto_table: Vec<GotoAction>,
 }
 

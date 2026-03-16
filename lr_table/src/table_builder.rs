@@ -1,9 +1,11 @@
+use std::fmt::Debug;
+
 use crate::{
   grammar::ProductionNode,
   indexed_grammar::{IndexedGrammar, ProductionRuleId},
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 struct ProductionPosition {
   production_id: ProductionRuleId,
   position: usize,
@@ -18,16 +20,22 @@ impl ProductionPosition {
   }
 }
 
+impl Debug for ProductionPosition {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{:?} at {}", self.production_id, self.position)
+  }
+}
+
 fn closure<T>(
   position: ProductionPosition,
   grammar: &IndexedGrammar<T>,
 ) -> impl Iterator<Item = ProductionPosition> {
   let mut positions = Vec::new();
   let mut stack = vec![position];
-  let mut label_set = grammar.production_label_set();
+  let mut rule_set = grammar.production_rule_set();
 
   if position.position == 0 {
-    label_set.set(grammar.rule_label(position.production_id));
+    rule_set.set(position.production_id);
   }
 
   while let Some(pos) = stack.pop() {
@@ -39,12 +47,11 @@ fn closure<T>(
 
     if let ProductionNode::Production(label) = &production.rule()[pos.position] {
       for production_id in grammar.productions_for_label(*label) {
-        let rule_label = grammar.rule_label(production_id);
-        if label_set.get(rule_label) {
+        if rule_set.get(production_id) {
           continue;
         }
 
-        label_set.set(rule_label);
+        rule_set.set(production_id);
         stack.push(ProductionPosition {
           production_id,
           position: 0,
@@ -56,6 +63,17 @@ fn closure<T>(
   positions.into_iter()
 }
 
+fn generate_actions<T>(indexed_grammar: &IndexedGrammar<T>) {
+  let root_label = indexed_grammar.root_production_label();
+  let first_id = indexed_grammar
+    .productions_for_label(root_label)
+    .next()
+    .unwrap();
+  for x in closure(ProductionPosition::new(first_id, 0), indexed_grammar) {
+    println!("Position: {x:?}");
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use googletest::prelude::*;
@@ -64,8 +82,24 @@ mod tests {
   use crate::{
     grammar::Grammar,
     indexed_grammar::IndexedGrammar,
-    table_builder::{ProductionPosition, closure},
+    table_builder::{ProductionPosition, closure, generate_actions},
   };
+
+  #[gtest]
+  fn test_generate_actions() {
+    let grammar = Grammar::from_grammar_str(
+      r#"T -> S
+         S -> A a a
+         S -> A b b
+         A -> S
+         A -> c"#,
+    )
+    .unwrap();
+
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    generate_actions(&indexed);
+    assert!(false);
+  }
 
   #[gtest]
   fn test_no_closure() {
@@ -198,7 +232,7 @@ mod tests {
   }
 
   #[gtest]
-  fn test_large_closure() {
+  fn test_long_closure() {
     let grammar = Grammar::from_grammar_str(
       r#"A -> a B
          B -> C
@@ -223,6 +257,30 @@ mod tests {
         &ProductionPosition::new(production_id_b, 0),
         &ProductionPosition::new(production_id_c, 0),
         &ProductionPosition::new(production_id_d, 0),
+      ]
+    );
+  }
+
+  #[gtest]
+  fn test_closure_multiple_rules() {
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> B
+         B -> a
+         B -> b"#,
+    )
+    .unwrap();
+
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let label_a = *label_map.get("A").unwrap();
+    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    let label_b = *label_map.get("B").unwrap();
+    let production_ids_b = indexed.productions_for_label(label_b).collect_vec();
+    expect_that!(
+      closure(ProductionPosition::new(production_id_a, 0), &indexed).collect_vec(),
+      unordered_elements_are![
+        &ProductionPosition::new(production_id_a, 0),
+        &ProductionPosition::new(production_ids_b[0], 0),
+        &ProductionPosition::new(production_ids_b[1], 0),
       ]
     );
   }
