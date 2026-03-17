@@ -205,4 +205,39 @@ mod tests {
       &VocabSet::from_iter([AugmentedVocab::Token(b'a'), AugmentedVocab::Epsilon])
     );
   }
+
+  #[gtest]
+  fn test_recursive_rules() {
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> a
+         A -> B b
+         B -> c
+         B -> !
+         B -> A"#,
+    )
+    .unwrap();
+
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let label_a = *label_map.get("A").unwrap();
+    let label_b = *label_map.get("B").unwrap();
+
+    let first_table = FirstTable::build_from_grammar(&indexed);
+    expect_eq!(
+      first_table.first_set(label_a),
+      &VocabSet::from_iter([
+        AugmentedVocab::Token(b'a'),
+        AugmentedVocab::Token(b'b'),
+        AugmentedVocab::Token(b'c')
+      ])
+    );
+    expect_eq!(
+      first_table.first_set(label_b),
+      &VocabSet::from_iter([
+        AugmentedVocab::Token(b'a'),
+        AugmentedVocab::Token(b'b'),
+        AugmentedVocab::Token(b'c'),
+        AugmentedVocab::Epsilon
+      ])
+    );
+  }
 }
