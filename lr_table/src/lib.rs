@@ -1,8 +1,10 @@
 mod bit_set;
 mod error;
+mod first_map;
 pub mod grammar;
 mod indexed_grammar;
 mod iter_ones;
 mod lr_table;
 mod table_builder;
+mod vocab_set;
 pub mod vocabulary;

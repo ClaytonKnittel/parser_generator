@@ -36,6 +36,18 @@ impl BitSet {
     self.bits[index] &= !(1 << shift);
   }
 
+  /// Merges `other` into self, adding each entry of `other` which was not
+  /// already in `self`. Returns true if `self` changed.
+  pub fn merge(&mut self, other: &Self) -> bool {
+    let mut modified = false;
+    for (dst, src) in self.bits.iter_mut().zip(&other.bits) {
+      let prev_dst = *dst;
+      *dst |= src;
+      modified = (*dst != prev_dst) || modified;
+    }
+    modified
+  }
+
   pub fn for_each(&self) -> impl Iterator<Item = usize> {
     self.bits.iter().enumerate().flat_map(|(index, mask)| {
       mask

@@ -1,35 +1,28 @@
-use std::{
-  fmt::{Debug, Display},
-  marker::PhantomData,
-};
-
-use itertools::Itertools;
+use std::fmt::{Debug, Display};
 
 use crate::{
-  bit_set::BitSet,
   grammar::ProductionNode,
   indexed_grammar::{IndexedGrammar, ProductionRuleId},
+  vocab_set::VocabSet,
   vocabulary::{AugmentedVocab, Vocabulary},
 };
 
 #[derive(PartialEq, Eq)]
-struct ProductionPosition<T> {
+struct ProductionRulePos<T> {
   production_id: ProductionRuleId,
   position: usize,
-  token_set: BitSet,
-  _phantom: PhantomData<T>,
+  next_token_set: VocabSet<AugmentedVocab<T>>,
 }
 
-impl<T: Vocabulary> ProductionPosition<T> {
+impl<T: Vocabulary> ProductionRulePos<T> {
   fn new_top_level(production_id: ProductionRuleId) -> Self {
-    let mut token_set = BitSet::new(AugmentedVocab::<T>::SIZE);
-    token_set.set(AugmentedVocab::<T>::EndOfStream.ordinal());
+    let mut next_token_set = VocabSet::new();
+    next_token_set.set(&AugmentedVocab::<T>::EndOfStream);
 
     Self {
       production_id,
       position: 0,
-      token_set,
-      _phantom: PhantomData,
+      next_token_set,
     }
   }
 
@@ -37,52 +30,44 @@ impl<T: Vocabulary> ProductionPosition<T> {
     Self {
       production_id,
       position,
-      token_set: BitSet::new(AugmentedVocab::<T>::SIZE),
-      _phantom: PhantomData,
+      next_token_set: VocabSet::new(),
     }
   }
 }
 
-impl<T> Clone for ProductionPosition<T> {
+impl<T> Clone for ProductionRulePos<T> {
   fn clone(&self) -> Self {
     Self {
       production_id: self.production_id,
       position: self.position,
-      token_set: self.token_set.clone(),
-      _phantom: PhantomData,
+      next_token_set: self.next_token_set.clone(),
     }
   }
 }
 
-impl<T: Vocabulary + Display> Display for ProductionPosition<T> {
+impl<T: Vocabulary + Display> Display for ProductionRulePos<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(
       f,
       "{:?} at {} [{}]",
-      self.production_id,
-      self.position,
-      self
-        .token_set
-        .for_each()
-        .map(AugmentedVocab::<T>::from_ordinal)
-        .join("/")
+      self.production_id, self.position, self.next_token_set
     )
   }
 }
 
-impl<T: Vocabulary + Display> Debug for ProductionPosition<T> {
+impl<T: Vocabulary + Display> Debug for ProductionRulePos<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{self}")
   }
 }
 
 fn closure<T: Vocabulary>(
-  position: ProductionPosition<T>,
+  position: ProductionRulePos<T>,
   grammar: &IndexedGrammar<T>,
-) -> impl Iterator<Item = ProductionPosition<T>> {
+) -> impl Iterator<Item = ProductionRulePos<T>> {
   let mut positions = Vec::new();
   let mut stack = vec![position];
-  let mut rule_set = grammar.production_rule_set();
+  let mut rule_set = grammar.new_production_rule_set();
 
   if stack[0].position == 0 {
     rule_set.set(stack[0].production_id);
@@ -104,7 +89,7 @@ fn closure<T: Vocabulary>(
         }
 
         rule_set.set(production_id);
-        stack.push(ProductionPosition::new(production_id, 0));
+        stack.push(ProductionRulePos::new(production_id, 0));
       }
     }
   }
@@ -114,12 +99,10 @@ fn closure<T: Vocabulary>(
 
 fn generate_actions<T: Vocabulary + Display>(indexed_grammar: &IndexedGrammar<T>) {
   let root_label = indexed_grammar.root_production_label();
-  let first_id = indexed_grammar
-    .productions_for_label(root_label)
-    .next()
-    .unwrap();
-  for x in closure(ProductionPosition::new_top_level(first_id), indexed_grammar) {
-    println!("Position: {x}");
+  for rule_id in indexed_grammar.productions_for_label(root_label) {
+    for x in closure(ProductionRulePos::new_top_level(rule_id), indexed_grammar) {
+      println!("Position: {x}");
+    }
   }
 }
 
@@ -131,7 +114,7 @@ mod tests {
   use crate::{
     grammar::Grammar,
     indexed_grammar::IndexedGrammar,
-    table_builder::{ProductionPosition, closure, generate_actions},
+    table_builder::{ProductionRulePos, closure, generate_actions},
   };
 
   #[gtest]
@@ -162,8 +145,8 @@ mod tests {
     let label_a = *label_map.get("A").unwrap();
     let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
     expect_that!(
-      closure(ProductionPosition::new(production_id_a, 0), &indexed).collect_vec(),
-      elements_are![&ProductionPosition::new(production_id_a, 0)]
+      closure(ProductionRulePos::new(production_id_a, 0), &indexed).collect_vec(),
+      elements_are![&ProductionRulePos::new(production_id_a, 0)]
     );
   }
 
@@ -179,8 +162,8 @@ mod tests {
     let label_a = *label_map.get("A").unwrap();
     let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
     expect_that!(
-      closure(ProductionPosition::new(production_id_a, 1), &indexed).collect_vec(),
-      elements_are![&ProductionPosition::new(production_id_a, 1)]
+      closure(ProductionRulePos::new(production_id_a, 1), &indexed).collect_vec(),
+      elements_are![&ProductionRulePos::new(production_id_a, 1)]
     );
   }
 
@@ -198,10 +181,10 @@ mod tests {
     let label_b = *label_map.get("B").unwrap();
     let production_id_b = indexed.productions_for_label(label_b).next().unwrap();
     expect_that!(
-      closure(ProductionPosition::new(production_id_a, 0), &indexed).collect_vec(),
+      closure(ProductionRulePos::new(production_id_a, 0), &indexed).collect_vec(),
       unordered_elements_are![
-        &ProductionPosition::new(production_id_a, 0),
-        &ProductionPosition::new(production_id_b, 0),
+        &ProductionRulePos::new(production_id_a, 0),
+        &ProductionRulePos::new(production_id_b, 0),
       ]
     );
   }
@@ -220,10 +203,10 @@ mod tests {
     let label_b = *label_map.get("B").unwrap();
     let production_id_b = indexed.productions_for_label(label_b).next().unwrap();
     expect_that!(
-      closure(ProductionPosition::new(production_id_a, 0), &indexed).collect_vec(),
+      closure(ProductionRulePos::new(production_id_a, 0), &indexed).collect_vec(),
       unordered_elements_are![
-        &ProductionPosition::new(production_id_a, 0),
-        &ProductionPosition::new(production_id_b, 0),
+        &ProductionRulePos::new(production_id_a, 0),
+        &ProductionRulePos::new(production_id_b, 0),
       ]
     );
   }
@@ -242,10 +225,10 @@ mod tests {
     let label_b = *label_map.get("B").unwrap();
     let production_id_b = indexed.productions_for_label(label_b).next().unwrap();
     expect_that!(
-      closure(ProductionPosition::new(production_id_a, 1), &indexed).collect_vec(),
+      closure(ProductionRulePos::new(production_id_a, 1), &indexed).collect_vec(),
       unordered_elements_are![
-        &ProductionPosition::new(production_id_a, 1),
-        &ProductionPosition::new(production_id_b, 0),
+        &ProductionRulePos::new(production_id_a, 1),
+        &ProductionRulePos::new(production_id_b, 0),
       ]
     );
   }
@@ -264,11 +247,11 @@ mod tests {
     let label_b = *label_map.get("B").unwrap();
     let production_id_b = indexed.productions_for_label(label_b).next().unwrap();
     expect_that!(
-      closure(ProductionPosition::new(production_id_a, 1), &indexed).collect_vec(),
+      closure(ProductionRulePos::new(production_id_a, 1), &indexed).collect_vec(),
       unordered_elements_are![
-        &ProductionPosition::new(production_id_a, 1),
-        &ProductionPosition::new(production_id_a, 0),
-        &ProductionPosition::new(production_id_b, 0),
+        &ProductionRulePos::new(production_id_a, 1),
+        &ProductionRulePos::new(production_id_a, 0),
+        &ProductionRulePos::new(production_id_b, 0),
       ]
     );
   }
@@ -293,12 +276,12 @@ mod tests {
     let label_d = *label_map.get("D").unwrap();
     let production_id_d = indexed.productions_for_label(label_d).next().unwrap();
     expect_that!(
-      closure(ProductionPosition::new(production_id_a, 1), &indexed).collect_vec(),
+      closure(ProductionRulePos::new(production_id_a, 1), &indexed).collect_vec(),
       unordered_elements_are![
-        &ProductionPosition::new(production_id_a, 1),
-        &ProductionPosition::new(production_id_b, 0),
-        &ProductionPosition::new(production_id_c, 0),
-        &ProductionPosition::new(production_id_d, 0),
+        &ProductionRulePos::new(production_id_a, 1),
+        &ProductionRulePos::new(production_id_b, 0),
+        &ProductionRulePos::new(production_id_c, 0),
+        &ProductionRulePos::new(production_id_d, 0),
       ]
     );
   }
@@ -318,11 +301,11 @@ mod tests {
     let label_b = *label_map.get("B").unwrap();
     let production_ids_b = indexed.productions_for_label(label_b).collect_vec();
     expect_that!(
-      closure(ProductionPosition::new(production_id_a, 0), &indexed).collect_vec(),
+      closure(ProductionRulePos::new(production_id_a, 0), &indexed).collect_vec(),
       unordered_elements_are![
-        &ProductionPosition::new(production_id_a, 0),
-        &ProductionPosition::new(production_ids_b[0], 0),
-        &ProductionPosition::new(production_ids_b[1], 0),
+        &ProductionRulePos::new(production_id_a, 0),
+        &ProductionRulePos::new(production_ids_b[0], 0),
+        &ProductionRulePos::new(production_ids_b[1], 0),
       ]
     );
   }

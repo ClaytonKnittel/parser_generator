@@ -1,6 +1,6 @@
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 
-pub trait Vocabulary: Sized {
+pub trait Vocabulary: Eq {
   /// The size of the vocabulary.
   const SIZE: usize;
 
@@ -24,7 +24,7 @@ impl Vocabulary for u8 {
   }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AugmentedVocab<T> {
   Token(T),
   Epsilon,
@@ -57,6 +57,16 @@ impl<T: Display> Display for AugmentedVocab<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
       Self::Token(t) => write!(f, "{t}"),
+      Self::Epsilon => write!(f, "ε"),
+      Self::EndOfStream => write!(f, "$"),
+    }
+  }
+}
+
+impl<T: Debug> Debug for AugmentedVocab<T> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      Self::Token(t) => write!(f, "{t:?}"),
       Self::Epsilon => write!(f, "ε"),
       Self::EndOfStream => write!(f, "$"),
     }

@@ -1,15 +1,11 @@
-use crate::error::{LRTableError, LRTableResult};
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Terminal<T> {
-  EndOfStream,
-  Epsilon,
-  Symbol(T),
-}
+use crate::{
+  error::{LRTableError, LRTableResult},
+  vocabulary::AugmentedVocab,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ProductionNode<T, L> {
-  Terminal(Terminal<T>),
+  Terminal(AugmentedVocab<T>),
   Production(L),
 }
 
@@ -47,6 +43,7 @@ impl<T, L> Grammar<T, L> {
   }
 }
 
+#[cfg(test)]
 impl Grammar<u8, String> {
   pub fn from_grammar_str(grammar_str: &str) -> LRTableResult<Self> {
     Ok(Self::new(
@@ -68,10 +65,12 @@ impl Grammar<u8, String> {
               .split_ascii_whitespace()
               .map(|node| {
                 let bytes = node.as_bytes();
-                if node.chars().all(|c| c.is_ascii_uppercase()) {
+                if node == "!" {
+                  Ok(ProductionNode::Terminal(AugmentedVocab::Epsilon))
+                } else if node.chars().all(|c| c.is_ascii_uppercase()) {
                   Ok(ProductionNode::Production(node.to_owned()))
                 } else if bytes.len() == 1 && bytes[0].is_ascii() {
-                  Ok(ProductionNode::Terminal(Terminal::Symbol(bytes[0])))
+                  Ok(ProductionNode::Terminal(AugmentedVocab::Token(bytes[0])))
                 } else {
                   Err(LRTableError::new(format!(
                     "Node \"{node}\" is not all ASCII uppercase (production) or lowercase letter (terminal)"
@@ -90,7 +89,10 @@ impl Grammar<u8, String> {
 mod tests {
   use googletest::prelude::*;
 
-  use crate::grammar::{Grammar, ProductionNode, ProductionRule, Terminal};
+  use crate::{
+    grammar::{Grammar, ProductionNode, ProductionRule},
+    vocabulary::AugmentedVocab,
+  };
 
   #[gtest]
   fn test_parse_from_str() {
@@ -109,7 +111,7 @@ mod tests {
         ),
         &ProductionRule::new(
           "B".to_owned(),
-          vec![ProductionNode::Terminal(Terminal::Symbol(b'c'))]
+          vec![ProductionNode::Terminal(AugmentedVocab::Token(b'c'))]
         )
       ]
     );
