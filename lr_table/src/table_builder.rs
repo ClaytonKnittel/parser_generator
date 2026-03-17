@@ -31,7 +31,7 @@ fn maybe_first_production_label<T>(
 /// succeed the production rule at `rule[0]`.
 ///
 /// The first node of `rule` must be a production rule.
-fn follow_set_after_first<T: Vocabulary>(
+fn follow_set_for_rule<T: Vocabulary>(
   rule: &[ProductionNode<T, ProductionLabel>],
   rule_follow_set: &VocabSet<AugmentedVocab<T>>,
   first_map: &FirstTable<T>,
@@ -108,7 +108,7 @@ impl<T: Vocabulary> ProductionRulePos<T> {
 
     let label = maybe_first_production_label(&production.rule()[self.position..])?;
 
-    let follow_set = follow_set_after_first(
+    let follow_set = follow_set_for_rule(
       &production.rule()[self.position + 1..],
       &self.follow_set,
       first_map,
@@ -208,7 +208,8 @@ fn closure<T: Vocabulary>(
         };
 
         let follow_set = production_follow_sets.get(label).unwrap();
-        let sub_follow_set = follow_set_after_first(production_rule.rule(), follow_set, first_map);
+        let sub_follow_set =
+          follow_set_for_rule(&production_rule.rule()[1..], follow_set, first_map);
 
         changed = production_follow_sets
           .get_mut(sub_label)
