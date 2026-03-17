@@ -1,14 +1,13 @@
-use std::fmt::Debug;
-
 use crate::{
+  fixed_map::FixedSizeMap,
   grammar::ProductionNode,
-  indexed_grammar::{FixedSizeMap, IndexedGrammar, ProductionLabel},
+  indexed_grammar::{IndexedGrammar, ProductionLabel},
   vocab_set::VocabSet,
   vocabulary::{AugmentedVocab, Vocabulary},
 };
 
 /// A map from production labels to the set of possible first tokens.
-struct FirstTable<T> {
+pub struct FirstTable<T> {
   map: FixedSizeMap<ProductionLabel, VocabSet<AugmentedVocab<T>>>,
 }
 
@@ -55,10 +54,7 @@ impl<T: Vocabulary> FirstTable<T> {
     changed
   }
 
-  pub fn build_from_grammar(grammar: &IndexedGrammar<T>) -> Self
-  where
-    T: Debug,
-  {
+  pub fn build_from_grammar(grammar: &IndexedGrammar<T>) -> Self {
     let mut map = grammar.new_production_label_map();
     while Self::propagate_map(&mut map, grammar) {}
 

@@ -1,9 +1,9 @@
-use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData};
+use std::{collections::HashMap, fmt::Debug, hash::Hash};
 
 use itertools::Itertools;
 
 use crate::{
-  bit_set::BitSet,
+  fixed_map::{FixedSizeMap, FixedSizeSet, Label, SparseFixedSizeMap},
   grammar::{Grammar, ProductionNode, ProductionRule},
 };
 
@@ -23,11 +23,6 @@ impl Debug for ProductionRuleId {
   }
 }
 
-trait Label: Copy {
-  fn id(self) -> usize;
-  fn from_id(id: usize) -> Self;
-}
-
 impl Label for ProductionLabel {
   fn id(self) -> usize {
     self.0
@@ -43,65 +38,6 @@ impl Label for ProductionRuleId {
   }
   fn from_id(id: usize) -> Self {
     Self(id)
-  }
-}
-
-pub struct FixedSizeSet<L> {
-  set: BitSet,
-  _phantom: PhantomData<L>,
-}
-
-impl<L: Label> FixedSizeSet<L> {
-  fn new(capacity: usize) -> Self {
-    Self {
-      set: BitSet::new(capacity),
-      _phantom: PhantomData,
-    }
-  }
-
-  pub fn get(&self, label: L) -> bool {
-    self.set.get(label.id())
-  }
-
-  pub fn set(&mut self, label: L) {
-    self.set.set(label.id());
-  }
-}
-
-pub struct FixedSizeMap<L, T> {
-  map: Vec<T>,
-  _phantom: PhantomData<L>,
-}
-
-impl<L: Label, T: Default> FixedSizeMap<L, T> {
-  fn new(capacity: usize) -> Self {
-    Self {
-      map: (0..capacity).map(|_| T::default()).collect(),
-      _phantom: PhantomData,
-    }
-  }
-}
-
-impl<L: Label, T> FixedSizeMap<L, T> {
-  pub fn get(&self, label: L) -> &T {
-    &self.map[label.id()]
-  }
-
-  pub fn get_mut(&mut self, label: L) -> &mut T {
-    &mut self.map[label.id()]
-  }
-}
-
-impl<L: Debug + Label, T: Debug> Debug for FixedSizeMap<L, T> {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(
-      f,
-      "[{}]",
-      (0..self.map.len())
-        .map(L::from_id)
-        .map(|label| { format!("{label:?}: {:?}", self.get(label)) })
-        .join(", ")
-    )
   }
 }
 
@@ -220,6 +156,12 @@ impl<T> IndexedGrammar<T> {
 
   pub fn new_production_rule_map<U: Default>(&self) -> FixedSizeMap<ProductionRuleId, U> {
     FixedSizeMap::new(self.rules.len())
+  }
+
+  pub fn new_sparse_production_label_map<U: Default>(
+    &self,
+  ) -> SparseFixedSizeMap<ProductionLabel, U> {
+    SparseFixedSizeMap::new(self.labels_count())
   }
 
   /// Returns a range over the production rules for a particular production label.
