@@ -6,6 +6,7 @@ pub mod grammar;
 mod indexed_grammar;
 mod iter_ones;
 mod lr_table;
+mod position;
 mod table_builder;
 mod vocab_set;
 pub mod vocabulary;
