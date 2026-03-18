@@ -1,17 +1,18 @@
-use std::hash::Hash;
+use std::{fmt::Debug, hash::Hash};
+
+use itertools::Itertools;
 
 use crate::{
   closure::closure_follow_sets,
   error::LRTableResult,
   first_map::FirstTable,
-  fixed_map::SparseFixedSizeMap,
+  fixed_map::{Label, SparseFixedSizeMap},
   grammar::{Grammar, ProductionNode},
   indexed_grammar::{IndexedGrammar, ProductionLabel, ProductionRuleId},
   kernel::Kernel,
   kernel_table::KernelTable,
   partition_closure::partition_closure_by_next_node,
   position::Position,
-  vocab_set::VocabSet,
   vocabulary::{AugmentedVocab, Vocabulary},
 };
 
@@ -35,8 +36,24 @@ enum Action {
   Accept,
 }
 
+impl Debug for Action {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      Self::Shift { next_state } => write!(f, "s{}", next_state.0),
+      Self::Reduce { rule } => write!(f, "s{}", rule.id()),
+      Self::Accept => write!(f, "acc"),
+    }
+  }
+}
+
 #[derive(Clone, Copy)]
 struct GotoAction(StateId);
+
+impl Debug for GotoAction {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "GO({})", self.0.id())
+  }
+}
 
 struct LRTableEntryBuilder<T> {
   /// A map from token -> action for all actions that may be taken from this
@@ -79,10 +96,11 @@ impl<T: Vocabulary> LRTableEntryBuilder<T> {
                 .iter()
                 .all(|token| matches!(token, AugmentedVocab::EndOfStream))
             );
-          }
-
-          for follow_token in position.follow_set().iter() {
-            builder.add_reduce_action(follow_token, position.rule())?;
+            builder.add_accept(AugmentedVocab::EndOfStream)?;
+          } else {
+            for follow_token in position.follow_set().iter() {
+              builder.add_reduce_action(follow_token, position.rule())?;
+            }
           }
         }
         continue;
@@ -157,6 +175,7 @@ pub struct LRTable {
   action_table: Vec<Option<Action>>,
   /// A num_production_labels * num_states sized table of goto actions.
   goto_table: Vec<Option<GotoAction>>,
+  num_states: usize,
 }
 
 impl LRTable {
@@ -211,14 +230,86 @@ impl LRTable {
         Self {
           action_table: Vec::new(),
           goto_table: Vec::new(),
+          num_states: 0,
         },
         |mut lr_table, actions| {
           actions.map(|(actions, goto_actions)| {
             lr_table.action_table.extend(actions);
             lr_table.goto_table.extend(goto_actions);
+            lr_table.num_states += 1;
             lr_table
           })
         },
       )
+  }
+
+  fn vocab_size(&self) -> usize {
+    let num_actions = self.action_table.len();
+    debug_assert!(num_actions.is_multiple_of(self.num_states));
+    num_actions / self.num_states
+  }
+
+  fn num_production_labels(&self) -> usize {
+    let num_gotos = self.goto_table.len();
+    debug_assert!(num_gotos.is_multiple_of(self.num_states));
+    num_gotos / self.num_states
+  }
+}
+
+impl Debug for LRTable {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    let vocab_size = self.vocab_size();
+    let num_production_labels = self.num_production_labels();
+
+    let action_chunks = self.action_table.iter().chunks(vocab_size);
+    let mut actions_iter = action_chunks.into_iter();
+    let goto_chunks = self.goto_table.iter().chunks(num_production_labels);
+    let mut gotos_iter = goto_chunks.into_iter();
+    for state in 0..self.num_states {
+      let action_set = actions_iter.next().unwrap();
+      let goto_set = gotos_iter.next().unwrap();
+
+      write!(
+        f,
+        "{state}: {} : {:?}",
+        action_set
+          .map(|action| match action {
+            Some(action) => format!("{action:?}"),
+            None => "_".to_owned(),
+          })
+          .join(" "),
+        goto_set
+          .map(|action| match action {
+            Some(action) => format!("{action:?}"),
+            None => "_".to_owned(),
+          })
+          .join(" ")
+      )?;
+    }
+    Ok(())
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use googletest::prelude::*;
+
+  use crate::{grammar::Grammar, lr_table::LRTable};
+
+  #[gtest]
+  fn test() {
+    let grammar = Grammar::from_grammar_str(r#"A -> a"#).unwrap();
+    let x = LRTable::build(&grammar).unwrap();
+
+    println!("{x:?}");
+
+    expect_true!(false);
+
+    // let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    // let label_a = *label_map.get("A").unwrap();
+    // let production_id_a = indexed
+    //   .production_rule_ids_for_label(label_a)
+    //   .next()
+    //   .unwrap();
   }
 }
