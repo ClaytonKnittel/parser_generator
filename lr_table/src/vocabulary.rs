@@ -12,6 +12,11 @@ pub trait Vocabulary: Copy + Eq {
 
   /// Turns an ordinal back into `Self`. The inverse of `Self::ordinal()`.
   fn from_ordinal(ordinal: usize) -> Self;
+
+  /// Returns an iterator over all tokens in this vocabulary.
+  fn for_each() -> impl Iterator<Item = Self> {
+    (0..Self::SIZE).map(Self::from_ordinal)
+  }
 }
 
 impl Vocabulary for u8 {

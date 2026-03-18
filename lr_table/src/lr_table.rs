@@ -27,12 +27,14 @@ impl StateId {
   }
 }
 
+#[derive(Clone, Copy)]
 enum Action {
   Shift { next_state: StateId },
   Reduce { rule: ProductionRuleId },
   Accept,
 }
 
+#[derive(Clone, Copy)]
 struct GotoAction(StateId);
 
 struct LRTableEntryBuilder<T> {
@@ -119,13 +121,30 @@ impl<T: Vocabulary> LRTableEntryBuilder<T> {
   fn add_accept(&mut self, token: AugmentedVocab<T>) -> LRTableResult {
     self.actions.try_insert(token, Action::Accept)
   }
+
+  /// Flattens the entry builder into action/goto vecs which correspond to rows
+  /// in the `LRTable` for this state.
+  fn into_vecs(
+    self,
+    grammar: &IndexedGrammar<T>,
+  ) -> (
+    impl Iterator<Item = Option<Action>>,
+    impl Iterator<Item = Option<GotoAction>>,
+  ) {
+    (
+      AugmentedVocab::<T>::for_each().map(move |token| self.actions.get(token).cloned()),
+      grammar
+        .all_production_labels()
+        .map(move |label| self.gotos.get(label).cloned()),
+    )
+  }
 }
 
 pub struct LRTable {
   /// A vocab_size * num_states sized table of actions.
-  action_table: Vec<Action>,
+  action_table: Vec<Option<Action>>,
   /// A num_production_labels * num_states sized table of goto actions.
-  goto_table: Vec<GotoAction>,
+  goto_table: Vec<Option<GotoAction>>,
 }
 
 impl LRTable {
@@ -168,11 +187,26 @@ impl LRTable {
     })
   }
 
-  pub fn build<T: Clone + Vocabulary, L: Clone + Eq + Hash>(grammar: &Grammar<T, L>) -> Self {
+  pub fn build<T: Clone + Vocabulary, L: Clone + Eq + Hash>(
+    grammar: &Grammar<T, L>,
+  ) -> LRTableResult<Self> {
     let indexed_grammar = IndexedGrammar::build(grammar);
-    todo!();
-    // Self {
-    //   entries: Self::generate_actions(&indexed_grammar).collect(),
-    // }
+    Self::generate_actions(&indexed_grammar)
+      .map(|entry_builder| {
+        entry_builder.map(|entry_builder| entry_builder.into_vecs(&indexed_grammar))
+      })
+      .try_fold(
+        Self {
+          action_table: Vec::new(),
+          goto_table: Vec::new(),
+        },
+        |mut lr_table, actions| {
+          actions.map(|(actions, goto_actions)| {
+            lr_table.action_table.extend(actions);
+            lr_table.goto_table.extend(goto_actions);
+            lr_table
+          })
+        },
+      )
   }
 }
