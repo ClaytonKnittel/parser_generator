@@ -46,6 +46,8 @@ fn follow_set_for_rule<T: Vocabulary>(
         if !first_set.get(&AugmentedVocab::Epsilon) {
           return token_set;
         }
+        // If `first_set` had epsilon, we need to remove it from `token_set`.
+        token_set.clear(&AugmentedVocab::Epsilon);
       }
       ProductionNode::Terminal(AugmentedVocab::Epsilon) => {}
       ProductionNode::Terminal(token) => {
