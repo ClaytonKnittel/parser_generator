@@ -1,11 +1,17 @@
 use std::hash::Hash;
 
-use itertools::Itertools;
-
 use crate::{
-  closure::closure_follow_sets, first_map::FirstTable, grammar::Grammar,
-  indexed_grammar::IndexedGrammar, kernel::Kernel, kernel_table::KernelTable, position::Position,
-  vocabulary::Vocabulary,
+  closure::closure_follow_sets,
+  error::LRTableResult,
+  first_map::FirstTable,
+  fixed_map::SparseFixedSizeMap,
+  grammar::{Grammar, ProductionNode},
+  indexed_grammar::{IndexedGrammar, ProductionLabel, ProductionRuleId},
+  kernel::Kernel,
+  kernel_table::KernelTable,
+  partition_closure::partition_closure_by_next_node,
+  position::Position,
+  vocabulary::{AugmentedVocab, Vocabulary},
 };
 
 #[derive(Clone, Copy)]
@@ -23,11 +29,97 @@ impl StateId {
 
 enum Action {
   Shift { next_state: StateId },
-  Reduce { next_state: StateId },
+  Reduce { rule: ProductionRuleId },
   Accept,
 }
 
 struct GotoAction(StateId);
+
+struct LRTableEntryBuilder<T> {
+  /// A map from token -> action for all actions that may be taken from this
+  /// state.
+  actions: SparseFixedSizeMap<AugmentedVocab<T>, Action>,
+  /// A map from production label -> goto action for all production labels
+  /// which may return to this state after reducing.
+  gotos: SparseFixedSizeMap<ProductionLabel, GotoAction>,
+}
+
+impl<T: Vocabulary> LRTableEntryBuilder<T> {
+  fn new(grammar: &IndexedGrammar<T>) -> Self {
+    Self {
+      actions: grammar.new_sparse_augmented_vocab_map(),
+      gotos: grammar.new_sparse_production_label_map(),
+    }
+  }
+
+  /// Builds the LRTableEntry for the state given the partitions of a kernel +
+  /// closure, which is the set of actions to be taken from this state.
+  fn try_build_from_partitions(
+    partitions: SparseFixedSizeMap<Option<ProductionNode<T, ProductionLabel>>, Vec<Position<T>>>,
+    kernel_table: &mut KernelTable<T>,
+    grammar: &IndexedGrammar<T>,
+  ) -> LRTableResult<LRTableEntryBuilder<T>> {
+    let mut builder = LRTableEntryBuilder::new(grammar);
+
+    for (maybe_node, mut positions) in partitions {
+      let Some(node) = maybe_node else {
+        // This is the partition of positions at the end of their rules. Go
+        // through each individual position in the partition and add a reduce
+        // action for each token in the rule's follow set.
+        for position in positions {
+          for follow_token in position.follow_set().iter() {
+            builder.add_reduce_action(follow_token, position.rule())?;
+          }
+        }
+        continue;
+      };
+      // All positions in this partition should have been grouped according to
+      // their next nodes.
+      debug_assert!(
+        positions
+          .iter()
+          .all(|position| position.next_node(grammar) == Some(&node))
+      );
+
+      // Advance all positions in the partition, given that these positions are
+      // not at the end of their rules, and build a kernel out of them.
+      Position::advance_all(positions.iter_mut(), grammar);
+      let kernel = Kernel::new(positions);
+      let id = kernel_table.get_or_insert(kernel);
+
+      match node {
+        ProductionNode::Production(label) => {
+          builder.add_goto_action(label, id)?;
+        }
+        ProductionNode::Terminal(terminal) => {
+          builder.add_shift_action(terminal, id)?;
+        }
+      }
+    }
+
+    Ok(builder)
+  }
+
+  fn add_shift_action(&mut self, token: AugmentedVocab<T>, next_state: StateId) -> LRTableResult {
+    self.actions.try_insert(token, Action::Shift { next_state })
+  }
+
+  fn add_reduce_action(
+    &mut self,
+    token: AugmentedVocab<T>,
+    rule: ProductionRuleId,
+  ) -> LRTableResult {
+    self.actions.try_insert(token, Action::Reduce { rule })
+  }
+
+  fn add_goto_action(&mut self, label: ProductionLabel, next_state: StateId) -> LRTableResult {
+    self.gotos.try_insert(label, GotoAction(next_state))
+  }
+
+  fn add_accept(&mut self, token: AugmentedVocab<T>) -> LRTableResult {
+    self.actions.try_insert(token, Action::Accept)
+  }
+}
 
 pub struct LRTable {
   /// A vocab_size * num_states sized table of actions.
@@ -37,34 +129,50 @@ pub struct LRTable {
 }
 
 impl LRTable {
-  fn generate_actions<T: Vocabulary>(indexed_grammar: &IndexedGrammar<T>) {
-    let first_set = FirstTable::build_from_grammar(indexed_grammar);
+  fn generate_actions<T: Vocabulary>(
+    grammar: &IndexedGrammar<T>,
+  ) -> impl Iterator<Item = LRTableResult<LRTableEntryBuilder<T>>> {
+    let first_set = FirstTable::build_from_grammar(grammar);
     let mut kernel_table = KernelTable::<T>::new();
 
-    let root_label = indexed_grammar.root_production_label();
+    // Construct the root kernel, which exists of only the root rule.
+    let root_label = grammar.root_production_label();
     let initial_kernel = Kernel::new(
-      indexed_grammar
+      grammar
         .production_rule_ids_for_label(root_label)
         .map(|rule_id| Position::new_top_level(rule_id))
         .collect(),
     );
     let id = kernel_table.get_or_insert(initial_kernel);
-    debug_assert_eq!(id.id(), 0);
+    debug_assert_eq!(id.0, 0);
 
-    for state_id in 0.. {
+    (0..).map_while(move |state_id| {
       let state_id = StateId::new(state_id);
-      let Some(kernel) = kernel_table.get_state(state_id) else {
-        break;
-      };
+      // Retrieve the next state from the table. The table is filled up as
+      // rules are explored. If we don't find an entry after reaching a
+      // particular `StateId`, then we've already explored all reachable
+      // kernels.
+      let kernel = kernel_table.get_state(state_id)?;
 
-      let follow_sets = closure_follow_sets(kernel, indexed_grammar, &first_set)
-        .into_iter()
-        .collect_vec();
-    }
+      // Compute the closure of the kernel.
+      let follow_sets = closure_follow_sets(kernel, grammar, &first_set);
+
+      // Partition the positions of the closure by next tokens.
+      let partitions = partition_closure_by_next_node(kernel, follow_sets, grammar);
+
+      Some(LRTableEntryBuilder::try_build_from_partitions(
+        partitions,
+        &mut kernel_table,
+        grammar,
+      ))
+    })
   }
 
-  pub fn build<T: Clone, L: Clone + Eq + Hash>(grammar: &Grammar<T, L>) -> Self {
+  pub fn build<T: Clone + Vocabulary, L: Clone + Eq + Hash>(grammar: &Grammar<T, L>) -> Self {
     let indexed_grammar = IndexedGrammar::build(grammar);
     todo!();
+    // Self {
+    //   entries: Self::generate_actions(&indexed_grammar).collect(),
+    // }
   }
 }

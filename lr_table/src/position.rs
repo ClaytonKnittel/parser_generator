@@ -69,15 +69,51 @@ pub struct Position<T> {
 }
 
 impl<T> Position<T> {
+  pub fn rule(&self) -> ProductionRuleId {
+    self.production_id
+  }
+
+  pub fn follow_set(&self) -> &VocabSet<AugmentedVocab<T>> {
+    &self.follow_set
+  }
+
   /// Returns a tuple of (production rule, index), where the index is the
   /// offset of the current position from the start of the production rule.
   pub fn position(&self) -> (ProductionRuleId, usize) {
     (self.production_id, self.position)
   }
+
+  /// Returns the next node at this position, or `None` if this position is at
+  /// the end of its rule.
+  pub fn next_node<'a>(
+    &self,
+    grammar: &'a IndexedGrammar<T>,
+  ) -> Option<&'a ProductionNode<T, ProductionLabel>> {
+    let production = grammar.production_rule(self.production_id);
+    let rule = &production.rule()[self.position..];
+    rule.first()
+  }
+
+  /// Advances this position to the next node. This must not be called on
+  /// positions that are already at the end of their rule.
+  pub fn advance(&mut self, grammar: &IndexedGrammar<T>) {
+    debug_assert!(self.position < grammar.production_rule(self.production_id).rule().len());
+    self.position += 1;
+  }
+
+  pub fn advance_all<'a, I>(iter: I, grammar: &IndexedGrammar<T>)
+  where
+    T: 'a,
+    I: Iterator<Item = &'a mut Self>,
+  {
+    for position in iter {
+      position.advance(grammar);
+    }
+  }
 }
 
 impl<T: Vocabulary> Position<T> {
-  fn new_from_start_with_follow_set(
+  pub fn new_from_start_with_follow_set(
     production_id: ProductionRuleId,
     follow_set: VocabSet<AugmentedVocab<T>>,
   ) -> Self {

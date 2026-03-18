@@ -5,6 +5,7 @@ use itertools::Itertools;
 use crate::{
   fixed_map::{FixedSizeMap, FixedSizeSet, Label, SparseFixedSizeMap},
   grammar::{Grammar, ProductionNode, ProductionRule},
+  vocabulary::{AugmentedVocab, Vocabulary},
 };
 
 /// Each production label is given a unique ID densely packed starting from 0.
@@ -38,6 +39,23 @@ impl Label for ProductionRuleId {
   }
   fn from_id(id: usize) -> Self {
     Self(id)
+  }
+}
+
+impl<T: Vocabulary> Label for ProductionNode<T, ProductionLabel> {
+  fn id(self) -> usize {
+    match self {
+      ProductionNode::Terminal(terminal) => terminal.ordinal(),
+      ProductionNode::Production(label) => T::SIZE + label.id(),
+    }
+  }
+
+  fn from_id(id: usize) -> Self {
+    if id < T::SIZE {
+      Self::Terminal(AugmentedVocab::from_ordinal(id))
+    } else {
+      Self::Production(ProductionLabel::from_id(id - T::SIZE))
+    }
   }
 }
 
@@ -146,6 +164,13 @@ impl<T> IndexedGrammar<T> {
     self.rule_offset_map.len()
   }
 
+  pub fn new_sparse_augmented_vocab_map<U>(&self) -> SparseFixedSizeMap<AugmentedVocab<T>, U>
+  where
+    T: Vocabulary,
+  {
+    SparseFixedSizeMap::new(AugmentedVocab::<T>::SIZE)
+  }
+
   pub fn new_production_rule_set(&self) -> FixedSizeSet<ProductionRuleId> {
     FixedSizeSet::new(self.rules.len())
   }
@@ -158,10 +183,17 @@ impl<T> IndexedGrammar<T> {
     FixedSizeMap::new(self.rules.len())
   }
 
-  pub fn new_sparse_production_label_map<U: Default>(
-    &self,
-  ) -> SparseFixedSizeMap<ProductionLabel, U> {
+  pub fn new_sparse_production_label_map<U>(&self) -> SparseFixedSizeMap<ProductionLabel, U> {
     SparseFixedSizeMap::new(self.labels_count())
+  }
+
+  pub fn new_sparse_partition_closure_map<U>(
+    &self,
+  ) -> SparseFixedSizeMap<Option<ProductionNode<T, ProductionLabel>>, U>
+  where
+    T: Vocabulary,
+  {
+    SparseFixedSizeMap::new(T::SIZE + self.labels_count() + 1)
   }
 
   pub fn production_rule(&self, id: ProductionRuleId) -> &ProductionRule<T, ProductionLabel> {

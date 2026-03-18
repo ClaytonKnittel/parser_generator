@@ -2,11 +2,31 @@ use std::{fmt::Debug, marker::PhantomData};
 
 use itertools::Itertools;
 
-use crate::bit_set::BitSet;
+use crate::{
+  bit_set::BitSet,
+  error::{LRTableError, LRTableResult},
+};
 
 pub trait Label: Copy {
   fn id(self) -> usize;
   fn from_id(id: usize) -> Self;
+}
+
+impl<L: Label> Label for Option<L> {
+  fn id(self) -> usize {
+    match self {
+      Some(label) => label.id() + 1,
+      None => 0,
+    }
+  }
+
+  fn from_id(id: usize) -> Self {
+    if id == 0 {
+      None
+    } else {
+      Some(L::from_id(id - 1))
+    }
+  }
 }
 
 pub struct FixedSizeSet<L> {
@@ -117,6 +137,15 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
     &mut self.map[next_index]
   }
 
+  pub fn try_insert(&mut self, label: L, value: T) -> LRTableResult {
+    if self.maybe_index(label).is_some() {
+      Err(LRTableError::label_already_exists(label.id()))
+    } else {
+      self.insert(label, value);
+      Ok(())
+    }
+  }
+
   pub fn get_mut_or_insert_with<F>(&mut self, label: L, construct: F) -> &mut T
   where
     F: FnOnce() -> T,
@@ -172,19 +201,47 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
       })
   }
 
-  pub fn into_iter(mut self) -> impl Iterator<Item = (L, T)>
+  fn take_label(&mut self, label: L) -> Option<(L, T)>
   where
     T: Default,
   {
-    (0..self.index_map.len())
-      .map(Label::from_id)
-      .filter_map(move |label| {
-        self.maybe_index(label).map(|index| {
-          let mut tmp = T::default();
-          std::mem::swap(&mut self.map[index], &mut tmp);
-          (label, tmp)
-        })
-      })
+    self.maybe_index(label).map(|index| {
+      let mut tmp = T::default();
+      std::mem::swap(&mut self.map[index], &mut tmp);
+      (label, tmp)
+    })
+  }
+}
+
+pub struct SparseFixedSizeMapIntoIter<L, T> {
+  sparse_map: SparseFixedSizeMap<L, T>,
+  label_id: usize,
+}
+
+impl<L: Label, T: Default> Iterator for SparseFixedSizeMapIntoIter<L, T> {
+  type Item = (L, T);
+
+  fn next(&mut self) -> Option<Self::Item> {
+    let label = Label::from_id(self.label_id);
+    self.sparse_map.maybe_index(label).map(|index| {
+      self.label_id += 1;
+
+      let mut tmp = T::default();
+      std::mem::swap(&mut self.sparse_map.map[index], &mut tmp);
+      (label, tmp)
+    })
+  }
+}
+
+impl<L: Label, T: Default> IntoIterator for SparseFixedSizeMap<L, T> {
+  type Item = (L, T);
+  type IntoIter = SparseFixedSizeMapIntoIter<L, T>;
+
+  fn into_iter(self) -> Self::IntoIter {
+    Self::IntoIter {
+      sparse_map: self,
+      label_id: 0,
+    }
   }
 }
 

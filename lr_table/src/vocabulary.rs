@@ -1,6 +1,8 @@
 use std::fmt::{Debug, Display};
 
-pub trait Vocabulary: Eq {
+use crate::fixed_map::Label;
+
+pub trait Vocabulary: Copy + Eq {
   /// The size of the vocabulary.
   const SIZE: usize;
 
@@ -21,6 +23,17 @@ impl Vocabulary for u8 {
 
   fn from_ordinal(ordinal: usize) -> Self {
     ordinal as u8
+  }
+}
+
+impl<T: Vocabulary> Label for T {
+  fn id(self) -> usize {
+    self.ordinal()
+  }
+
+  fn from_id(id: usize) -> Self {
+    debug_assert!(id < Self::SIZE);
+    Self::from_ordinal(id)
   }
 }
 

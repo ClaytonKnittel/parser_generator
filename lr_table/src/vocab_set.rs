@@ -37,6 +37,10 @@ impl<T: Vocabulary> VocabSet<T> {
   pub fn merge(&mut self, other: &Self) -> bool {
     self.set.merge(&other.set)
   }
+
+  pub fn iter(&self) -> impl Iterator<Item = T> {
+    self.set.for_each().map(T::from_ordinal)
+  }
 }
 
 #[cfg(test)]

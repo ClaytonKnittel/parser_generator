@@ -1,9 +1,8 @@
-use crate::{
-  error::{LRTableError, LRTableResult},
-  vocabulary::AugmentedVocab,
-};
+#[cfg(test)]
+use crate::error::{LRTableError, LRTableResult};
+use crate::vocabulary::AugmentedVocab;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ProductionNode<T, L> {
   Terminal(AugmentedVocab<T>),
   Production(L),
@@ -52,10 +51,10 @@ impl Grammar<u8, String> {
         .map(|line| -> LRTableResult<_> {
           let (production, rule) = line
             .split_once("->")
-            .ok_or_else(|| LRTableError::new(format!("Line \"{line}\" missing \"->\"")))?;
+            .ok_or_else(|| LRTableError::new_generic(format!("Line \"{line}\" missing \"->\"")))?;
           let production = production.trim();
           if !production.chars().all(|c| c.is_ascii_uppercase()) {
-            return Err(LRTableError::new(format!("Production label \"{production}\" is not all ASCII uppercase")).into());
+            return Err(LRTableError::new_generic(format!("Production label \"{production}\" is not all ASCII uppercase")).into());
           }
 
           Ok(ProductionRule::new(
@@ -72,7 +71,7 @@ impl Grammar<u8, String> {
                 } else if bytes.len() == 1 && bytes[0].is_ascii() {
                   Ok(ProductionNode::Terminal(AugmentedVocab::Token(bytes[0])))
                 } else {
-                  Err(LRTableError::new(format!(
+                  Err(LRTableError::new_generic(format!(
                     "Node \"{node}\" is not all ASCII uppercase (production) or lowercase letter (terminal)"
                   )))
                 }
