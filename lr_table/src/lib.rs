@@ -1,12 +1,14 @@
 mod bit_set;
+mod closure;
 mod error;
 mod first_map;
 mod fixed_map;
 pub mod grammar;
 mod indexed_grammar;
 mod iter_ones;
+mod kernel;
+mod kernel_table;
 mod lr_table;
 mod position;
-mod table_builder;
 mod vocab_set;
 pub mod vocabulary;

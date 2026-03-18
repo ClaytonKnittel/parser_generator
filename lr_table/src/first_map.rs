@@ -21,8 +21,8 @@ impl<T: Vocabulary> FirstTable<T> {
     let mut changed = false;
 
     for label in grammar.all_production_labels() {
-      'productions_loop: for rule in grammar.productions_for_label(label) {
-        for node in grammar.production_rule(rule).rule() {
+      'productions_loop: for rule in grammar.production_rules_for_label(label) {
+        for node in rule.rule() {
           match node {
             ProductionNode::Production(node_label) => {
               let mut node_first_set = map.get(*node_label).clone();

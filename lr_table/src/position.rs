@@ -62,13 +62,21 @@ pub fn follow_set_for_rule<T: Vocabulary>(
 }
 
 #[derive(PartialEq, Eq)]
-pub struct ProductionRulePos<T> {
+pub struct Position<T> {
   production_id: ProductionRuleId,
   position: usize,
   follow_set: VocabSet<AugmentedVocab<T>>,
 }
 
-impl<T: Vocabulary> ProductionRulePos<T> {
+impl<T> Position<T> {
+  /// Returns a tuple of (production rule, index), where the index is the
+  /// offset of the current position from the start of the production rule.
+  pub fn position(&self) -> (ProductionRuleId, usize) {
+    (self.production_id, self.position)
+  }
+}
+
+impl<T: Vocabulary> Position<T> {
   fn new_from_start_with_follow_set(
     production_id: ProductionRuleId,
     follow_set: VocabSet<AugmentedVocab<T>>,
@@ -120,7 +128,7 @@ impl<T: Vocabulary> ProductionRulePos<T> {
   }
 }
 
-impl<T> Clone for ProductionRulePos<T> {
+impl<T> Clone for Position<T> {
   fn clone(&self) -> Self {
     Self {
       production_id: self.production_id,
@@ -130,7 +138,7 @@ impl<T> Clone for ProductionRulePos<T> {
   }
 }
 
-impl<T: Vocabulary + Display> Display for ProductionRulePos<T> {
+impl<T: Vocabulary + Display> Display for Position<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(
       f,
@@ -140,7 +148,7 @@ impl<T: Vocabulary + Display> Display for ProductionRulePos<T> {
   }
 }
 
-impl<T: Vocabulary + Display> Debug for ProductionRulePos<T> {
+impl<T: Vocabulary + Display> Debug for Position<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{self}")
   }

@@ -1,22 +1,21 @@
-use std::fmt::Display;
-
 use itertools::Itertools;
 
 use crate::{
   first_map::FirstTable,
   fixed_map::SparseFixedSizeMap,
   indexed_grammar::{IndexedGrammar, ProductionLabel},
-  position::{ProductionRulePos, follow_set_for_rule, maybe_first_production_label},
+  kernel::Kernel,
+  position::{follow_set_for_rule, maybe_first_production_label},
   vocab_set::VocabSet,
   vocabulary::{AugmentedVocab, Vocabulary},
 };
 
-/// Given a kernel, which is a list of `ProductionRulePos`, returns a map over
-/// all production labels which are transitively connected to the next nodes of
+/// Given a kernel, which is a list of `Position`, returns a map over all
+/// production labels which are transitively connected to the next nodes of
 /// any rule in the kernel, and the follow sets for those such production
 /// labels.
-fn closure_follow_sets<T: Vocabulary>(
-  kernel: impl IntoIterator<Item = ProductionRulePos<T>>,
+pub fn closure_follow_sets<T: Vocabulary>(
+  kernel: &Kernel<T>,
   grammar: &IndexedGrammar<T>,
   first_map: &FirstTable<T>,
 ) -> SparseFixedSizeMap<ProductionLabel, VocabSet<AugmentedVocab<T>>> {
@@ -33,7 +32,7 @@ fn closure_follow_sets<T: Vocabulary>(
   {
     let mut productions_to_explore = Vec::new();
 
-    for production_rule in kernel {
+    for production_rule in kernel.positions() {
       if let Some((label, follow_set)) = production_rule.next_production_label(grammar, first_map) {
         production_follow_sets
           .get_mut_or_insert_with(label, || {
@@ -46,9 +45,7 @@ fn closure_follow_sets<T: Vocabulary>(
 
     // Recursively explore the whole closure tree until all labels have been found.
     while let Some(label) = productions_to_explore.pop() {
-      for production_rule_id in grammar.productions_for_label(label) {
-        let production_rule = grammar.production_rule(production_rule_id);
-
+      for production_rule in grammar.production_rules_for_label(label) {
         if let Some(sub_label) = maybe_first_production_label(production_rule.rule()) {
           production_follow_sets.get_mut_or_insert_with(sub_label, || {
             productions_to_explore.push(sub_label);
@@ -68,9 +65,7 @@ fn closure_follow_sets<T: Vocabulary>(
     let mut changed = false;
 
     for &label in &production_labels {
-      for production_rule_id in grammar.productions_for_label(label) {
-        let production_rule = grammar.production_rule(production_rule_id);
-
+      for production_rule in grammar.production_rules_for_label(label) {
         let Some(sub_label) = maybe_first_production_label(production_rule.rule()) else {
           continue;
         };
@@ -95,23 +90,6 @@ fn closure_follow_sets<T: Vocabulary>(
   production_follow_sets
 }
 
-fn generate_actions<T: Vocabulary + Display>(indexed_grammar: &IndexedGrammar<T>) {
-  let first_set = FirstTable::build_from_grammar(indexed_grammar);
-
-  let root_label = indexed_grammar.root_production_label();
-  for rule_id in indexed_grammar.productions_for_label(root_label) {
-    for (label, follow_set) in closure_follow_sets(
-      [ProductionRulePos::new_top_level(rule_id)],
-      indexed_grammar,
-      &first_set,
-    )
-    .iter()
-    {
-      println!("Position: {label:?}: {follow_set}");
-    }
-  }
-}
-
 #[cfg(test)]
 mod tests {
   use googletest::prelude::*;
@@ -120,17 +98,19 @@ mod tests {
     first_map::FirstTable,
     grammar::Grammar,
     indexed_grammar::{IndexedGrammar, ProductionLabel},
-    table_builder::ProductionRulePos,
+    kernel::Kernel,
+    position::Position,
     vocab_set::VocabSet,
     vocabulary::{AugmentedVocab, Vocabulary},
   };
 
   fn closure_follow_sets<T: Vocabulary>(
-    position: ProductionRulePos<T>,
+    position: Position<T>,
     grammar: &IndexedGrammar<T>,
   ) -> Vec<(ProductionLabel, VocabSet<AugmentedVocab<T>>)> {
     let first_map = FirstTable::build_from_grammar(grammar);
-    let map = crate::table_builder::closure_follow_sets([position], grammar, &first_map);
+    let kernel = Kernel::new(vec![position]);
+    let map = crate::closure::closure_follow_sets(&kernel, grammar, &first_map);
     map
       .iter()
       .map(|(label, follow_set)| (label, follow_set.clone()))
@@ -147,9 +127,12 @@ mod tests {
 
     let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
     let label_a = *label_map.get("A").unwrap();
-    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    let production_id_a = indexed
+      .production_rule_ids_for_label(label_a)
+      .next()
+      .unwrap();
     expect_that!(
-      closure_follow_sets(ProductionRulePos::new_top_level(production_id_a), &indexed),
+      closure_follow_sets(Position::new_top_level(production_id_a), &indexed),
       is_empty()
     );
   }
@@ -164,10 +147,13 @@ mod tests {
 
     let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
     let label_a = *label_map.get("A").unwrap();
-    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    let production_id_a = indexed
+      .production_rule_ids_for_label(label_a)
+      .next()
+      .unwrap();
     expect_that!(
       closure_follow_sets(
-        ProductionRulePos::new_at_pos(
+        Position::new_at_pos(
           production_id_a,
           1,
           VocabSet::from_iter([AugmentedVocab::EndOfStream])
@@ -188,11 +174,14 @@ mod tests {
 
     let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
     let label_a = *label_map.get("A").unwrap();
-    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    let production_id_a = indexed
+      .production_rule_ids_for_label(label_a)
+      .next()
+      .unwrap();
     let label_b = *label_map.get("B").unwrap();
     expect_that!(
       closure_follow_sets(
-        ProductionRulePos::new_at_pos(
+        Position::new_at_pos(
           production_id_a,
           0,
           VocabSet::from_iter([AugmentedVocab::EndOfStream])
@@ -213,11 +202,14 @@ mod tests {
 
     let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
     let label_a = *label_map.get("A").unwrap();
-    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    let production_id_a = indexed
+      .production_rule_ids_for_label(label_a)
+      .next()
+      .unwrap();
     let label_b = *label_map.get("B").unwrap();
     expect_that!(
       closure_follow_sets(
-        ProductionRulePos::new_at_pos(
+        Position::new_at_pos(
           production_id_a,
           1,
           VocabSet::from_iter([AugmentedVocab::EndOfStream])
@@ -238,11 +230,14 @@ mod tests {
 
     let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
     let label_a = *label_map.get("A").unwrap();
-    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    let production_id_a = indexed
+      .production_rule_ids_for_label(label_a)
+      .next()
+      .unwrap();
     let label_b = *label_map.get("B").unwrap();
     expect_that!(
       closure_follow_sets(
-        ProductionRulePos::new_at_pos(
+        Position::new_at_pos(
           production_id_a,
           1,
           VocabSet::from_iter([AugmentedVocab::EndOfStream])
@@ -268,13 +263,16 @@ mod tests {
 
     let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
     let label_a = *label_map.get("A").unwrap();
-    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    let production_id_a = indexed
+      .production_rule_ids_for_label(label_a)
+      .next()
+      .unwrap();
     let label_b = *label_map.get("B").unwrap();
     let label_c = *label_map.get("C").unwrap();
     let label_d = *label_map.get("D").unwrap();
     expect_that!(
       closure_follow_sets(
-        ProductionRulePos::new_at_pos(
+        Position::new_at_pos(
           production_id_a,
           1,
           VocabSet::from_iter([AugmentedVocab::EndOfStream])
@@ -300,10 +298,13 @@ mod tests {
 
     let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
     let label_a = *label_map.get("A").unwrap();
-    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    let production_id_a = indexed
+      .production_rule_ids_for_label(label_a)
+      .next()
+      .unwrap();
     let label_b = *label_map.get("B").unwrap();
     expect_that!(
-      closure_follow_sets(ProductionRulePos::new_top_level(production_id_a), &indexed),
+      closure_follow_sets(Position::new_top_level(production_id_a), &indexed),
       elements_are![&(label_b, VocabSet::from_iter([AugmentedVocab::EndOfStream]))]
     );
   }
@@ -318,10 +319,13 @@ mod tests {
 
     let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
     let label_a = *label_map.get("A").unwrap();
-    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    let production_id_a = indexed
+      .production_rule_ids_for_label(label_a)
+      .next()
+      .unwrap();
     let label_b = *label_map.get("B").unwrap();
     expect_that!(
-      closure_follow_sets(ProductionRulePos::new_top_level(production_id_a), &indexed),
+      closure_follow_sets(Position::new_top_level(production_id_a), &indexed),
       elements_are![&(label_b, VocabSet::from_iter([b'c']))]
     );
   }
@@ -337,10 +341,13 @@ mod tests {
 
     let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
     let label_a = *label_map.get("A").unwrap();
-    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    let production_id_a = indexed
+      .production_rule_ids_for_label(label_a)
+      .next()
+      .unwrap();
     let label_b = *label_map.get("B").unwrap();
     expect_that!(
-      closure_follow_sets(ProductionRulePos::new_top_level(production_id_a), &indexed),
+      closure_follow_sets(Position::new_top_level(production_id_a), &indexed),
       elements_are![&(label_b, VocabSet::from_iter([b'c']))]
     );
   }
@@ -357,10 +364,13 @@ mod tests {
 
     let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
     let label_a = *label_map.get("A").unwrap();
-    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    let production_id_a = indexed
+      .production_rule_ids_for_label(label_a)
+      .next()
+      .unwrap();
     let label_b = *label_map.get("B").unwrap();
     expect_that!(
-      closure_follow_sets(ProductionRulePos::new_top_level(production_id_a), &indexed),
+      closure_follow_sets(Position::new_top_level(production_id_a), &indexed),
       elements_are![&(label_b, VocabSet::from_iter([b'c', b'd']))]
     );
   }
@@ -379,10 +389,13 @@ mod tests {
 
     let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
     let label_a = *label_map.get("A").unwrap();
-    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    let production_id_a = indexed
+      .production_rule_ids_for_label(label_a)
+      .next()
+      .unwrap();
     let label_b = *label_map.get("B").unwrap();
     expect_that!(
-      closure_follow_sets(ProductionRulePos::new_top_level(production_id_a), &indexed),
+      closure_follow_sets(Position::new_top_level(production_id_a), &indexed),
       elements_are![&(
         label_b,
         VocabSet::from_iter([b'c'.into(), b'd'.into(), AugmentedVocab::EndOfStream])
@@ -406,12 +419,15 @@ mod tests {
 
     let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
     let label_a = *label_map.get("A").unwrap();
-    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    let production_id_a = indexed
+      .production_rule_ids_for_label(label_a)
+      .next()
+      .unwrap();
     let label_s = *label_map.get("S").unwrap();
     let label_p = *label_map.get("P").unwrap();
     let label_v = *label_map.get("V").unwrap();
     expect_that!(
-      closure_follow_sets(ProductionRulePos::new_top_level(production_id_a), &indexed),
+      closure_follow_sets(Position::new_top_level(production_id_a), &indexed),
       unordered_elements_are![
         &(
           label_s,

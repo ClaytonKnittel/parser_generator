@@ -14,7 +14,7 @@ pub struct ProductionLabel(usize);
 /// Each particular instance of a production rule is given a unique ID densely
 /// packed starting from 0. This is just the index into
 /// `IndexedGrammar::rules`.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ProductionRuleId(usize);
 
 impl Debug for ProductionRuleId {
@@ -164,8 +164,13 @@ impl<T> IndexedGrammar<T> {
     SparseFixedSizeMap::new(self.labels_count())
   }
 
-  /// Returns a range over the production rules for a particular production label.
-  pub fn productions_for_label(
+  pub fn production_rule(&self, id: ProductionRuleId) -> &ProductionRule<T, ProductionLabel> {
+    &self.rules[id.0]
+  }
+
+  /// Returns a range over the production rule IDs for a particular production
+  /// label.
+  pub fn production_rule_ids_for_label(
     &self,
     label: ProductionLabel,
   ) -> impl Iterator<Item = ProductionRuleId> {
@@ -173,8 +178,15 @@ impl<T> IndexedGrammar<T> {
     (range.start_index..range.end_index).map(ProductionRuleId)
   }
 
-  pub fn production_rule(&self, id: ProductionRuleId) -> &ProductionRule<T, ProductionLabel> {
-    &self.rules[id.0]
+  /// Returns a range over the production rules for a particular production
+  /// label.
+  pub fn production_rules_for_label(
+    &self,
+    label: ProductionLabel,
+  ) -> impl Iterator<Item = &ProductionRule<T, ProductionLabel>> {
+    self
+      .production_rule_ids_for_label(label)
+      .map(|id| self.production_rule(id))
   }
 
   pub fn rule_label(&self, id: ProductionRuleId) -> ProductionLabel {
@@ -196,10 +208,7 @@ mod tests {
     grammar: &IndexedGrammar<T>,
     label: ProductionLabel,
   ) -> Vec<&ProductionRule<T, ProductionLabel>> {
-    grammar
-      .productions_for_label(label)
-      .map(|id| grammar.production_rule(id))
-      .collect()
+    grammar.production_rules_for_label(label).collect()
   }
 
   #[gtest]

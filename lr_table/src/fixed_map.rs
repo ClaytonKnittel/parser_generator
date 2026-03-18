@@ -171,6 +171,21 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
           .map(|index| (label, &self.map[index]))
       })
   }
+
+  pub fn into_iter(mut self) -> impl Iterator<Item = (L, T)>
+  where
+    T: Default,
+  {
+    (0..self.index_map.len())
+      .map(Label::from_id)
+      .filter_map(move |label| {
+        self.maybe_index(label).map(|index| {
+          let mut tmp = T::default();
+          std::mem::swap(&mut self.map[index], &mut tmp);
+          (label, tmp)
+        })
+      })
+  }
 }
 
 impl<L: Debug + Label, T: Debug> Debug for SparseFixedSizeMap<L, T> {
