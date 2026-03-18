@@ -53,6 +53,12 @@ impl<T: Vocabulary> Vocabulary for AugmentedVocab<T> {
   }
 }
 
+impl<T> From<T> for AugmentedVocab<T> {
+  fn from(value: T) -> Self {
+    Self::Token(value)
+  }
+}
+
 impl<T: Display> Display for AugmentedVocab<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {

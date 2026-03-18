@@ -41,10 +41,13 @@ impl<T: Vocabulary> VocabSet<T> {
 
 #[cfg(test)]
 impl<T: Vocabulary> VocabSet<T> {
-  pub fn from_iter(iter: impl IntoIterator<Item = T>) -> Self {
+  pub fn from_iter<U>(iter: impl IntoIterator<Item = U>) -> Self
+  where
+    U: Into<T>,
+  {
     let mut s = Self::new();
     for token in iter.into_iter() {
-      s.set(&token);
+      s.set(&token.into());
     }
     s
   }
