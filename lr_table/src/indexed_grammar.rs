@@ -156,6 +156,10 @@ impl<T> IndexedGrammar<T> {
     ProductionLabel(0)
   }
 
+  pub fn root_production_rule(&self) -> ProductionRuleId {
+    ProductionRuleId(0)
+  }
+
   pub fn all_production_labels(&self) -> impl Iterator<Item = ProductionLabel> {
     (0..self.labels_count()).map(ProductionLabel)
   }

@@ -11,6 +11,7 @@ use crate::{
   kernel_table::KernelTable,
   partition_closure::partition_closure_by_next_node,
   position::Position,
+  vocab_set::VocabSet,
   vocabulary::{AugmentedVocab, Vocabulary},
 };
 
@@ -69,6 +70,17 @@ impl<T: Vocabulary> LRTableEntryBuilder<T> {
         // through each individual position in the partition and add a reduce
         // action for each token in the rule's follow set.
         for position in positions {
+          if position.rule() == grammar.root_production_rule() {
+            // Special case for the root rule, which is the only rule that can
+            // accept.
+            debug_assert!(
+              position
+                .follow_set()
+                .iter()
+                .all(|token| matches!(token, AugmentedVocab::EndOfStream))
+            );
+          }
+
           for follow_token in position.follow_set().iter() {
             builder.add_reduce_action(follow_token, position.rule())?;
           }
