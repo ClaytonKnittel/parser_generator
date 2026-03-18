@@ -503,4 +503,68 @@ mod tests {
       elements_are![&(label_b, VocabSet::from_iter([b'c', b'd']))]
     );
   }
+
+  #[gtest]
+  fn test_closure_follow_set_epsilon_until_end() {
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> B C D
+         B -> b
+         C -> c
+         C -> !
+         D -> d
+         D -> !"#,
+    )
+    .unwrap();
+
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let label_a = *label_map.get("A").unwrap();
+    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    let label_b = *label_map.get("B").unwrap();
+    expect_that!(
+      closure_follow_sets(ProductionRulePos::new_top_level(production_id_a), &indexed),
+      elements_are![&(
+        label_b,
+        VocabSet::from_iter([b'c'.into(), b'd'.into(), AugmentedVocab::EndOfStream])
+      )]
+    );
+  }
+
+  #[gtest]
+  fn test_closure_follow_set_sum_product_grammar() {
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> S
+         S -> S p V
+         S -> P
+         P -> P x V
+         P -> V
+         V -> a
+         V -> b
+         V -> c"#,
+    )
+    .unwrap();
+
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let label_a = *label_map.get("A").unwrap();
+    let production_id_a = indexed.productions_for_label(label_a).next().unwrap();
+    let label_s = *label_map.get("S").unwrap();
+    let label_p = *label_map.get("P").unwrap();
+    let label_v = *label_map.get("V").unwrap();
+    expect_that!(
+      closure_follow_sets(ProductionRulePos::new_top_level(production_id_a), &indexed),
+      unordered_elements_are![
+        &(
+          label_s,
+          VocabSet::from_iter([b'p'.into(), AugmentedVocab::EndOfStream])
+        ),
+        &(
+          label_p,
+          VocabSet::from_iter([b'p'.into(), b'x'.into(), AugmentedVocab::EndOfStream])
+        ),
+        &(
+          label_v,
+          VocabSet::from_iter([b'p'.into(), b'x'.into(), AugmentedVocab::EndOfStream])
+        ),
+      ]
+    );
+  }
 }
