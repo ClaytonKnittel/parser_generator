@@ -2,7 +2,6 @@ use std::{borrow::Borrow, fmt::Debug, hash::Hash};
 
 use crate::{
   error::LRTableResult,
-  fixed_map::Label,
   grammar::{Grammar, ProductionNode},
   indexed_grammar::{IndexedGrammar, ProductionLabel},
   lr_table::{Action, LRTable, StateId},
