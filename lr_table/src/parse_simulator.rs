@@ -15,7 +15,7 @@ pub struct Parser<T> {
 
 impl<T: Vocabulary> Parser<T> {
   pub fn new<L: Clone + Eq + Hash>(grammar: &Grammar<T, L>) -> LRTableResult<Self> {
-    let grammar = IndexedGrammar::build(grammar);
+    let grammar = IndexedGrammar::build(grammar)?;
     let lr_table = LRTable::build(&grammar)?;
     Ok(Self { grammar, lr_table })
   }

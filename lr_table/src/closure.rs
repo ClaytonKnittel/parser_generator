@@ -176,7 +176,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let production_id_a = indexed
       .production_rule_ids_for_label(label_a)
@@ -196,7 +196,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let production_id_a = indexed
       .production_rule_ids_for_label(label_a)
@@ -223,7 +223,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let production_id_a = indexed
       .production_rule_ids_for_label(label_a)
@@ -251,7 +251,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let production_id_a = indexed
       .production_rule_ids_for_label(label_a)
@@ -279,7 +279,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let production_id_a = indexed
       .production_rule_ids_for_label(label_a)
@@ -312,7 +312,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let production_id_a = indexed
       .production_rule_ids_for_label(label_a)
@@ -347,7 +347,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let production_id_a = indexed
       .production_rule_ids_for_label(label_a)
@@ -373,7 +373,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let a_rules = indexed.production_rule_ids_for_label(label_a).collect_vec();
     let label_b = *label_map.get("B").unwrap();
@@ -394,7 +394,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let production_id_a = indexed
       .production_rule_ids_for_label(label_a)
@@ -416,7 +416,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let production_id_a = indexed
       .production_rule_ids_for_label(label_a)
@@ -439,7 +439,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let production_id_a = indexed
       .production_rule_ids_for_label(label_a)
@@ -464,7 +464,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let production_id_a = indexed
       .production_rule_ids_for_label(label_a)
@@ -494,7 +494,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let production_id_a = indexed
       .production_rule_ids_for_label(label_a)
@@ -532,7 +532,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_b = *label_map.get("B").unwrap();
     let b_rules = indexed.production_rule_ids_for_label(label_b).collect_vec();
     let label_c = *label_map.get("C").unwrap();
@@ -571,7 +571,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_b = *label_map.get("B").unwrap();
     let b_rules = indexed.production_rule_ids_for_label(label_b).collect_vec();
     expect_that!(
@@ -603,7 +603,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let a_rules = indexed.production_rule_ids_for_label(label_a).collect_vec();
     let label_b = *label_map.get("B").unwrap();

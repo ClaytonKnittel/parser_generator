@@ -79,7 +79,7 @@ mod tests {
   fn test_one_rule_grammar() {
     let grammar = Grammar::from_grammar_str(r#"A -> a"#).unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
 
     let first_table = FirstTable::build_from_grammar(&indexed);
@@ -98,7 +98,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let label_b = *label_map.get("B").unwrap();
     let label_c = *label_map.get("C").unwrap();
@@ -129,7 +129,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let label_b = *label_map.get("B").unwrap();
     let label_c = *label_map.get("C").unwrap();
@@ -163,7 +163,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let label_b = *label_map.get("B").unwrap();
 
@@ -187,7 +187,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let label_b = *label_map.get("B").unwrap();
 
@@ -205,7 +205,8 @@ mod tests {
   #[gtest]
   fn test_recursive_rules() {
     let grammar = Grammar::from_grammar_str(
-      r#"A -> a
+      r#"S -> A
+         A -> a
          A -> B b
          B -> c
          B -> !
@@ -213,7 +214,7 @@ mod tests {
     )
     .unwrap();
 
-    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     let label_a = *label_map.get("A").unwrap();
     let label_b = *label_map.get("B").unwrap();
 
