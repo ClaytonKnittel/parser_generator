@@ -25,6 +25,10 @@ jobs:
         working-directory: parser_generator
         run: |
           cargo build
+      - name: Run lr_table unit tests
+        working-directory: lr_table
+        run: |
+          cargo test
       - name: Run unit tests
         working-directory: parser_generator
         run: |
