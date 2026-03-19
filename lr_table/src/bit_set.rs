@@ -19,7 +19,7 @@ impl BitSet {
     (bit / u64::BITS as usize, bit as u32 % u64::BITS)
   }
 
-  pub fn get(&self, bit: usize) -> bool {
+  pub fn has(&self, bit: usize) -> bool {
     debug_assert!(bit < self.len);
     let (index, shift) = Self::pos(bit);
     (self.bits[index] & (1 << shift)) != 0

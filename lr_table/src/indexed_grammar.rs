@@ -1,15 +1,10 @@
-use std::{
-  collections::{HashMap, HashSet},
-  fmt::Debug,
-  hash::Hash,
-};
+use std::{collections::HashMap, fmt::Debug, hash::Hash};
 
 use itertools::Itertools;
 
 use crate::{
-  bit_set::BitSet,
   error::{LRTableResult, grammar_error},
-  fixed_map::{FixedSizeMap, Label, SparseFixedSizeMap},
+  fixed_map::{FixedSizeMap, FixedSizeSet, Label, SparseFixedSizeMap},
   grammar::{Grammar, ProductionNode, ProductionRule},
   vocabulary::{AugmentedVocab, Vocabulary},
 };
@@ -78,9 +73,29 @@ pub struct IndexedGrammar<T> {
 
 impl<T: Clone> IndexedGrammar<T> {
   fn verify_connected(&self) -> LRTableResult {
-    let mut rule_set = BitSet::new(self.labels_count());
+    let mut rule_set = self.new_production_label_set();
+    let mut labels_to_explore = vec![ProductionLabel(0)];
+    rule_set.set(ProductionLabel(0));
 
-    Ok(())
+    while let Some(label) = labels_to_explore.pop() {
+      debug_assert!(rule_set.has(label));
+      for rule in self.production_rules_for_label(label) {
+        for node in rule.rule() {
+          if let ProductionNode::Production(label) = node
+            && !rule_set.has(*label)
+          {
+            rule_set.set(*label);
+            labels_to_explore.push(*label);
+          }
+        }
+      }
+    }
+
+    if rule_set.full() {
+      Ok(())
+    } else {
+      Err(grammar_error!(NotConnected))
+    }
   }
 
   fn build_from_grammar<L: Clone + Eq + Hash>(
@@ -162,13 +177,14 @@ impl<T: Clone> IndexedGrammar<T> {
       })
       .collect_vec();
 
-    Ok((
-      Self {
-        rules,
-        rule_offset_map,
-      },
-      label_map,
-    ))
+    let indexed_grammar = Self {
+      rules,
+      rule_offset_map,
+    };
+
+    indexed_grammar.verify_connected()?;
+
+    Ok((indexed_grammar, label_map))
   }
 
   #[cfg(test)]
@@ -205,6 +221,10 @@ impl<T> IndexedGrammar<T> {
     T: Vocabulary,
   {
     SparseFixedSizeMap::new(AugmentedVocab::<T>::SIZE)
+  }
+
+  fn new_production_label_set(&self) -> FixedSizeSet<ProductionLabel> {
+    FixedSizeSet::new(self.labels_count())
   }
 
   pub fn new_production_label_map<U: Default>(&self) -> FixedSizeMap<ProductionLabel, U> {
@@ -337,34 +357,6 @@ mod tests {
       some(pat!(LRTableError::BuildGrammar(pat!(
         BuildGrammarError::NotConnected
       ))))
-    );
-  }
-
-  #[gtest]
-  fn test_two_productions() {
-    let grammar = Grammar::from_grammar_str(
-      r#"A -> a
-         B -> b"#,
-    )
-    .unwrap();
-
-    let (indexed_grammar, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
-    assert_eq!(indexed_grammar.labels_count(), 2);
-    let label_a = *label_map.get("A").unwrap();
-    expect_that!(
-      production_rules(&indexed_grammar, label_a),
-      elements_are![&&ProductionRule::new(
-        label_a,
-        vec![ProductionNode::Terminal(AugmentedVocab::Token(b'a'))]
-      )]
-    );
-    let label_b = *label_map.get("B").unwrap();
-    expect_that!(
-      production_rules(&indexed_grammar, label_b),
-      elements_are![&&ProductionRule::new(
-        label_b,
-        vec![ProductionNode::Terminal(AugmentedVocab::Token(b'b'))]
-      )]
     );
   }
 

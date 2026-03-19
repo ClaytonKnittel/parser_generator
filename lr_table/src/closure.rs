@@ -171,8 +171,8 @@ mod tests {
   #[gtest]
   fn test_no_closure() {
     let grammar = Grammar::from_grammar_str(
-      r#"A -> b
-         B -> a"#,
+      r#"S -> A
+         A -> b"#,
     )
     .unwrap();
 

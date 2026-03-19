@@ -42,12 +42,16 @@ impl<L: Label> FixedSizeSet<L> {
     }
   }
 
-  pub fn get(&self, label: L) -> bool {
-    self.set.get(label.id())
+  pub fn has(&self, label: L) -> bool {
+    self.set.has(label.id())
   }
 
   pub fn set(&mut self, label: L) {
     self.set.set(label.id())
+  }
+
+  pub fn full(&self) -> bool {
+    self.set.full()
   }
 }
 
