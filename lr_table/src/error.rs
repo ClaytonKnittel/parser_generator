@@ -8,6 +8,7 @@ pub enum BuildGrammarError {
   EmptyGrammar,
   RootProductionRepeated,
   RootProductionReferenced,
+  NotConnected,
 }
 
 impl Display for BuildGrammarError {
@@ -18,6 +19,7 @@ impl Display for BuildGrammarError {
       Self::RootProductionReferenced => {
         write!(f, "the root production is referenced by another rule")
       }
+      Self::NotConnected => write!(f, "The grammar is not fully connected"),
     }
   }
 }

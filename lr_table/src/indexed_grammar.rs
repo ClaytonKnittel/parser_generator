@@ -89,6 +89,17 @@ impl<T: Clone> IndexedGrammar<T> {
       if label == *root_production.symbol() {
         return Err(grammar_error!(RootProductionRepeated));
       }
+      if production
+        .rule()
+        .iter()
+        .filter_map(|node| match node {
+          ProductionNode::Production(label) => Some(label),
+          ProductionNode::Terminal(..) => None,
+        })
+        .any(|label| label == root_production.symbol())
+      {
+        return Err(grammar_error!(RootProductionReferenced));
+      }
 
       let map_len = label_map.len();
       let label = *label_map.entry(label).or_insert(ProductionLabel(map_len));
@@ -293,6 +304,27 @@ mod tests {
       grammar.err(),
       some(pat!(LRTableError::BuildGrammar(pat!(
         BuildGrammarError::RootProductionReferenced
+      ))))
+    );
+  }
+
+  #[gtest]
+  fn test_grammar_not_connected() {
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> B
+         B -> C
+         C -> c
+         D -> E
+         D -> !
+         E -> c D"#,
+    )
+    .unwrap();
+
+    let grammar = IndexedGrammar::build(&grammar);
+    expect_that!(
+      grammar.err(),
+      some(pat!(LRTableError::BuildGrammar(pat!(
+        BuildGrammarError::NotConnected
       ))))
     );
   }
