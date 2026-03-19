@@ -274,7 +274,8 @@ mod tests {
   #[gtest]
   fn test_circular_closure() {
     let grammar = Grammar::from_grammar_str(
-      r#"A -> a B
+      r#"S -> A
+         A -> a B
          B -> A"#,
     )
     .unwrap();

@@ -1,8 +1,13 @@
-use std::{collections::HashMap, fmt::Debug, hash::Hash};
+use std::{
+  collections::{HashMap, HashSet},
+  fmt::Debug,
+  hash::Hash,
+};
 
 use itertools::Itertools;
 
 use crate::{
+  bit_set::BitSet,
   error::{LRTableResult, grammar_error},
   fixed_map::{FixedSizeMap, Label, SparseFixedSizeMap},
   grammar::{Grammar, ProductionNode, ProductionRule},
@@ -72,6 +77,12 @@ pub struct IndexedGrammar<T> {
 }
 
 impl<T: Clone> IndexedGrammar<T> {
+  fn verify_connected(&self) -> LRTableResult {
+    let mut rule_set = BitSet::new(self.labels_count());
+
+    Ok(())
+  }
+
   fn build_from_grammar<L: Clone + Eq + Hash>(
     grammar: &Grammar<T, L>,
   ) -> LRTableResult<(Self, HashMap<L, ProductionLabel>)> {
