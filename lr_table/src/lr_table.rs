@@ -1,8 +1,12 @@
-use std::{fmt::Debug, hash::Hash};
+use std::{
+  fmt::{Debug, Display},
+  hash::Hash,
+};
 
-use itertools::Itertools;
+use itertools::{IntoChunks, Itertools};
 
 use crate::{
+  bit_set::BitSet,
   closure::partition_closure_by_next_node,
   error::LRTableResult,
   first_map::FirstTable,
@@ -35,7 +39,7 @@ enum Action {
   Accept,
 }
 
-impl Debug for Action {
+impl Display for Action {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
       Self::Shift { next_state } => write!(f, "s{}", next_state.0),
@@ -45,12 +49,24 @@ impl Debug for Action {
   }
 }
 
+impl Debug for Action {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{self}")
+  }
+}
+
 #[derive(Clone, Copy)]
 struct GotoAction(StateId);
 
-impl Debug for GotoAction {
+impl Display for GotoAction {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "GO({})", self.0.id())
+  }
+}
+
+impl Debug for GotoAction {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{self}")
   }
 }
 
@@ -250,37 +266,80 @@ impl LRTable {
     debug_assert!(num_gotos.is_multiple_of(self.num_states));
     num_gotos / self.num_states
   }
+
+  fn actions_iter(&self) -> IntoChunks<impl Iterator<Item = &Option<Action>>> {
+    self.action_table.iter().chunks(self.vocab_size())
+  }
+
+  fn gotos_iter(&self) -> IntoChunks<impl Iterator<Item = &Option<GotoAction>>> {
+    self.goto_table.iter().chunks(self.num_production_labels())
+  }
 }
 
-impl Debug for LRTable {
+impl Display for LRTable {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    let vocab_size = self.vocab_size();
-    let num_production_labels = self.num_production_labels();
+    let mut action_print_width = 1;
+    let relevant_vocab =
+      self
+        .actions_iter()
+        .into_iter()
+        .fold(BitSet::new(self.vocab_size()), |mut vocab, actions| {
+          for (i, action) in actions.enumerate() {
+            if let Some(action) = action {
+              vocab.set(i);
+              action_print_width = action_print_width.max(format!("{action}").len());
+            }
+          }
+          vocab
+        });
+    let goto_print_width = self
+      .actions_iter()
+      .into_iter()
+      .map(|gotos| {
+        gotos
+          .map(|goto| match goto {
+            Some(goto) => format!("{goto}").len(),
+            None => 0,
+          })
+          .max()
+          .unwrap_or_default()
+      })
+      .max()
+      .unwrap_or(1);
 
-    let action_chunks = self.action_table.iter().chunks(vocab_size);
+    let action_chunks = self.actions_iter();
     let mut actions_iter = action_chunks.into_iter();
-    let goto_chunks = self.goto_table.iter().chunks(num_production_labels);
+    let goto_chunks = self.gotos_iter();
     let mut gotos_iter = goto_chunks.into_iter();
     for state in 0..self.num_states {
-      let action_set = actions_iter.next().unwrap();
+      let action_set = actions_iter.next().unwrap().collect_vec();
       let goto_set = gotos_iter.next().unwrap();
 
       write!(
         f,
-        "{state}: {} : {:?}",
-        action_set
-          .map(|action| match action {
-            Some(action) => format!("{action:?}"),
-            None => "_".to_owned(),
+        "{state}: {} : {}",
+        relevant_vocab
+          .for_each()
+          .map(|i| match action_set[i] {
+            Some(action) => format!(
+              "{:width$}",
+              format!("{}", action),
+              width = action_print_width
+            ),
+            None => format!("{:width$}", "_", width = action_print_width),
           })
           .join(" "),
         goto_set
-          .map(|action| match action {
-            Some(action) => format!("{action:?}"),
-            None => "_".to_owned(),
+          .map(|goto| match goto {
+            Some(goto) => format!("{:width$}", format!("{goto}"), width = goto_print_width),
+            None => format!("{:width$}", "_", width = goto_print_width),
           })
           .join(" ")
       )?;
+
+      if state < self.num_states - 1 {
+        writeln!(f)?;
+      }
     }
     Ok(())
   }
@@ -294,10 +353,14 @@ mod tests {
 
   #[gtest]
   fn test() {
-    let grammar = Grammar::from_grammar_str(r#"A -> a"#).unwrap();
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> B
+         B -> a"#,
+    )
+    .unwrap();
     let x = LRTable::build(&grammar).unwrap();
 
-    println!("{x:?}");
+    println!("{x}");
 
     expect_true!(false);
 
