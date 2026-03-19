@@ -315,6 +315,8 @@ impl<T> Display for LRTable<T> {
       .max()
       .unwrap_or(1);
 
+    let state_index_print_width = format!("{}", self.num_states).len();
+
     let action_chunks = self.actions_iter();
     let mut actions_iter = action_chunks.into_iter();
     let goto_chunks = self.gotos_iter();
@@ -325,7 +327,7 @@ impl<T> Display for LRTable<T> {
 
       write!(
         f,
-        "{state}: {} : {}",
+        "{state:>width$}: {} : {}",
         relevant_vocab
           .for_each()
           .map(|i| match action_set[i] {
@@ -342,7 +344,8 @@ impl<T> Display for LRTable<T> {
             Some(goto) => format!("{:width$}", format!("{goto}"), width = goto_print_width),
             None => format!("{:width$}", "_", width = goto_print_width),
           })
-          .join(" ")
+          .join(" "),
+        width = state_index_print_width
       )?;
 
       if state < self.num_states - 1 {
