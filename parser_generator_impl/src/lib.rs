@@ -4,6 +4,7 @@ extern crate proc_macro;
 mod code_gen;
 mod error;
 mod lr_table_builder;
+mod parse_grammar;
 mod production;
 mod symbol;
 mod util;
