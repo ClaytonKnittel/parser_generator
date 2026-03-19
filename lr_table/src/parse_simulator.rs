@@ -54,16 +54,20 @@ impl<T: Vocabulary> Parser<T> {
         Action::Reduce { rule } => {
           println!("Reduce {:?}", rule);
           let grammar_rule = self.grammar.production_rule(rule);
-          debug_assert!(grammar_rule.rule().len() <= nodes.len());
+          debug_assert!(grammar_rule.rules_excluding_epsilon().count() <= nodes.len());
           debug_assert!(
             grammar_rule
-              .rule()
-              .iter()
-              .rev()
-              .zip(nodes.iter().rev())
+              .rules_excluding_epsilon()
+              .zip(
+                nodes
+                  .iter()
+                  .rev()
+                  .take(grammar_rule.rules_excluding_epsilon().count())
+                  .rev()
+              )
               .all(|(grammar_node, stack_node)| { grammar_node == stack_node })
           );
-          for _ in 0..grammar_rule.rule().len() {
+          for _ in grammar_rule.rules_excluding_epsilon() {
             states.pop();
             nodes.pop();
           }
@@ -125,5 +129,63 @@ mod tests {
     expect_false!(parser.parse_stream(b"aa"));
     expect_false!(parser.parse_stream(b"b"));
     expect_false!(parser.parse_stream(b"ba"));
+  }
+
+  #[gtest]
+  fn test_a_or_b() {
+    let grammar = Grammar::from_grammar_str(
+      r#"S -> A
+         A -> a
+         A -> b"#,
+    )
+    .unwrap();
+    let parser = Parser::new(&grammar).unwrap();
+
+    expect_false!(parser.parse_stream(b""));
+    expect_true!(parser.parse_stream(b"a"));
+    expect_false!(parser.parse_stream(b"aa"));
+    expect_true!(parser.parse_stream(b"b"));
+    expect_false!(parser.parse_stream(b"ba"));
+  }
+
+  #[gtest]
+  fn test_even() {
+    let grammar = Grammar::from_grammar_str(
+      r#"S -> A
+         A -> A a a
+         A -> !"#,
+    )
+    .unwrap();
+    let parser = Parser::new(&grammar).unwrap();
+
+    expect_true!(parser.parse_stream(b""));
+    expect_false!(parser.parse_stream(b"a"));
+    expect_true!(parser.parse_stream(b"aa"));
+    expect_false!(parser.parse_stream(b"aaa"));
+    expect_true!(parser.parse_stream(b"aaaa"));
+    expect_false!(parser.parse_stream(b"aaaaa"));
+  }
+
+  #[gtest]
+  fn test_equal_a_and_b() {
+    let grammar = Grammar::from_grammar_str(
+      r#"S -> A
+         A -> a A b
+         A -> !"#,
+    )
+    .unwrap();
+    let parser = Parser::new(&grammar).unwrap();
+
+    expect_true!(parser.parse_stream(b""));
+    expect_true!(parser.parse_stream(b"ab"));
+    expect_true!(parser.parse_stream(b"aabb"));
+    expect_true!(parser.parse_stream(b"aaabbb"));
+    expect_false!(parser.parse_stream(b"ba"));
+    expect_false!(parser.parse_stream(b"a"));
+    expect_false!(parser.parse_stream(b"b"));
+    expect_false!(parser.parse_stream(b"bab"));
+    expect_false!(parser.parse_stream(b"aba"));
+    expect_false!(parser.parse_stream(b"abab"));
+    expect_false!(parser.parse_stream(b"baba"));
   }
 }

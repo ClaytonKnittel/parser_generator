@@ -1,5 +1,7 @@
 #[cfg(test)]
 use crate::error::{LRTableError, LRTableResult};
+#[cfg(debug_assertions)]
+use crate::indexed_grammar::ProductionLabel;
 use crate::vocabulary::AugmentedVocab;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -25,6 +27,14 @@ impl<T, L> ProductionRule<T, L> {
 
   pub fn rule(&self) -> &[ProductionNode<T, L>] {
     &self.rule
+  }
+
+  #[cfg(debug_assertions)]
+  pub fn rules_excluding_epsilon(&self) -> impl Iterator<Item = &ProductionNode<T, L>> {
+    self
+      .rule()
+      .iter()
+      .filter(|node| !matches!(node, ProductionNode::Terminal(AugmentedVocab::Epsilon)))
   }
 }
 
