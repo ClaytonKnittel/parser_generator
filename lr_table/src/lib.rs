@@ -9,6 +9,7 @@ mod iter_ones;
 mod kernel;
 mod kernel_table;
 pub mod lr_table;
+mod parse_simulator;
 mod position;
 mod vocab_set;
 pub mod vocabulary;

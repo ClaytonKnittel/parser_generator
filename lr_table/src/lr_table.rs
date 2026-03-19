@@ -1,6 +1,5 @@
 use std::{
   fmt::{Debug, Display},
-  hash::Hash,
   marker::PhantomData,
 };
 
@@ -12,7 +11,7 @@ use crate::{
   error::LRTableResult,
   first_map::FirstTable,
   fixed_map::{Label, SparseFixedSizeMap},
-  grammar::{Grammar, ProductionNode},
+  grammar::ProductionNode,
   indexed_grammar::{IndexedGrammar, ProductionLabel, ProductionRuleId},
   kernel::Kernel,
   kernel_table::KernelTable,
@@ -20,7 +19,7 @@ use crate::{
   vocabulary::{AugmentedVocab, Vocabulary},
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub struct StateId(usize);
 
 impl StateId {
@@ -33,8 +32,14 @@ impl StateId {
   }
 }
 
+impl Debug for StateId {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "s({})", self.0)
+  }
+}
+
 #[derive(Clone, Copy)]
-enum Action {
+pub enum Action {
   Shift { next_state: StateId },
   Reduce { rule: ProductionRuleId },
   Accept,
@@ -57,7 +62,13 @@ impl Debug for Action {
 }
 
 #[derive(Clone, Copy)]
-struct GotoAction(StateId);
+pub struct GotoAction(StateId);
+
+impl GotoAction {
+  pub fn state(&self) -> StateId {
+    self.0
+  }
+}
 
 impl Display for GotoAction {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -234,15 +245,12 @@ impl<T: Vocabulary> LRTable<T> {
     })
   }
 
-  pub fn build<L: Clone + Eq + Hash>(grammar: &Grammar<T, L>) -> LRTableResult<Self>
+  pub fn build(grammar: &IndexedGrammar<T>) -> LRTableResult<Self>
   where
     T: Clone,
   {
-    let indexed_grammar = IndexedGrammar::build(grammar);
-    Self::generate_actions(&indexed_grammar)
-      .map(|entry_builder| {
-        entry_builder.map(|entry_builder| entry_builder.into_vecs(&indexed_grammar))
-      })
+    Self::generate_actions(grammar)
+      .map(|entry_builder| entry_builder.map(|entry_builder| entry_builder.into_vecs(grammar)))
       .try_fold(
         Self {
           action_table: Vec::new(),
@@ -259,6 +267,16 @@ impl<T: Vocabulary> LRTable<T> {
           })
         },
       )
+  }
+
+  pub fn get_action(&self, state: StateId, token: AugmentedVocab<T>) -> Option<Action> {
+    let index = self.vocab_size() * state.id() + token.ordinal();
+    self.action_table[index]
+  }
+
+  pub fn get_goto(&self, state: StateId, production_label: ProductionLabel) -> Option<GotoAction> {
+    let index = self.num_production_labels() * state.id() + production_label.id();
+    self.goto_table[index]
   }
 }
 
@@ -360,7 +378,7 @@ impl<T> Display for LRTable<T> {
 mod tests {
   use googletest::prelude::*;
 
-  use crate::{grammar::Grammar, lr_table::LRTable};
+  use crate::{grammar::Grammar, indexed_grammar::IndexedGrammar, lr_table::LRTable};
 
   #[gtest]
   fn test() {
@@ -375,7 +393,8 @@ mod tests {
          V -> c"#,
     )
     .unwrap();
-    let x = LRTable::build(&grammar).unwrap();
+    let indexed_grammar = IndexedGrammar::build(&grammar);
+    let x = LRTable::build(&indexed_grammar).unwrap();
 
     println!("{x}");
 
