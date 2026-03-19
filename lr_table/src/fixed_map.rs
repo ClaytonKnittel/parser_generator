@@ -2,10 +2,7 @@ use std::{fmt::Debug, marker::PhantomData};
 
 use itertools::Itertools;
 
-use crate::{
-  bit_set::BitSet,
-  error::{LRTableError, LRTableResult},
-};
+use crate::error::{LRTableError, LRTableResult};
 
 pub trait Label: Copy {
   fn id(self) -> usize;
@@ -26,28 +23,6 @@ impl<L: Label> Label for Option<L> {
     } else {
       Some(L::from_id(id - 1))
     }
-  }
-}
-
-pub struct FixedSizeSet<L> {
-  set: BitSet,
-  _phantom: PhantomData<L>,
-}
-
-impl<L: Label> FixedSizeSet<L> {
-  pub fn new(capacity: usize) -> Self {
-    Self {
-      set: BitSet::new(capacity),
-      _phantom: PhantomData,
-    }
-  }
-
-  pub fn get(&self, label: L) -> bool {
-    self.set.get(label.id())
-  }
-
-  pub fn set(&mut self, label: L) {
-    self.set.set(label.id());
   }
 }
 
@@ -113,10 +88,6 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
     }
   }
 
-  fn index(&self, label: L) -> usize {
-    self.maybe_index(label).unwrap()
-  }
-
   /// Returns an optional reference to the value for the given label. Returns
   /// `None` if the label is not in the map.
   pub fn get(&self, label: L) -> Option<&T> {
@@ -157,17 +128,6 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
     }
   }
 
-  /// Inserts a new value into the sparse map, returning a mutable reference to
-  /// the newly inserted value. If the value already existed, returns `None`
-  /// and does not modify the map.
-  pub fn maybe_insert(&mut self, label: L, value: T) -> Option<&mut T> {
-    if self.index_map[label.id()] != Self::UNINITIALIZED_INDEX {
-      None
-    } else {
-      Some(self.insert(label, value))
-    }
-  }
-
   /// Either returns a mutable reference to the value with given label, or
   /// inserts a new one with default value.
   pub fn get_mut_or_default(&mut self, label: L) -> &mut T
@@ -175,20 +135,6 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
     T: Default,
   {
     self.get_mut_or_insert_with(label, || T::default())
-  }
-
-  /// Inserts a new default-initialized value into the sparse map, returning a
-  /// mutable reference to the newly inserted value. If the value already
-  /// existed, returns `None` and does not modify the map.
-  pub fn maybe_insert_default(&mut self, label: L) -> Option<&mut T>
-  where
-    T: Default,
-  {
-    if self.index_map[label.id()] != Self::UNINITIALIZED_INDEX {
-      None
-    } else {
-      Some(self.insert(label, T::default()))
-    }
   }
 
   /// Returns an iterator over all initialized entries in the map.
@@ -200,17 +146,6 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
           .maybe_index(label)
           .map(|index| (label, &self.map[index]))
       })
-  }
-
-  fn take_label(&mut self, label: L) -> Option<(L, T)>
-  where
-    T: Default,
-  {
-    self.maybe_index(label).map(|index| {
-      let mut tmp = T::default();
-      std::mem::swap(&mut self.map[index], &mut tmp);
-      (label, tmp)
-    })
   }
 }
 

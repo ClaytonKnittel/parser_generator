@@ -54,7 +54,7 @@ impl Grammar<u8, String> {
             .ok_or_else(|| LRTableError::new_generic(format!("Line \"{line}\" missing \"->\"")))?;
           let production = production.trim();
           if !production.chars().all(|c| c.is_ascii_uppercase()) {
-            return Err(LRTableError::new_generic(format!("Production label \"{production}\" is not all ASCII uppercase")).into());
+            return Err(LRTableError::new_generic(format!("Production label \"{production}\" is not all ASCII uppercase")));
           }
 
           Ok(ProductionRule::new(

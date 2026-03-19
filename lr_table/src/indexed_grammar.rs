@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash};
 use itertools::Itertools;
 
 use crate::{
-  fixed_map::{FixedSizeMap, FixedSizeSet, Label, SparseFixedSizeMap},
+  fixed_map::{FixedSizeMap, Label, SparseFixedSizeMap},
   grammar::{Grammar, ProductionNode, ProductionRule},
   vocabulary::{AugmentedVocab, Vocabulary},
 };
@@ -175,16 +175,8 @@ impl<T> IndexedGrammar<T> {
     SparseFixedSizeMap::new(AugmentedVocab::<T>::SIZE)
   }
 
-  pub fn new_production_rule_set(&self) -> FixedSizeSet<ProductionRuleId> {
-    FixedSizeSet::new(self.rules.len())
-  }
-
   pub fn new_production_label_map<U: Default>(&self) -> FixedSizeMap<ProductionLabel, U> {
     FixedSizeMap::new(self.labels_count())
-  }
-
-  pub fn new_production_rule_map<U: Default>(&self) -> FixedSizeMap<ProductionRuleId, U> {
-    FixedSizeMap::new(self.rules.len())
   }
 
   pub fn new_sparse_production_label_map<U>(&self) -> SparseFixedSizeMap<ProductionLabel, U> {
@@ -223,10 +215,6 @@ impl<T> IndexedGrammar<T> {
     self
       .production_rule_ids_for_label(label)
       .map(|id| self.production_rule(id))
-  }
-
-  pub fn rule_label(&self, id: ProductionRuleId) -> ProductionLabel {
-    *self.production_rule(id).symbol()
   }
 }
 
