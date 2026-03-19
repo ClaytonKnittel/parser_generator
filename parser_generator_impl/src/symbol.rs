@@ -38,24 +38,6 @@ pub enum Operator {
   Bang,
 }
 
-impl Operator {
-  pub fn should_separate(prev_chars: &str, next_char: char) -> bool {
-    let mut chars = prev_chars.chars();
-    match chars.next() {
-      Some('=') => chars.next().is_some() || next_char != '>',
-      Some(';') => true,
-      Some('#') => true,
-      Some('<') => true,
-      Some('>') => true,
-      Some('|') => true,
-      Some(':') => chars.next().is_some() || next_char != ':',
-      Some('!') => true,
-      Some(_) => false,
-      None => true,
-    }
-  }
-}
-
 impl Display for Operator {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     write!(
