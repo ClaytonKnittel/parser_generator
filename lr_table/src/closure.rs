@@ -3,9 +3,10 @@ use itertools::Itertools;
 use crate::{
   first_map::FirstTable,
   fixed_map::SparseFixedSizeMap,
+  grammar::ProductionNode,
   indexed_grammar::{IndexedGrammar, ProductionLabel},
   kernel::Kernel,
-  position::{follow_set_for_rule, maybe_first_production_label},
+  position::{Position, follow_set_for_rule, maybe_first_production_label},
   vocab_set::VocabSet,
   vocabulary::{AugmentedVocab, Vocabulary},
 };
@@ -14,7 +15,7 @@ use crate::{
 /// production labels which are transitively connected to the next nodes of
 /// any rule in the kernel, and the follow sets for those such production
 /// labels.
-pub fn closure_follow_sets<T: Vocabulary>(
+fn closure_follow_sets<T: Vocabulary>(
   kernel: &Kernel<T>,
   grammar: &IndexedGrammar<T>,
   first_map: &FirstTable<T>,
@@ -90,13 +91,52 @@ pub fn closure_follow_sets<T: Vocabulary>(
   production_follow_sets
 }
 
+/// The key for closure partitions. This is either a terminal, a production
+/// label, or `None` (special case for positions at the end of their rules).
+pub type NextTokenCategory<T> = Option<ProductionNode<T, ProductionLabel>>;
+
+/// Given a kernel, computes a partition over the positions of the kernel's
+/// closure grouped by next nodes (either productions or terminals). All
+/// positions at the end of their rules are grouped together under `None`.
+pub fn partition_closure_by_next_node<T: Vocabulary>(
+  kernel: &Kernel<T>,
+  grammar: &IndexedGrammar<T>,
+  first_map: &FirstTable<T>,
+) -> SparseFixedSizeMap<NextTokenCategory<T>, Vec<Position<T>>> {
+  kernel
+    .positions()
+    .cloned()
+    .chain(
+      closure_follow_sets(kernel, grammar, first_map)
+        .into_iter()
+        .flat_map(|(label, follow_set)| {
+          grammar
+            .production_rule_ids_for_label(label)
+            .map(move |production_id| {
+              Position::new_from_start_with_follow_set(production_id, follow_set.clone())
+            })
+        }),
+    )
+    .fold(
+      grammar.new_sparse_partition_closure_map(),
+      |mut map, position| {
+        map
+          .get_mut_or_default(position.next_node(grammar).cloned())
+          .push(position.clone());
+        map
+      },
+    )
+}
+
 #[cfg(test)]
 mod tests {
   use googletest::prelude::*;
+  use itertools::Itertools;
 
   use crate::{
+    closure::NextTokenCategory,
     first_map::FirstTable,
-    grammar::Grammar,
+    grammar::{Grammar, ProductionNode},
     indexed_grammar::{IndexedGrammar, ProductionLabel},
     kernel::Kernel,
     position::Position,
@@ -114,6 +154,17 @@ mod tests {
     map
       .iter()
       .map(|(label, follow_set)| (label, follow_set.clone()))
+      .collect()
+  }
+
+  fn partition_closure_by_next_node<T: Vocabulary>(
+    kernel: impl IntoIterator<Item = Position<T>>,
+    grammar: &IndexedGrammar<T>,
+  ) -> Vec<(NextTokenCategory<T>, Vec<Position<T>>)> {
+    let first_map = FirstTable::build_from_grammar(grammar);
+    let kernel = Kernel::new(kernel.into_iter().collect());
+    crate::closure::partition_closure_by_next_node(&kernel, grammar, &first_map)
+      .into_iter()
       .collect()
   }
 
@@ -442,6 +493,74 @@ mod tests {
           VocabSet::from_iter([b'p'.into(), b'x'.into(), AugmentedVocab::EndOfStream])
         ),
       ]
+    );
+  }
+
+  #[gtest]
+  fn test_closure_partition_simple() {
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> B
+         B -> a C
+         C -> b
+         C -> c"#,
+    )
+    .unwrap();
+
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let label_b = *label_map.get("B").unwrap();
+    let b_rules = indexed.production_rule_ids_for_label(label_b).collect_vec();
+    let label_c = *label_map.get("C").unwrap();
+    let c_rules = indexed.production_rule_ids_for_label(label_c).collect_vec();
+    expect_that!(
+      partition_closure_by_next_node(
+        [Position::new_at_pos(
+          b_rules[0],
+          1,
+          VocabSet::from_iter([AugmentedVocab::EndOfStream])
+        )],
+        &indexed
+      ),
+      unordered_elements_are![
+        (
+          some(eq(&ProductionNode::Production(label_c))),
+          elements_are![property!(&Position::<_>.position(), (b_rules[0], 1))]
+        ),
+        (
+          some(eq(&ProductionNode::Terminal(b'b'.into()))),
+          elements_are![property!(&Position::<_>.position(), (c_rules[0], 0))]
+        ),
+        (
+          some(eq(&ProductionNode::Terminal(b'c'.into()))),
+          elements_are![property!(&Position::<_>.position(), (c_rules[1], 0))]
+        )
+      ]
+    );
+  }
+
+  #[gtest]
+  fn test_closure_partition_end_of_rule() {
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> B
+         B -> a"#,
+    )
+    .unwrap();
+
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let label_b = *label_map.get("B").unwrap();
+    let b_rules = indexed.production_rule_ids_for_label(label_b).collect_vec();
+    expect_that!(
+      partition_closure_by_next_node(
+        [Position::new_at_pos(
+          b_rules[0],
+          1,
+          VocabSet::from_iter([AugmentedVocab::EndOfStream])
+        )],
+        &indexed
+      ),
+      elements_are![(
+        none(),
+        elements_are![property!(&Position::<_>.position(), (b_rules[0], 1))]
+      )]
     );
   }
 }

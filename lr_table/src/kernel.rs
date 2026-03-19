@@ -39,7 +39,7 @@ impl<T> Hash for PositionWithOrdering<T> {
   }
 }
 
-impl<T: Display + Vocabulary> Debug for PositionWithOrdering<T> {
+impl<T: Debug + Vocabulary> Debug for PositionWithOrdering<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{:?}", self.0)
   }
@@ -90,7 +90,7 @@ impl<T> Hash for Kernel<T> {
   }
 }
 
-impl<T: Display + Vocabulary> Debug for Kernel<T> {
+impl<T: Debug + Vocabulary> Debug for Kernel<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{:?}", self.positions)
   }

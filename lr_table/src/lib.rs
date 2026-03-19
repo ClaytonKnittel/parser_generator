@@ -9,7 +9,6 @@ mod iter_ones;
 mod kernel;
 mod kernel_table;
 pub mod lr_table;
-mod partition_closure;
 mod position;
 mod vocab_set;
 pub mod vocabulary;

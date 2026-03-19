@@ -88,6 +88,7 @@ impl<L: Debug + Label, T: Debug> Debug for FixedSizeMap<L, T> {
   }
 }
 
+#[derive(Clone)]
 pub struct SparseFixedSizeMap<L, T> {
   index_map: Vec<usize>,
   map: Vec<T>,
@@ -222,14 +223,19 @@ impl<L: Label, T: Default> Iterator for SparseFixedSizeMapIntoIter<L, T> {
   type Item = (L, T);
 
   fn next(&mut self) -> Option<Self::Item> {
-    let label = Label::from_id(self.label_id);
-    self.sparse_map.maybe_index(label).map(|index| {
+    while self.label_id < self.sparse_map.index_map.len() {
+      let label = Label::from_id(self.label_id);
       self.label_id += 1;
+      let Some(index) = self.sparse_map.maybe_index(label) else {
+        continue;
+      };
 
       let mut tmp = T::default();
       std::mem::swap(&mut self.sparse_map.map[index], &mut tmp);
-      (label, tmp)
-    })
+      return Some((label, tmp));
+    }
+
+    None
   }
 }
 

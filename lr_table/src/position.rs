@@ -184,8 +184,12 @@ impl<T: Vocabulary + Display> Display for Position<T> {
   }
 }
 
-impl<T: Vocabulary + Display> Debug for Position<T> {
+impl<T: Vocabulary + Debug> Debug for Position<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{self}")
+    write!(
+      f,
+      "{:?} at {} [{:?}]",
+      self.production_id, self.position, self.follow_set
+    )
   }
 }

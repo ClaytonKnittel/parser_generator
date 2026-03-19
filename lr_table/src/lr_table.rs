@@ -3,7 +3,7 @@ use std::{fmt::Debug, hash::Hash};
 use itertools::Itertools;
 
 use crate::{
-  closure::closure_follow_sets,
+  closure::partition_closure_by_next_node,
   error::LRTableResult,
   first_map::FirstTable,
   fixed_map::{Label, SparseFixedSizeMap},
@@ -11,7 +11,6 @@ use crate::{
   indexed_grammar::{IndexedGrammar, ProductionLabel, ProductionRuleId},
   kernel::Kernel,
   kernel_table::KernelTable,
-  partition_closure::partition_closure_by_next_node,
   position::Position,
   vocabulary::{AugmentedVocab, Vocabulary},
 };
@@ -204,11 +203,8 @@ impl LRTable {
       // kernels.
       let kernel = kernel_table.get_state(state_id)?;
 
-      // Compute the closure of the kernel.
-      let follow_sets = closure_follow_sets(kernel, grammar, &first_set);
-
-      // Partition the positions of the closure by next tokens.
-      let partitions = partition_closure_by_next_node(kernel, follow_sets, grammar);
+      // Partition the positions of the kernel's closure by next tokens.
+      let partitions = partition_closure_by_next_node(kernel, grammar, &first_set);
 
       Some(LRTableEntryBuilder::try_build_from_partitions(
         partitions,
