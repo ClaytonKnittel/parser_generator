@@ -388,31 +388,3 @@ impl<T: Vocabulary + Display> Display for LRTable<T> {
     Ok(())
   }
 }
-
-#[cfg(test)]
-mod tests {
-  use googletest::prelude::*;
-
-  use crate::{grammar::Grammar, indexed_grammar::IndexedGrammar, lr_table::LRTable};
-
-  #[gtest]
-  fn test() {
-    let grammar = Grammar::from_grammar_str(
-      r#"T -> S
-         S -> S p P
-         S -> P
-         P -> P x V
-         P -> V
-         V -> a
-         V -> b
-         V -> c"#,
-    )
-    .unwrap();
-    let indexed_grammar = IndexedGrammar::build(&grammar);
-    let x = LRTable::build(&indexed_grammar).unwrap();
-
-    println!("{x}");
-
-    expect_true!(false);
-  }
-}
