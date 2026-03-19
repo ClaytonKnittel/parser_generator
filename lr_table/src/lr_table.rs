@@ -1,6 +1,7 @@
 use std::{
   fmt::{Debug, Display},
   hash::Hash,
+  marker::PhantomData,
 };
 
 use itertools::{IntoChunks, Itertools};
@@ -187,16 +188,17 @@ impl<T: Vocabulary> LRTableEntryBuilder<T> {
   }
 }
 
-pub struct LRTable {
+pub struct LRTable<T> {
   /// A vocab_size * num_states sized table of actions.
   action_table: Vec<Option<Action>>,
   /// A num_production_labels * num_states sized table of goto actions.
   goto_table: Vec<Option<GotoAction>>,
   num_states: usize,
+  _phantom: PhantomData<T>,
 }
 
-impl LRTable {
-  fn generate_actions<T: Vocabulary>(
+impl<T: Vocabulary> LRTable<T> {
+  fn generate_actions(
     grammar: &IndexedGrammar<T>,
   ) -> impl Iterator<Item = LRTableResult<LRTableEntryBuilder<T>>> {
     let first_set = FirstTable::build_from_grammar(grammar);
@@ -232,9 +234,10 @@ impl LRTable {
     })
   }
 
-  pub fn build<T: Clone + Vocabulary, L: Clone + Eq + Hash>(
-    grammar: &Grammar<T, L>,
-  ) -> LRTableResult<Self> {
+  pub fn build<L: Clone + Eq + Hash>(grammar: &Grammar<T, L>) -> LRTableResult<Self>
+  where
+    T: Clone,
+  {
     let indexed_grammar = IndexedGrammar::build(grammar);
     Self::generate_actions(&indexed_grammar)
       .map(|entry_builder| {
@@ -245,6 +248,7 @@ impl LRTable {
           action_table: Vec::new(),
           goto_table: Vec::new(),
           num_states: 0,
+          _phantom: PhantomData,
         },
         |mut lr_table, actions| {
           actions.map(|(actions, goto_actions)| {
@@ -256,7 +260,9 @@ impl LRTable {
         },
       )
   }
+}
 
+impl<T> LRTable<T> {
   fn vocab_size(&self) -> usize {
     let num_actions = self.action_table.len();
     debug_assert!(num_actions.is_multiple_of(self.num_states));
@@ -278,7 +284,7 @@ impl LRTable {
   }
 }
 
-impl Display for LRTable {
+impl<T> Display for LRTable<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let mut action_print_width = 1;
     let relevant_vocab =
@@ -295,7 +301,7 @@ impl Display for LRTable {
           vocab
         });
     let goto_print_width = self
-      .actions_iter()
+      .gotos_iter()
       .into_iter()
       .map(|gotos| {
         gotos
@@ -371,12 +377,5 @@ mod tests {
     println!("{x}");
 
     expect_true!(false);
-
-    // let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
-    // let label_a = *label_map.get("A").unwrap();
-    // let production_id_a = indexed
-    //   .production_rule_ids_for_label(label_a)
-    //   .next()
-    //   .unwrap();
   }
 }
