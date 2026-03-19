@@ -1,8 +1,7 @@
-#[cfg(test)]
-use crate::error::{LRTableError, LRTableResult};
-#[cfg(debug_assertions)]
-use crate::indexed_grammar::ProductionLabel;
-use crate::vocabulary::AugmentedVocab;
+use crate::{
+  error::{LRTableError, LRTableResult},
+  vocabulary::AugmentedVocab,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ProductionNode<T, L> {
@@ -52,7 +51,6 @@ impl<T, L> Grammar<T, L> {
   }
 }
 
-#[cfg(test)]
 impl Grammar<u8, String> {
   pub fn from_grammar_str(grammar_str: &str) -> LRTableResult<Self> {
     Ok(Self::new(

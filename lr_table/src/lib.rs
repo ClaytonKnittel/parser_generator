@@ -4,7 +4,7 @@ mod error;
 mod first_map;
 mod fixed_map;
 pub mod grammar;
-mod indexed_grammar;
+pub mod indexed_grammar;
 mod iter_ones;
 mod kernel;
 mod kernel_table;
