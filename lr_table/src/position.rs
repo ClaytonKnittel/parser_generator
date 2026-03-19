@@ -83,6 +83,10 @@ impl<T> Position<T> {
     (self.production_id, self.position)
   }
 
+  pub fn at_end_of_rule(&self, grammar: &IndexedGrammar<T>) -> bool {
+    self.position == grammar.production_rule(self.production_id).rule().len()
+  }
+
   /// Returns the next node at this position, or `None` if this position is at
   /// the end of its rule.
   pub fn next_node<'a>(
@@ -97,7 +101,7 @@ impl<T> Position<T> {
   /// Advances this position to the next node. This must not be called on
   /// positions that are already at the end of their rule.
   pub fn advance(&mut self, grammar: &IndexedGrammar<T>) {
-    debug_assert!(self.position < grammar.production_rule(self.production_id).rule().len());
+    debug_assert!(!self.at_end_of_rule(grammar));
     self.position += 1;
   }
 

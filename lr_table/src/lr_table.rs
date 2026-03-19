@@ -43,7 +43,7 @@ impl Display for Action {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
       Self::Shift { next_state } => write!(f, "s{}", next_state.0),
-      Self::Reduce { rule } => write!(f, "s{}", rule.id()),
+      Self::Reduce { rule } => write!(f, "r{}", rule.id()),
       Self::Accept => write!(f, "acc"),
     }
   }
@@ -102,6 +102,8 @@ impl<T: Vocabulary> LRTableEntryBuilder<T> {
         // through each individual position in the partition and add a reduce
         // action for each token in the rule's follow set.
         for position in positions {
+          debug_assert!(position.at_end_of_rule(grammar));
+
           if position.rule() == grammar.root_production_rule() {
             // Special case for the root rule, which is the only rule that can
             // accept.
@@ -125,7 +127,7 @@ impl<T: Vocabulary> LRTableEntryBuilder<T> {
       debug_assert!(
         positions
           .iter()
-          .all(|position| position.next_node(grammar) == Some(&node))
+          .all(|position| !position.at_end_of_rule(grammar))
       );
 
       // Advance all positions in the partition, given that these positions are
