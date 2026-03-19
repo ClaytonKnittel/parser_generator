@@ -1,4 +1,7 @@
-use std::fmt::{Debug, Display};
+use std::{
+  fmt::{Debug, Display},
+  hash::Hash,
+};
 
 use crate::{
   first_map::FirstTable,
@@ -61,7 +64,6 @@ pub fn follow_set_for_rule<T: Vocabulary>(
   token_set
 }
 
-#[derive(PartialEq, Eq)]
 pub struct Position<T> {
   production_id: ProductionRuleId,
   position: usize,
@@ -176,6 +178,24 @@ impl<T> Clone for Position<T> {
       position: self.position,
       follow_set: self.follow_set.clone(),
     }
+  }
+}
+
+impl<T> PartialEq for Position<T> {
+  fn eq(&self, other: &Self) -> bool {
+    (self.production_id, self.position, &self.follow_set).eq(&(
+      other.production_id,
+      other.position,
+      &other.follow_set,
+    ))
+  }
+}
+
+impl<T> Eq for Position<T> {}
+
+impl<T> Hash for Position<T> {
+  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    (self.production_id, self.position, &self.follow_set).hash(state)
   }
 }
 

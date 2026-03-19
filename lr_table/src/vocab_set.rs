@@ -1,5 +1,6 @@
 use std::{
   fmt::{Debug, Display},
+  hash::{Hash, Hasher},
   marker::PhantomData,
 };
 
@@ -70,6 +71,12 @@ impl<T> PartialEq for VocabSet<T> {
 }
 
 impl<T> Eq for VocabSet<T> {}
+
+impl<T> Hash for VocabSet<T> {
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    self.set.hash(state)
+  }
+}
 
 impl<T> Clone for VocabSet<T> {
   fn clone(&self) -> Self {

@@ -1,6 +1,6 @@
 use crate::iter_ones::IterOnes;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct BitSet {
   bits: Vec<u64>,
   len: usize,
