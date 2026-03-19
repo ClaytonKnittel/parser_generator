@@ -1,7 +1,7 @@
-pub use parser_generator_impl::grammar_def;
+pub use parser_generator_impl::grammar;
 
 pub fn test_fn() {
-  // let parser = grammar_def!(
+  // let parser = grammar!(
   //   0
   //   // if no {} given, return entire consumed text.
   //   // a re before text means to treat the text as regex.
@@ -41,7 +41,7 @@ mod tests {
     };
   }
 
-  parser_generator_impl::grammar_def! {
+  parser_generator_impl::grammar! {
     name: TestSimple;
     terminal: char;
 
@@ -68,7 +68,7 @@ mod tests {
     assert!(TestSimple::parse(char_iter!("ab")).is_some());
   }
 
-  parser_generator_impl::grammar_def! {
+  parser_generator_impl::grammar! {
     name: AddMul;
     terminal: char;
 
@@ -129,7 +129,7 @@ mod tests {
     }
   }
 
-  parser_generator_impl::grammar_def! {
+  parser_generator_impl::grammar! {
     name: GetReq;
     terminal: char;
 
@@ -177,7 +177,7 @@ mod tests {
     C4,
   }
 
-  parser_generator_impl::grammar_def! {
+  parser_generator_impl::grammar! {
     name: TestNonLALR;
     terminal: char;
 

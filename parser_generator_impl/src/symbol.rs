@@ -1,7 +1,20 @@
-use proc_macro::TokenTree::{Group, Ident, Literal, Punct};
-use proc_macro::{Delimiter, Span, TokenStream};
-use proc_macro_error::abort;
+use proc_macro::TokenTree::{self, Group, Ident, Literal, Punct};
+use proc_macro::{Delimiter, Spacing, Span, TokenStream};
 use std::fmt::{Display, Formatter};
+
+use crate::error::{ParserGeneratorError, ParserGeneratorResult};
+
+fn is_leading_ident_char(c: char) -> bool {
+  return char::is_alphabetic(c) || c == '_';
+}
+
+fn is_ident_char(c: char) -> bool {
+  return char::is_alphanumeric(c) || c == '_';
+}
+
+fn string_is_identifier(string: &str) -> bool {
+  string.starts_with(is_leading_ident_char) && string.chars().all(is_ident_char)
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Operator {
@@ -23,25 +36,6 @@ pub enum Operator {
   Scope,
   // !
   Bang,
-  // Anything else
-  Unknown,
-}
-
-impl Operator {
-  pub fn to_string(&self) -> &'static str {
-    match self {
-      Operator::Arrow => "=>",
-      Operator::Colon => ":",
-      Operator::Semicolon => ";",
-      Operator::NumberSign => "#",
-      Operator::BeginProd => "<",
-      Operator::EndProd => ">",
-      Operator::Pipe => "|",
-      Operator::Scope => "::",
-      Operator::Bang => "!",
-      Operator::Unknown => "?",
-    }
-  }
 }
 
 impl Operator {
@@ -64,7 +58,21 @@ impl Operator {
 
 impl Display for Operator {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    write!(f, "{}", self.to_string())
+    write!(
+      f,
+      "{}",
+      match self {
+        Self::Arrow => "=>",
+        Self::Colon => ":",
+        Self::Semicolon => ";",
+        Self::NumberSign => "#",
+        Self::BeginProd => "<",
+        Self::EndProd => ">",
+        Self::Pipe => "|",
+        Self::Scope => "::",
+        Self::Bang => "!",
+      }
+    )
   }
 }
 
@@ -91,145 +99,79 @@ pub struct Symbol {
 }
 
 impl Symbol {
-  pub fn new(sym: SymbolT, span: Span, tokens: TokenStream) -> Self {
-    Self { sym, span, tokens }
+  fn from_group(group: proc_macro::Group, tokens: TokenTree) -> ParserGeneratorResult<Self> {
+    let span = group.span();
+    let tokens = tokens.into();
+
+    let sym = match group.delimiter() {
+      Delimiter::Brace => SymbolT::Group(group),
+      Delimiter::Parenthesis => SymbolT::Tuple(group.stream()),
+      Delimiter::Bracket => SymbolT::Array(group.stream()),
+      Delimiter::None => {
+        return Err(ParserGeneratorError::new(
+          "Group without delimiter",
+          group.span_open(),
+        ))
+      }
+    };
+
+    Ok(Self { sym, span, tokens })
   }
 
-  fn is_leading_ident_char(c: char) -> bool {
-    return char::is_alphabetic(c) || c == '_';
-  }
-
-  fn is_ident_char(c: char) -> bool {
-    return char::is_alphanumeric(c) || c == '_';
-  }
-
-  fn parse_ident(input: &str, span: Span, tokens: TokenStream) -> Self {
-    if input.chars().all(Self::is_ident_char)
-      && Self::is_leading_ident_char(input.chars().nth(0).unwrap())
-    {
-      return Symbol::new(SymbolT::Ident(input.to_string()), span, tokens);
+  fn verify_ident_spelling(ident: &proc_macro::Ident) -> ParserGeneratorResult {
+    let ident_str = ident.to_string();
+    if string_is_identifier(&ident_str) {
+      Ok(())
     } else {
-      abort!(span, format!("Unrecognized identifier: {}", input));
+      Err(ParserGeneratorError::new(
+        format!(
+          "Identifier \"{ident_str}\" is not alphanumeric/_ with a non-numeric leading character"
+        ),
+        ident.span(),
+      ))
     }
   }
 
-  fn parse_literal(input: &str, span: Span, tokens: TokenStream) -> Self {
-    if input.chars().nth(0) == Some('\'') {
-      return Symbol::new(SymbolT::Literal(input.to_string()), span, tokens);
-    }
-    if input.chars().all(Self::is_ident_char) {
-      return Symbol::new(SymbolT::Ident(input.to_string()), span, tokens);
+  fn from_ident(ident: proc_macro::Ident, tokens: TokenTree) -> ParserGeneratorResult<Self> {
+    Self::verify_ident_spelling(&ident)?;
+    Ok(Self {
+      sym: SymbolT::Ident(ident.to_string()),
+      span: ident.span(),
+      tokens: tokens.into(),
+    })
+  }
+
+  fn from_literal(literal: proc_macro::Literal, tokens: TokenTree) -> ParserGeneratorResult<Self> {
+    let span = literal.span();
+    let tokens = tokens.into();
+
+    let literal_str = literal.to_string();
+    if literal_str.starts_with('\'') {
+      Ok(Self {
+        sym: SymbolT::Literal(literal_str),
+        span,
+        tokens,
+      })
+    } else if string_is_identifier(&literal_str) {
+      Ok(Self {
+        sym: SymbolT::Ident(literal_str),
+        span,
+        tokens,
+      })
     } else {
-      abort!(span, format!("Unrecognized literal: {}", input));
+      Err(ParserGeneratorError::new(
+        format!("Unrecognized literal: {literal_str}"),
+        span,
+      ))
     }
   }
 
-  fn parse_op(input: &str, span: Span, tokens: TokenStream) -> Self {
-    match input {
-      "=>" => Symbol::new(SymbolT::Op(Operator::Arrow), span, tokens),
-      ":" => Symbol::new(SymbolT::Op(Operator::Colon), span, tokens),
-      ";" => Symbol::new(SymbolT::Op(Operator::Semicolon), span, tokens),
-      "#" => Symbol::new(SymbolT::Op(Operator::NumberSign), span, tokens),
-      "<" => Symbol::new(SymbolT::Op(Operator::BeginProd), span, tokens),
-      ">" => Symbol::new(SymbolT::Op(Operator::EndProd), span, tokens),
-      "|" => Symbol::new(SymbolT::Op(Operator::Pipe), span, tokens),
-      "::" => Symbol::new(SymbolT::Op(Operator::Scope), span, tokens),
-      "!" => Symbol::new(SymbolT::Op(Operator::Bang), span, tokens),
-      _ => Symbol::new(SymbolT::Op(Operator::Unknown), span, tokens),
+  fn as_punctuation(operator: Operator, span: Span, tokens: TokenStream) -> Self {
+    Self {
+      sym: SymbolT::Op(operator),
+      span,
+      tokens,
     }
-  }
-
-  pub fn from_stream(tokens: TokenStream) -> Vec<Self> {
-    let (list, _prev_chars, _prev_tokens) = tokens.into_iter().fold(
-      (Vec::new(), None, None),
-      |(mut syms, prev_chars, prev_tokens), token| match token.clone() {
-        Group(group) => match group.delimiter() {
-          Delimiter::Brace => {
-            syms.push(Symbol::new(
-              SymbolT::Group(group.clone()),
-              group.span(),
-              token.into(),
-            ));
-            return (syms, None, None);
-          }
-          Delimiter::Parenthesis => {
-            syms.push(Symbol::new(
-              SymbolT::Tuple(group.stream()),
-              group.span(),
-              token.into(),
-            ));
-            return (syms, None, None);
-          }
-          Delimiter::Bracket => {
-            syms.push(Symbol::new(
-              SymbolT::Array(group.stream()),
-              group.span(),
-              token.into(),
-            ));
-            return (syms, None, None);
-          }
-          _ => abort!(
-            group.span_open(),
-            format!(
-              "Unrecognized token \"{}\"",
-              match group.delimiter() {
-                Delimiter::Brace => "{",
-                Delimiter::Bracket => "[",
-                Delimiter::Parenthesis => "(",
-                Delimiter::None => "None",
-              }
-            )
-          ),
-        },
-        Ident(ident) => {
-          syms.push(Symbol::parse_ident(
-            &ident.to_string(),
-            token.span(),
-            token.into(),
-          ));
-          return (syms, None, None);
-        }
-        Literal(literal) => {
-          syms.push(Symbol::parse_literal(
-            &literal.to_string(),
-            token.span(),
-            token.into(),
-          ));
-          return (syms, None, None);
-        }
-        Punct(punct) => {
-          let prev_chars: (String, Option<Span>) = prev_chars.unwrap_or(("".to_string(), None));
-          let (mut cur_chars, prev_span) = prev_chars;
-
-          let (cur_span, cur_tokens) = match (prev_span, prev_tokens) {
-            (Some(span), Some(mut tokens)) => {
-              if Operator::should_separate(&cur_chars, punct.as_char()) {
-                syms.push(Symbol::parse_op(&cur_chars, span, tokens));
-                cur_chars = "".to_string();
-                (token.span(), token.into())
-              } else {
-                tokens.extend(TokenStream::from(token.clone()));
-                (span.join(token.span()).unwrap(), tokens)
-              }
-            }
-            (None, None) => (token.span(), token.into()),
-            _ => unreachable!(),
-          };
-          cur_chars += &String::from(punct.as_char());
-
-          if punct.spacing() == proc_macro::Spacing::Joint {
-            // There will be a character following this.
-            return (syms, Some((cur_chars, Some(cur_span))), Some(cur_tokens));
-          } else {
-            // This is the last character in the punct.
-            syms.push(Symbol::parse_op(&cur_chars, cur_span, cur_tokens));
-            return (syms, None, None);
-          }
-        }
-      },
-    );
-
-    return list;
   }
 }
 
@@ -244,4 +186,137 @@ impl Display for Symbol {
       SymbolT::Literal(token_stream) => write!(f, "{:?}", token_stream),
     }
   }
+}
+
+struct SymbolMeta {
+  span: Span,
+  tokens: TokenStream,
+}
+
+impl SymbolMeta {
+  fn new(span: Span, tokens: TokenStream) -> Self {
+    Self { span, tokens }
+  }
+
+  fn merge(&mut self, span: Span, tokens: TokenStream) -> ParserGeneratorResult {
+    self.span = self
+      .span
+      .join(span)
+      .ok_or_else(|| ParserGeneratorError::new("Failed to join spans of adjacent puncts", span))?;
+    self.tokens.extend(TokenStream::from(tokens));
+
+    Ok(())
+  }
+}
+
+enum PunctBuilder {
+  Empty,
+  PrevWasEq(SymbolMeta),
+  PrevWasColon(SymbolMeta),
+}
+
+impl PunctBuilder {
+  fn consume_next(
+    &mut self,
+    punct: proc_macro::Punct,
+    tokens: TokenTree,
+  ) -> ParserGeneratorResult<Option<Symbol>> {
+    let span = punct.span();
+    let tokens = tokens.into();
+
+    Ok(match self {
+      Self::Empty => match punct.as_char() {
+        ';' => Some(Symbol::as_punctuation(Operator::Semicolon, span, tokens)),
+        '#' => Some(Symbol::as_punctuation(Operator::NumberSign, span, tokens)),
+        '<' => Some(Symbol::as_punctuation(Operator::BeginProd, span, tokens)),
+        '>' => Some(Symbol::as_punctuation(Operator::EndProd, span, tokens)),
+        '|' => Some(Symbol::as_punctuation(Operator::Pipe, span, tokens)),
+        '!' => Some(Symbol::as_punctuation(Operator::Bang, span, tokens)),
+        '=' => match punct.spacing() {
+          Spacing::Joint => {
+            *self = PunctBuilder::PrevWasEq(SymbolMeta::new(span, tokens));
+            None
+          }
+          Spacing::Alone => return Err(ParserGeneratorError::new("Unexpected token \"=\"", span)),
+        },
+        ':' => match punct.spacing() {
+          Spacing::Joint => {
+            *self = PunctBuilder::PrevWasColon(SymbolMeta::new(span, tokens));
+            None
+          }
+          Spacing::Alone => Some(Symbol::as_punctuation(Operator::Colon, span, tokens)),
+        },
+        _ => {
+          return Err(ParserGeneratorError::new(
+            format!("Unexpected token \"{}\"", punct.as_char()),
+            span,
+          ));
+        }
+      },
+      Self::PrevWasEq(meta) => match punct.as_char() {
+        '>' => {
+          meta.merge(span, tokens)?;
+          let symbol = Symbol::as_punctuation(Operator::Arrow, meta.span, meta.tokens.clone());
+          *self = PunctBuilder::Empty;
+          Some(symbol)
+        }
+        _ => {
+          return Err(ParserGeneratorError::new(
+            format!("Unexpected token \"={}\"", punct.as_char()),
+            span,
+          ));
+        }
+      },
+      Self::PrevWasColon(meta) => match punct.as_char() {
+        '>' => {
+          meta.merge(span, tokens)?;
+          let symbol = Symbol::as_punctuation(Operator::Arrow, meta.span, meta.tokens.clone());
+          *self = PunctBuilder::Empty;
+          Some(symbol)
+        }
+        _ => {
+          return Err(ParserGeneratorError::new(
+            format!("Unexpected token \":{}\"", punct.as_char()),
+            span,
+          ));
+        }
+      },
+    })
+  }
+}
+
+impl Default for PunctBuilder {
+  fn default() -> Self {
+    Self::Empty
+  }
+}
+
+#[derive(Default)]
+struct SymbolBuilder {
+  punct_builder: PunctBuilder,
+}
+
+impl SymbolBuilder {
+  fn consume_next_token(&mut self, tokens: TokenTree) -> ParserGeneratorResult<Option<Symbol>> {
+    Ok(match tokens.clone() {
+      Group(group) => Some(Symbol::from_group(group, tokens)?),
+      Ident(ident) => Some(Symbol::from_ident(ident, tokens)?),
+      Literal(literal) => Some(Symbol::from_literal(literal, tokens)?),
+      Punct(punct) => self.punct_builder.consume_next(punct, tokens)?,
+    })
+  }
+}
+
+pub fn tokenize_from_stream(tokens: TokenStream) -> ParserGeneratorResult<Vec<Symbol>> {
+  let (list, _maybe_prev_chars_and_tokens) = tokens.into_iter().try_fold(
+    (Vec::new(), SymbolBuilder::default()),
+    |(mut syms, mut symbol_builder), tokens| {
+      if let Some(symbol) = symbol_builder.consume_next_token(tokens)? {
+        syms.push(symbol);
+      }
+      Ok((syms, symbol_builder))
+    },
+  )?;
+
+  return Ok(list);
 }
