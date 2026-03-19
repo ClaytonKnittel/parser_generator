@@ -36,7 +36,7 @@ impl Operator {
       Operator::NumberSign => "#",
       Operator::BeginProd => "<",
       Operator::EndProd => ">",
-      Operator::Pipe => "!",
+      Operator::Pipe => "|",
       Operator::Scope => "::",
       Operator::Bang => "!",
       Operator::Unknown => "?",
