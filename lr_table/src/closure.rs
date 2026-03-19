@@ -361,6 +361,32 @@ mod tests {
   }
 
   #[gtest]
+  fn test_closure_skip_all_rules() {
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> B C D
+         B -> b
+         B -> !
+         C -> c
+         C -> !
+         D -> d
+         D -> !"#,
+    )
+    .unwrap();
+
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let label_a = *label_map.get("A").unwrap();
+    let a_rules = indexed.production_rule_ids_for_label(label_a).collect_vec();
+    let label_b = *label_map.get("B").unwrap();
+    expect_that!(
+      closure_follow_sets(Position::new_top_level(a_rules[0]), &indexed),
+      elements_are![&(
+        label_b,
+        VocabSet::from_iter([b'c'.into(), b'd'.into(), AugmentedVocab::EndOfStream])
+      )]
+    );
+  }
+
+  #[gtest]
   fn test_closure_follow_set_before_terminal() {
     let grammar = Grammar::from_grammar_str(
       r#"A -> B c
@@ -561,6 +587,43 @@ mod tests {
         none(),
         elements_are![property!(&Position::<_>.position(), (b_rules[0], 1))]
       )]
+    );
+  }
+
+  #[gtest]
+  fn test_closure_partition_skip_all_rules() {
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> B C D
+         B -> b
+         B -> !
+         C -> c
+         C -> !
+         D -> d
+         D -> !"#,
+    )
+    .unwrap();
+
+    let (indexed, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let label_a = *label_map.get("A").unwrap();
+    let a_rules = indexed.production_rule_ids_for_label(label_a).collect_vec();
+    let label_b = *label_map.get("B").unwrap();
+    let b_rules = indexed.production_rule_ids_for_label(label_b).collect_vec();
+    expect_that!(
+      partition_closure_by_next_node([Position::new_top_level(a_rules[0])], &indexed),
+      unordered_elements_are![
+        (
+          none(),
+          elements_are![property!(&Position::<_>.position(), (b_rules[1], 0))]
+        ),
+        (
+          some(eq(&ProductionNode::Production(label_b))),
+          elements_are![property!(&Position::<_>.position(), (a_rules[0], 0))]
+        ),
+        (
+          some(eq(&ProductionNode::Terminal(b'b'.into()))),
+          elements_are![property!(&Position::<_>.position(), (b_rules[0], 0))]
+        )
+      ]
     );
   }
 }

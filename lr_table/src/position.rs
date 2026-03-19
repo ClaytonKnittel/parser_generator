@@ -84,7 +84,7 @@ impl<T> Position<T> {
   }
 
   pub fn at_end_of_rule(&self, grammar: &IndexedGrammar<T>) -> bool {
-    self.position == grammar.production_rule(self.production_id).rule().len()
+    self.next_node(grammar).is_none()
   }
 
   /// Returns the next node at this position, or `None` if this position is at
@@ -94,8 +94,9 @@ impl<T> Position<T> {
     grammar: &'a IndexedGrammar<T>,
   ) -> Option<&'a ProductionNode<T, ProductionLabel>> {
     let production = grammar.production_rule(self.production_id);
-    let rule = &production.rule()[self.position..];
-    rule.first()
+    production.rule()[self.position..]
+      .iter()
+      .find(|node| !matches!(node, ProductionNode::Terminal(AugmentedVocab::Epsilon)))
   }
 
   /// Advances this position to the next node. This must not be called on

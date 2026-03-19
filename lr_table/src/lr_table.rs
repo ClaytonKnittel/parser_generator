@@ -356,8 +356,13 @@ mod tests {
   #[gtest]
   fn test() {
     let grammar = Grammar::from_grammar_str(
-      r#"A -> B
-         B -> a"#,
+      r#"A -> B C D
+         B -> b
+         B -> !
+         C -> c
+         C -> !
+         D -> d
+         D -> !"#,
     )
     .unwrap();
     let x = LRTable::build(&grammar).unwrap();
