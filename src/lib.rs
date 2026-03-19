@@ -168,4 +168,33 @@ mod tests {
       Req::new(RequestType::GET, ":abcdefgh".to_string())
     );
   }
+
+  #[derive(Debug, PartialEq, Eq)]
+  enum TestNonLALRPath {
+    C1,
+    C2,
+    C3,
+    C4,
+  }
+
+  parser_generator_impl::grammar_def! {
+    name: TestNonLALR;
+    terminal: char;
+
+    <T>: TestNonLALRPath => <S> { #S };
+    <S>: TestNonLALRPath => <A> 'a' { TestNonLALRPath::C1 };
+    <S>: TestNonLALRPath => 'b' <A> 'c' { TestNonLALRPath::C2 };
+    <S>: TestNonLALRPath => <B> 'c' { TestNonLALRPath::C3 };
+    <S>: TestNonLALRPath => 'b' <B> 'a' { TestNonLALRPath::C4 };
+    <A> => 'd';
+    <B> => 'd';
+  }
+
+  #[test]
+  fn test_non_lalr() {
+    assert_full_evaluates!(TestNonLALR::parse(char_iter!("da")), TestNonLALRPath::C1);
+    assert_full_evaluates!(TestNonLALR::parse(char_iter!("bdc")), TestNonLALRPath::C2);
+    assert_full_evaluates!(TestNonLALR::parse(char_iter!("dc")), TestNonLALRPath::C3);
+    assert_full_evaluates!(TestNonLALR::parse(char_iter!("bda")), TestNonLALRPath::C4);
+  }
 }

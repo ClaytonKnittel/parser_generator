@@ -1,4 +1,3 @@
-#![feature(get_mut_unchecked)]
 #![allow(dead_code)]
 
 mod aug_bnf_dyn;
