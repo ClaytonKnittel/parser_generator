@@ -22,7 +22,7 @@ impl<T: Vocabulary> VocabSet<T> {
   }
 
   pub fn get(&self, value: &T) -> bool {
-    self.set.get(value.ordinal())
+    self.set.has(value.ordinal())
   }
 
   pub fn set(&mut self, value: &T) {

@@ -3,7 +3,8 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash};
 use itertools::Itertools;
 
 use crate::{
-  fixed_map::{FixedSizeMap, Label, SparseFixedSizeMap},
+  error::{LRTableResult, grammar_error},
+  fixed_map::{FixedSizeMap, FixedSizeSet, Label, SparseFixedSizeMap},
   grammar::{Grammar, ProductionNode, ProductionRule},
   vocabulary::{AugmentedVocab, Vocabulary},
 };
@@ -71,17 +72,63 @@ pub struct IndexedGrammar<T> {
 }
 
 impl<T: Clone> IndexedGrammar<T> {
+  fn verify_connected(&self) -> LRTableResult {
+    let mut rule_set = self.new_production_label_set();
+    let mut labels_to_explore = vec![ProductionLabel(0)];
+    rule_set.set(ProductionLabel(0));
+
+    while let Some(label) = labels_to_explore.pop() {
+      debug_assert!(rule_set.has(label));
+      for rule in self.production_rules_for_label(label) {
+        for node in rule.rule() {
+          if let ProductionNode::Production(label) = node
+            && !rule_set.has(*label)
+          {
+            rule_set.set(*label);
+            labels_to_explore.push(*label);
+          }
+        }
+      }
+    }
+
+    if rule_set.full() {
+      Ok(())
+    } else {
+      Err(grammar_error!(NotConnected))
+    }
+  }
+
   fn build_from_grammar<L: Clone + Eq + Hash>(
     grammar: &Grammar<T, L>,
-  ) -> (Self, HashMap<L, ProductionLabel>) {
-    let mut label_map = HashMap::new();
-    let mut label_groups = Vec::new();
+  ) -> LRTableResult<(Self, HashMap<L, ProductionLabel>)> {
+    let mut productions_iter = grammar.productions().iter();
+    let root_production = productions_iter
+      .next()
+      .ok_or(grammar_error!(EmptyGrammar))?;
 
-    for production in grammar.productions() {
+    let mut label_map =
+      HashMap::from_iter([(root_production.symbol().clone(), ProductionLabel(0))]);
+    let mut label_groups = vec![vec![root_production]];
+
+    for production in productions_iter {
+      let label = production.symbol().clone();
+      if label == *root_production.symbol() {
+        return Err(grammar_error!(RootProductionRepeated));
+      }
+      if production
+        .rule()
+        .iter()
+        .filter_map(|node| match node {
+          ProductionNode::Production(label) => Some(label),
+          ProductionNode::Terminal(..) => None,
+        })
+        .any(|label| label == root_production.symbol())
+      {
+        return Err(grammar_error!(RootProductionReferenced));
+      }
+
       let map_len = label_map.len();
-      let label = *label_map
-        .entry(production.symbol().clone())
-        .or_insert(ProductionLabel(map_len));
+      let label = *label_map.entry(label).or_insert(ProductionLabel(map_len));
 
       if label_map.len() != map_len {
         debug_assert_eq!(label.0, label_groups.len());
@@ -130,24 +177,25 @@ impl<T: Clone> IndexedGrammar<T> {
       })
       .collect_vec();
 
-    (
-      Self {
-        rules,
-        rule_offset_map,
-      },
-      label_map,
-    )
+    let indexed_grammar = Self {
+      rules,
+      rule_offset_map,
+    };
+
+    indexed_grammar.verify_connected()?;
+
+    Ok((indexed_grammar, label_map))
   }
 
   #[cfg(test)]
   pub fn build_with_label_map<L: Clone + Eq + Hash>(
     grammar: &Grammar<T, L>,
-  ) -> (Self, HashMap<L, ProductionLabel>) {
+  ) -> LRTableResult<(Self, HashMap<L, ProductionLabel>)> {
     Self::build_from_grammar(grammar)
   }
 
-  pub fn build<L: Clone + Eq + Hash>(grammar: &Grammar<T, L>) -> Self {
-    Self::build_from_grammar(grammar).0
+  pub fn build<L: Clone + Eq + Hash>(grammar: &Grammar<T, L>) -> LRTableResult<Self> {
+    Ok(Self::build_from_grammar(grammar)?.0)
   }
 }
 
@@ -173,6 +221,10 @@ impl<T> IndexedGrammar<T> {
     T: Vocabulary,
   {
     SparseFixedSizeMap::new(AugmentedVocab::<T>::SIZE)
+  }
+
+  fn new_production_label_set(&self) -> FixedSizeSet<ProductionLabel> {
+    FixedSizeSet::new(self.labels_count())
   }
 
   pub fn new_production_label_map<U: Default>(&self) -> FixedSizeMap<ProductionLabel, U> {
@@ -223,6 +275,7 @@ mod tests {
   use googletest::prelude::*;
 
   use crate::{
+    error::{BuildGrammarError, LRTableError},
     grammar::{Grammar, ProductionNode, ProductionRule},
     indexed_grammar::{IndexedGrammar, ProductionLabel},
     vocabulary::AugmentedVocab,
@@ -239,7 +292,7 @@ mod tests {
   fn test_one_rule() {
     let grammar = Grammar::from_grammar_str("A -> a").unwrap();
 
-    let (indexed_grammar, label_map) = IndexedGrammar::build_with_label_map(&grammar);
+    let (indexed_grammar, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     assert_eq!(indexed_grammar.labels_count(), 1);
     let label_a = *label_map.get("A").unwrap();
     expect_that!(
@@ -252,43 +305,72 @@ mod tests {
   }
 
   #[gtest]
-  fn test_two_productions() {
-    let grammar = Grammar::from_grammar_str(
-      r#"A -> a
-         B -> b"#,
-    )
-    .unwrap();
-
-    let (indexed_grammar, label_map) = IndexedGrammar::build_with_label_map(&grammar);
-    assert_eq!(indexed_grammar.labels_count(), 2);
-    let label_a = *label_map.get("A").unwrap();
-    expect_that!(
-      production_rules(&indexed_grammar, label_a),
-      elements_are![&&ProductionRule::new(
-        label_a,
-        vec![ProductionNode::Terminal(AugmentedVocab::Token(b'a'))]
-      )]
-    );
-    let label_b = *label_map.get("B").unwrap();
-    expect_that!(
-      production_rules(&indexed_grammar, label_b),
-      elements_are![&&ProductionRule::new(
-        label_b,
-        vec![ProductionNode::Terminal(AugmentedVocab::Token(b'b'))]
-      )]
-    );
-  }
-
-  #[gtest]
-  fn test_two_rules() {
+  fn test_root_production_duplicated() {
     let grammar = Grammar::from_grammar_str(
       r#"A -> a
          A -> b"#,
     )
     .unwrap();
 
-    let (indexed_grammar, label_map) = IndexedGrammar::build_with_label_map(&grammar);
-    assert_eq!(indexed_grammar.labels_count(), 1);
+    let grammar = IndexedGrammar::build(&grammar);
+    expect_that!(
+      grammar.err(),
+      some(pat!(LRTableError::BuildGrammar(pat!(
+        BuildGrammarError::RootProductionRepeated
+      ))))
+    );
+  }
+
+  #[gtest]
+  fn test_root_production_referenced() {
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> B
+         B -> C
+         C -> A"#,
+    )
+    .unwrap();
+
+    let grammar = IndexedGrammar::build(&grammar);
+    expect_that!(
+      grammar.err(),
+      some(pat!(LRTableError::BuildGrammar(pat!(
+        BuildGrammarError::RootProductionReferenced
+      ))))
+    );
+  }
+
+  #[gtest]
+  fn test_grammar_not_connected() {
+    let grammar = Grammar::from_grammar_str(
+      r#"A -> B
+         B -> C
+         C -> c
+         D -> E
+         D -> !
+         E -> c D"#,
+    )
+    .unwrap();
+
+    let grammar = IndexedGrammar::build(&grammar);
+    expect_that!(
+      grammar.err(),
+      some(pat!(LRTableError::BuildGrammar(pat!(
+        BuildGrammarError::NotConnected
+      ))))
+    );
+  }
+
+  #[gtest]
+  fn test_two_rules() {
+    let grammar = Grammar::from_grammar_str(
+      r#"S -> A
+         A -> a
+         A -> b"#,
+    )
+    .unwrap();
+
+    let (indexed_grammar, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
+    assert_eq!(indexed_grammar.labels_count(), 2);
     let label_a = *label_map.get("A").unwrap();
     expect_that!(
       production_rules(&indexed_grammar, label_a),

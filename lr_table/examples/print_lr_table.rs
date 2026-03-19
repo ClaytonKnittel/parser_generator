@@ -12,7 +12,7 @@ fn main() {
        V -> c"#,
   )
   .unwrap();
-  let indexed_grammar = IndexedGrammar::build(&grammar);
+  let indexed_grammar = IndexedGrammar::build(&grammar).unwrap();
   let lr_table = LRTable::build(&indexed_grammar).unwrap();
 
   println!("{lr_table}");

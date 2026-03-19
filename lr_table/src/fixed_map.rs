@@ -2,7 +2,10 @@ use std::{fmt::Debug, marker::PhantomData};
 
 use itertools::Itertools;
 
-use crate::error::{LRTableError, LRTableResult};
+use crate::{
+  bit_set::BitSet,
+  error::{LRTableError, LRTableResult},
+};
 
 pub trait Label: Copy {
   fn id(self) -> usize;
@@ -23,6 +26,32 @@ impl<L: Label> Label for Option<L> {
     } else {
       Some(L::from_id(id - 1))
     }
+  }
+}
+
+pub struct FixedSizeSet<L> {
+  set: BitSet,
+  _phantom: PhantomData<L>,
+}
+
+impl<L: Label> FixedSizeSet<L> {
+  pub fn new(capacity: usize) -> Self {
+    Self {
+      set: BitSet::new(capacity),
+      _phantom: PhantomData,
+    }
+  }
+
+  pub fn has(&self, label: L) -> bool {
+    self.set.has(label.id())
+  }
+
+  pub fn set(&mut self, label: L) {
+    self.set.set(label.id())
+  }
+
+  pub fn full(&self) -> bool {
+    self.set.full()
   }
 }
 
