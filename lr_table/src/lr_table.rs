@@ -302,7 +302,7 @@ impl<T> LRTable<T> {
   }
 }
 
-impl<T> Display for LRTable<T> {
+impl<T: Vocabulary + Display> Display for LRTable<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let mut action_print_width = 1;
     let relevant_vocab =
@@ -334,6 +334,21 @@ impl<T> Display for LRTable<T> {
       .unwrap_or(1);
 
     let state_index_print_width = format!("{}", self.num_states).len();
+
+    // Print header
+    write!(f, "{:count$}  ", "", count = state_index_print_width)?;
+    for token in relevant_vocab
+      .for_each()
+      .map(AugmentedVocab::<T>::from_ordinal)
+    {
+      write!(
+        f,
+        "{:count$} ",
+        format!("{token}"),
+        count = action_print_width
+      )?;
+    }
+    writeln!(f)?;
 
     let action_chunks = self.actions_iter();
     let mut actions_iter = action_chunks.into_iter();

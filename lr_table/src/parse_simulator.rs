@@ -188,4 +188,28 @@ mod tests {
     expect_false!(parser.parse_stream(b"abab"));
     expect_false!(parser.parse_stream(b"baba"));
   }
+
+  #[gtest]
+  fn test_sum_product() {
+    let grammar = Grammar::from_grammar_str(
+      r#"T -> S
+         S -> S p P
+         S -> P
+         P -> P x V
+         P -> V
+         V -> a
+         V -> b
+         V -> c"#,
+    )
+    .unwrap();
+    let parser = Parser::new(&grammar).unwrap();
+
+    expect_true!(parser.parse_stream(b"a"));
+    expect_true!(parser.parse_stream(b"apb"));
+    expect_true!(parser.parse_stream(b"cxa"));
+    expect_true!(parser.parse_stream(b"apbxc"));
+    expect_true!(parser.parse_stream(b"apbpcpapbpc"));
+    expect_true!(parser.parse_stream(b"axbxcxaxbxc"));
+    expect_true!(parser.parse_stream(b"axbpcxaxbpc"));
+  }
 }
