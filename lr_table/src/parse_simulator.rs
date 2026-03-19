@@ -211,5 +211,14 @@ mod tests {
     expect_true!(parser.parse_stream(b"apbpcpapbpc"));
     expect_true!(parser.parse_stream(b"axbxcxaxbxc"));
     expect_true!(parser.parse_stream(b"axbpcxaxbpc"));
+
+    expect_false!(parser.parse_stream(b""));
+    expect_false!(parser.parse_stream(b"ap"));
+    expect_false!(parser.parse_stream(b"pb"));
+    expect_false!(parser.parse_stream(b"cx"));
+    expect_false!(parser.parse_stream(b"xa"));
+    expect_false!(parser.parse_stream(b"ab"));
+    expect_false!(parser.parse_stream(b"apbx"));
+    expect_false!(parser.parse_stream(b"xapb"));
   }
 }
