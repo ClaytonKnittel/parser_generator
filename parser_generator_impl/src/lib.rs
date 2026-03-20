@@ -3,11 +3,13 @@
 extern crate proc_macro;
 mod code_gen;
 mod error;
+mod ident;
 mod lr_table_builder;
 mod parse_grammar;
 mod production;
 mod symbol;
 mod symbol_stream;
+mod type_symbol;
 mod util;
 
 use lr_table_builder::LRTable;
@@ -18,7 +20,7 @@ use production::Grammar;
 use crate::{error::ParserGeneratorResult, symbol::tokenize_from_stream};
 
 fn build_grammar(tokens: TokenStream) -> ParserGeneratorResult<TokenStream> {
-  let list = tokenize_from_stream(tokens)?;
+  let list = tokenize_from_stream(tokens);
   let grammar = Grammar::from(list);
   let lr_table = LRTable::from_grammar(&grammar).unwrap_or_else(|err| err.raise());
   let syn_tree = code_gen::to_match_loop(&grammar, &lr_table).unwrap_or_else(|err| err.raise());

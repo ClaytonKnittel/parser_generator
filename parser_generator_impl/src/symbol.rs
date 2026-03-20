@@ -49,7 +49,7 @@ impl SymbolMeta {
   }
 
   pub fn make_err(&self, message: impl Into<String>) -> ParserGeneratorError {
-    ParserGeneratorError::new(message.into(), self.span.clone())
+    ParserGeneratorError::new(message, self.span.clone())
   }
 }
 
@@ -110,6 +110,22 @@ pub enum SymbolT {
   Tuple(TokenStream),
   // Arrays are for array slice types, i.e. &[u64].
   Array(TokenStream),
+}
+
+impl SymbolT {
+  pub fn is_op(&self, expected_op: Operator) -> bool {
+    match self {
+      Self::Op(op) => *op == expected_op,
+      _ => false,
+    }
+  }
+
+  pub fn is_identifier_with_name(&self, expected_name: &str) -> bool {
+    match self {
+      Self::Ident(name) => name == expected_name,
+      _ => false,
+    }
+  }
 }
 
 #[derive(Clone)]
