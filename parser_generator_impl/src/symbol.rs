@@ -53,7 +53,7 @@ impl SymbolMeta {
   }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Operator {
   // =>
   Arrow,
@@ -95,6 +95,7 @@ impl Display for Operator {
   }
 }
 
+#[derive(Clone)]
 pub enum SymbolT {
   // Operators are any special symbol, listed above.
   Op(Operator),
@@ -111,12 +112,21 @@ pub enum SymbolT {
   Array(TokenStream),
 }
 
+#[derive(Clone)]
 pub struct Symbol {
-  pub sym: SymbolT,
-  pub meta: SymbolMeta,
+  sym: SymbolT,
+  meta: SymbolMeta,
 }
 
 impl Symbol {
+  pub fn symbol_type(&self) -> &SymbolT {
+    &self.sym
+  }
+
+  pub fn meta(&self) -> &SymbolMeta {
+    &self.meta
+  }
+
   fn from_group(group: proc_macro::Group, tokens: TokenTree) -> ParserGeneratorResult<Self> {
     let meta = SymbolMeta::new(group.span(), tokens);
 

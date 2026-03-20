@@ -7,6 +7,7 @@ mod lr_table_builder;
 mod parse_grammar;
 mod production;
 mod symbol;
+mod symbol_stream;
 mod util;
 
 use lr_table_builder::LRTable;
