@@ -210,6 +210,9 @@ impl<T: Clone> IndexedGrammar<T> {
       HashMap::from_iter([(root_production.symbol().clone(), ProductionLabel(0))]);
     let mut label_groups = vec![vec![root_production]];
 
+    // TODO: create dynamic vocab here and store it in IndexedGrammar. Then
+    // users don't have to pass their own vocabs.
+
     for production in productions_iter {
       let label = production.symbol().clone();
       if label == *root_production.symbol() {
