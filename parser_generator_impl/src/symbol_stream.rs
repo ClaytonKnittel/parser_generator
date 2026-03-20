@@ -16,6 +16,8 @@ pub trait SymbolStream {
   fn peek_expect_symbol(&mut self) -> ParserGeneratorResult<SymbolProxy<'_, Self::Iterator>>;
 
   fn next(&mut self) -> Option<ParserGeneratorResult<Symbol>>;
+
+  fn peek(&mut self) -> Option<ParserGeneratorResult<SymbolProxy<'_, Self::Iterator>>>;
 }
 
 pub struct SymbolStreamImpl<I: Iterator<Item = ParserGeneratorResult<Symbol>>> {
@@ -24,6 +26,13 @@ pub struct SymbolStreamImpl<I: Iterator<Item = ParserGeneratorResult<Symbol>>> {
 }
 
 impl<I: Iterator<Item = ParserGeneratorResult<Symbol>>> SymbolStreamImpl<I> {
+  pub fn new(iter: I) -> Self {
+    Self {
+      iter: iter.peekable(),
+      current_span: None,
+    }
+  }
+
   fn current_span(&self) -> Option<Span> {
     self.current_span
   }
@@ -49,9 +58,7 @@ impl<I: Iterator<Item = ParserGeneratorResult<Symbol>>> SymbolStream for SymbolS
   fn peek_expect_symbol(&mut self) -> ParserGeneratorResult<SymbolProxy<'_, I>> {
     let prev_span = self.current_span();
     self
-      .iter
       .peek()
-      .map(CloneErr::clone_err)
       .ok_or_else(|| {
         ParserGeneratorError::new(
           "Unexpected end of input",
@@ -59,8 +66,6 @@ impl<I: Iterator<Item = ParserGeneratorResult<Symbol>>> SymbolStream for SymbolS
         )
       })
       .flatten()
-      .erase_ok()
-      .map(|_| SymbolProxy::new(self))
   }
 
   fn next(&mut self) -> Option<ParserGeneratorResult<Symbol>> {
@@ -70,6 +75,16 @@ impl<I: Iterator<Item = ParserGeneratorResult<Symbol>>> SymbolStream for SymbolS
       _ => None,
     };
     next_symbol
+  }
+
+  fn peek(&mut self) -> Option<ParserGeneratorResult<SymbolProxy<'_, I>>> {
+    let symbol_result = self.iter.peek()?;
+    Some(
+      symbol_result
+        .clone_err()
+        .erase_ok()
+        .map(|_| SymbolProxy::new(self)),
+    )
   }
 }
 

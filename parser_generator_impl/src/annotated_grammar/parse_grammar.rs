@@ -1,27 +1,19 @@
+use lr_table::grammar::Grammar;
+
 use crate::{
+  annotated_grammar::{
+    production_ref::ProductionRefName,
+    production_rule::ProductionRule,
+    terminal::{Terminal, TerminalSymbol},
+    util::expect_symbol_with,
+  },
   error::InterceptResult,
   ident::Ident,
-  symbol::{Operator, SymbolT},
+  symbol::Operator,
   symbol_stream::SymbolStream,
   type_symbol::Type,
-  Grammar, ParserGeneratorResult,
+  ParserGeneratorResult,
 };
-
-fn expect_symbol_with<F>(
-  stream: &mut impl SymbolStream,
-  cmp: F,
-  message: impl Into<String>,
-) -> ParserGeneratorResult
-where
-  F: FnOnce(&SymbolT) -> bool,
-{
-  let sym = stream.expect_symbol()?;
-  if cmp(sym.symbol_type()) {
-    Ok(())
-  } else {
-    Err(sym.meta().make_err(message))
-  }
-}
 
 /// Parses a line of the form "option_name: value;"
 fn parse_option<I, T, F>(
@@ -55,10 +47,18 @@ where
   Ok(value)
 }
 
-struct GrammarInfo {
+pub struct GrammarInfo {
   name: Ident,
   terminal_type: Type,
-  production_rules: Vec<i32>,
+  production_rules: Vec<ProductionRule>,
+}
+
+impl GrammarInfo {
+  pub fn build_lr_table_grammar(&self) -> Grammar<TerminalSymbol, ProductionRefName> {
+    Grammar::new(self.production_rules.map(|rule| {
+      // lr_table::grammar::ProductionRule::new(symbol, rule)
+    }))
+  }
 }
 
 fn parse_name(stream: &mut impl SymbolStream) -> ParserGeneratorResult<Ident> {
@@ -71,15 +71,18 @@ fn parse_terminal_symbol_type(stream: &mut impl SymbolStream) -> ParserGenerator
     .intercept("\"terminal: `type`;\" specifies the `type` of tokens that this grammar will parse")
 }
 
-pub fn parse_grammar(mut stream: impl SymbolStream) -> ParserGeneratorResult<Grammar> {
+pub fn parse_grammar(mut stream: impl SymbolStream) -> ParserGeneratorResult<GrammarInfo> {
   let name = parse_name(&mut stream)?;
   let terminal_type = parse_terminal_symbol_type(&mut stream)?;
 
-  let grammar_info = GrammarInfo {
+  let mut production_rules = Vec::new();
+  while stream.peek().is_some() {
+    production_rules.push(ProductionRule::parse(&mut stream)?);
+  }
+
+  Ok(GrammarInfo {
     name,
     terminal_type,
-    production_rules: Vec::new(),
-  };
-
-  todo!();
+    production_rules,
+  })
 }

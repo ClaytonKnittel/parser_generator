@@ -143,6 +143,10 @@ impl Symbol {
     &self.meta
   }
 
+  pub fn take_meta(self) -> SymbolMeta {
+    self.meta
+  }
+
   fn from_group(group: proc_macro::Group, tokens: TokenTree) -> ParserGeneratorResult<Self> {
     let meta = SymbolMeta::new(group.span(), tokens);
 
@@ -215,7 +219,7 @@ impl Display for Symbol {
     match &self.sym {
       SymbolT::Op(op) => write!(f, "{:?}", op),
       SymbolT::Ident(ident) => write!(f, "<{}>", ident),
-      SymbolT::Group(token_stream) => write!(f, "{}", token_stream),
+      SymbolT::Group(token_stream) => write!(f, "{{{}}}", token_stream),
       SymbolT::Tuple(token_stream) => write!(f, "({})", token_stream),
       SymbolT::Array(token_stream) => write!(f, "[{}]", token_stream),
       SymbolT::Literal(token_stream) => write!(f, "{:?}", token_stream),

@@ -15,7 +15,7 @@ impl Ident {
     match sym.symbol_type() {
       SymbolT::Ident(name) => Ok(Self {
         name: name.clone(),
-        meta: sym.meta().clone(),
+        meta: sym.take_meta(),
       }),
       _ => Err(sym.meta().make_err("Expected identifier")),
     }

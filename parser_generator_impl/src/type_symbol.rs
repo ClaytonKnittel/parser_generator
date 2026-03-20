@@ -21,7 +21,7 @@ impl Type {
     // type - are always proceeded by one of these two symbols.
 
     let first_sym = stream.expect_symbol()?;
-    let mut meta = first_sym.meta().clone();
+    let mut meta = first_sym.take_meta();
 
     loop {
       let sym = stream.peek_expect_symbol().intercept("expected type")?;
