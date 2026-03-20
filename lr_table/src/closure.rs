@@ -144,7 +144,7 @@ mod tests {
     position: Position,
     grammar: &IndexedGrammar<T>,
   ) -> Vec<(ProductionLabel, VocabSet)> {
-    let first_map = FirstTable::build_from_grammar_with_default_vocab(grammar);
+    let first_map = FirstTable::build_from_grammar(grammar);
     let kernel = Kernel::new(vec![position]);
     let map = crate::closure::closure_follow_sets(&kernel, grammar, &first_map);
     map
@@ -157,7 +157,7 @@ mod tests {
     kernel: impl IntoIterator<Item = Position>,
     grammar: &IndexedGrammar<T>,
   ) -> Vec<(NextTokenCategory, Vec<Position>)> {
-    let first_map = FirstTable::build_from_grammar_with_default_vocab(grammar);
+    let first_map = FirstTable::build_from_grammar(grammar);
     let kernel = Kernel::new(kernel.into_iter().collect());
     crate::closure::partition_closure_by_next_node(&kernel, grammar, &first_map)
       .into_iter()
@@ -439,7 +439,7 @@ mod tests {
         Position::new_top_level(production_id_a, indexed.vocab()),
         &indexed
       ),
-      elements_are![&(label_b, VocabSet::from_iter([b'c'], indexed.vocab()))]
+      elements_are![&(label_b, VocabSet::from_iter([b'c'.into()], indexed.vocab()))]
     );
   }
 
@@ -464,7 +464,7 @@ mod tests {
         Position::new_top_level(production_id_a, indexed.vocab()),
         &indexed
       ),
-      elements_are![&(label_b, VocabSet::from_iter([b'c'], indexed.vocab()))]
+      elements_are![&(label_b, VocabSet::from_iter([b'c'.into()], indexed.vocab()))]
     );
   }
 
@@ -490,7 +490,10 @@ mod tests {
         Position::new_top_level(production_id_a, indexed.vocab()),
         &indexed
       ),
-      elements_are![&(label_b, VocabSet::from_iter([b'c', b'd'], indexed.vocab()))]
+      elements_are![&(
+        label_b,
+        VocabSet::from_iter([b'c'.into(), b'd'.into()], indexed.vocab())
+      )]
     );
   }
 
@@ -597,6 +600,9 @@ mod tests {
     let b_rules = indexed.production_rule_ids_for_label(label_b).collect_vec();
     let label_c = *label_map.get("C").unwrap();
     let c_rules = indexed.production_rule_ids_for_label(label_c).collect_vec();
+
+    let b_id = indexed.vocab().token_to_id(&b'b');
+    let c_id = indexed.vocab().token_to_id(&b'c');
     expect_that!(
       partition_closure_by_next_node(
         [Position::new_at_pos(
@@ -612,11 +618,11 @@ mod tests {
           elements_are![property!(&Position.position(), (b_rules[0], 1))]
         ),
         (
-          some(eq(&ProductionNode::Terminal(b'b'.into()))),
+          some(eq(&ProductionNode::Terminal(b_id.into()))),
           elements_are![property!(&Position.position(), (c_rules[0], 0))]
         ),
         (
-          some(eq(&ProductionNode::Terminal(b'c'.into()))),
+          some(eq(&ProductionNode::Terminal(c_id.into()))),
           elements_are![property!(&Position.position(), (c_rules[1], 0))]
         )
       ]
@@ -668,6 +674,8 @@ mod tests {
     let a_rules = indexed.production_rule_ids_for_label(label_a).collect_vec();
     let label_b = *label_map.get("B").unwrap();
     let b_rules = indexed.production_rule_ids_for_label(label_b).collect_vec();
+
+    let b_id = indexed.vocab().token_to_id(&b'b');
     expect_that!(
       partition_closure_by_next_node(
         [Position::new_top_level(a_rules[0], indexed.vocab())],
@@ -683,7 +691,7 @@ mod tests {
           elements_are![property!(&Position.position(), (a_rules[0], 0))]
         ),
         (
-          some(eq(&ProductionNode::Terminal(b'b'.into()))),
+          some(eq(&ProductionNode::Terminal(b_id.into()))),
           elements_are![property!(&Position.position(), (b_rules[0], 0))]
         )
       ]

@@ -7,7 +7,7 @@ use crate::{
   error::{LRTableResult, grammar_error},
   fixed_map::{FixedSizeMap, FixedSizeSet, Label, SparseFixedSizeMap, SparseFixedSizeMapIntoIter},
   grammar::{Grammar, ProductionNode, ProductionRule},
-  vocabulary::{AugmentedTokenId, AugmentedVocab, TokenId},
+  vocabulary::{AugmentedTokenId, AugmentedVocab, TokenId, VocabularyBuilder},
 };
 
 /// Each production label is given a unique ID densely packed starting from 0.
@@ -171,7 +171,7 @@ pub struct IndexedGrammar<T> {
   vocab: AugmentedVocab<T>,
 }
 
-impl<T: Clone> IndexedGrammar<T> {
+impl<T: Clone + Eq + Hash> IndexedGrammar<T> {
   fn verify_connected(&self) -> LRTableResult {
     let mut rule_set = self.new_production_label_set();
     let mut labels_to_explore = vec![ProductionLabel(0)];
@@ -212,6 +212,7 @@ impl<T: Clone> IndexedGrammar<T> {
 
     // TODO: create dynamic vocab here and store it in IndexedGrammar. Then
     // users don't have to pass their own vocabs.
+    let mut vocab_builder = VocabularyBuilder::new();
 
     for production in productions_iter {
       let label = production.symbol().clone();
@@ -249,21 +250,27 @@ impl<T: Clone> IndexedGrammar<T> {
       .flat_map(|(index, group)| {
         let label = ProductionLabel(index);
         let label_map = &label_map;
-        group.iter().map(move |production| {
-          IndexedProductionRule::new(
-            label,
-            production
-              .rule()
-              .iter()
-              .map(|node| match node {
-                ProductionNode::Production(user_label) => {
-                  ProductionNode::Production(*label_map.get(user_label).unwrap())
-                }
-                ProductionNode::Terminal(terminal) => ProductionNode::Terminal(terminal.clone()),
-              })
-              .collect(),
-          )
-        })
+        let vocab_builder = &mut vocab_builder;
+        group
+          .iter()
+          .map(move |production| {
+            IndexedProductionRule::new(
+              label,
+              production
+                .rule()
+                .iter()
+                .map(|node| match node {
+                  ProductionNode::Production(user_label) => {
+                    ProductionNode::Production(*label_map.get(user_label).unwrap())
+                  }
+                  ProductionNode::Terminal(terminal) => ProductionNode::Terminal(
+                    vocab_builder.get_id_or_insert(terminal.clone()).into(),
+                  ),
+                })
+                .collect(),
+            )
+          })
+          .collect_vec()
       })
       .collect_vec();
 
@@ -283,7 +290,7 @@ impl<T: Clone> IndexedGrammar<T> {
     let indexed_grammar = Self {
       rules,
       rule_offset_map,
-      vocab: todo!(),
+      vocab: vocab_builder.build(),
     };
 
     indexed_grammar.verify_connected()?;
@@ -395,11 +402,12 @@ mod tests {
     let (indexed_grammar, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     assert_eq!(indexed_grammar.labels_count(), 1);
     let label_a = *label_map.get("A").unwrap();
+    let a_id = indexed_grammar.vocab().token_to_id(&b'a');
     expect_that!(
       production_rules(&indexed_grammar, label_a),
       elements_are![&&ProductionRule::new(
         label_a,
-        vec![ProductionNode::Terminal(AugmentedVocabToken::Token(b'a'))]
+        vec![ProductionNode::Terminal(AugmentedVocabToken::Token(a_id))]
       )]
     );
   }
@@ -472,16 +480,18 @@ mod tests {
     let (indexed_grammar, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     assert_eq!(indexed_grammar.labels_count(), 2);
     let label_a = *label_map.get("A").unwrap();
+    let a_id = indexed_grammar.vocab().token_to_id(&b'a');
+    let b_id = indexed_grammar.vocab().token_to_id(&b'b');
     expect_that!(
       production_rules(&indexed_grammar, label_a),
       elements_are![
         &&ProductionRule::new(
           label_a,
-          vec![ProductionNode::Terminal(AugmentedVocabToken::Token(b'a'))]
+          vec![ProductionNode::Terminal(AugmentedVocabToken::Token(a_id))]
         ),
         &&ProductionRule::new(
           label_a,
-          vec![ProductionNode::Terminal(AugmentedVocabToken::Token(b'b'))]
+          vec![ProductionNode::Terminal(AugmentedVocabToken::Token(b_id))]
         )
       ]
     );

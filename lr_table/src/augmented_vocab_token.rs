@@ -2,7 +2,7 @@ use std::fmt::{Debug, Display};
 
 use crate::fixed_map::Label;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AugmentedVocabToken<T> {
   Token(T),
   Epsilon,

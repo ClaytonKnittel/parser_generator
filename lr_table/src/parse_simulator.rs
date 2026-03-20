@@ -4,7 +4,7 @@ use crate::{
   augmented_vocab_token::AugmentedVocabToken,
   error::LRTableResult,
   grammar::{Grammar, ProductionNode},
-  indexed_grammar::{IndexedGrammar, ProductionLabel},
+  indexed_grammar::{IndexedGrammar, IndexedProductionNode},
   lr_table::{Action, LRTable, StateId},
 };
 
@@ -13,7 +13,7 @@ pub struct Parser<T> {
   lr_table: LRTable<T>,
 }
 
-impl<T: Clone> Parser<T> {
+impl<T: Clone + Eq + Hash> Parser<T> {
   pub fn new<L: Clone + Eq + Hash>(grammar: &Grammar<T, L>) -> LRTableResult<Self> {
     let grammar = IndexedGrammar::build(grammar)?;
     let lr_table = LRTable::build(&grammar)?;
@@ -25,7 +25,7 @@ impl<T: Clone> Parser<T> {
     T: Debug,
   {
     let mut states = vec![StateId::default()];
-    let mut nodes = Vec::<ProductionNode<T, ProductionLabel>>::new();
+    let mut nodes = Vec::<IndexedProductionNode>::new();
     let mut stream = stream.into_iter().peekable();
 
     while let Some(&state) = states.last() {
@@ -38,9 +38,9 @@ impl<T: Clone> Parser<T> {
       println!("nodes: {:?}", nodes);
       println!("Token {:?}", token);
 
-      let token = self.grammar.vocab().token_to_id(token);
+      let token = self.grammar.vocab().augmented_token_to_id(&token);
 
-      let Some(action) = self.lr_table.get_action(state, token.clone()) else {
+      let Some(action) = self.lr_table.get_action(state, token) else {
         println!("No action found");
         return false;
       };
@@ -107,7 +107,7 @@ mod tests {
   #[gtest]
   fn test_trivial() {
     let grammar = Grammar::from_grammar_str(r#"S -> a"#).unwrap();
-    let parser = Parser::new_with_default_vocab(&grammar).unwrap();
+    let parser = Parser::new(&grammar).unwrap();
 
     expect_false!(parser.parse_stream(b""));
     expect_true!(parser.parse_stream(b"a"));
@@ -123,7 +123,7 @@ mod tests {
          A -> a"#,
     )
     .unwrap();
-    let parser = Parser::new_with_default_vocab(&grammar).unwrap();
+    let parser = Parser::new(&grammar).unwrap();
 
     expect_false!(parser.parse_stream(b""));
     expect_true!(parser.parse_stream(b"a"));
@@ -140,7 +140,7 @@ mod tests {
          A -> b"#,
     )
     .unwrap();
-    let parser = Parser::new_with_default_vocab(&grammar).unwrap();
+    let parser = Parser::new(&grammar).unwrap();
 
     expect_false!(parser.parse_stream(b""));
     expect_true!(parser.parse_stream(b"a"));
@@ -157,7 +157,7 @@ mod tests {
          A -> !"#,
     )
     .unwrap();
-    let parser = Parser::new_with_default_vocab(&grammar).unwrap();
+    let parser = Parser::new(&grammar).unwrap();
 
     expect_true!(parser.parse_stream(b""));
     expect_false!(parser.parse_stream(b"a"));
@@ -175,7 +175,7 @@ mod tests {
          A -> !"#,
     )
     .unwrap();
-    let parser = Parser::new_with_default_vocab(&grammar).unwrap();
+    let parser = Parser::new(&grammar).unwrap();
 
     expect_true!(parser.parse_stream(b""));
     expect_true!(parser.parse_stream(b"ab"));
@@ -203,7 +203,7 @@ mod tests {
          V -> c"#,
     )
     .unwrap();
-    let parser = Parser::new_with_default_vocab(&grammar).unwrap();
+    let parser = Parser::new(&grammar).unwrap();
 
     expect_true!(parser.parse_stream(b"a"));
     expect_true!(parser.parse_stream(b"apb"));

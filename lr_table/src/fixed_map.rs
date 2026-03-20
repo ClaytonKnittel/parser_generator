@@ -12,6 +12,17 @@ pub trait Label: Clone {
   fn from_id(id: usize) -> Self;
 }
 
+impl Label for u8 {
+  fn id(&self) -> usize {
+    *self as usize
+  }
+
+  fn from_id(id: usize) -> u8 {
+    debug_assert!(id < u8::MAX as usize);
+    id as u8
+  }
+}
+
 impl Label for usize {
   fn id(&self) -> usize {
     *self
@@ -73,7 +84,7 @@ pub struct FixedSizeMap<L, T> {
 impl<L: Label, T: Default> FixedSizeMap<L, T> {
   pub fn new(capacity: usize) -> Self {
     Self {
-      map: (0..capacity).map(T::default).collect(),
+      map: (0..capacity).map(|_| T::default()).collect(),
       _phantom: PhantomData,
     }
   }

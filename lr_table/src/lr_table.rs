@@ -276,7 +276,7 @@ impl<T> LRTable<T> {
   }
 
   pub fn get_action(&self, state: StateId, token: AugmentedTokenId) -> Option<Action> {
-    let index = self.vocab_size() * state.id() + token.ordinal();
+    let index = self.vocab_size() * state.id() + token.id();
     self.action_table[index]
   }
 
@@ -308,7 +308,7 @@ impl<T> LRTable<T> {
   }
 }
 
-impl<T> Display for LRTable<T> {
+impl<T: Label + Display> Display for LRTable<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let mut action_print_width = 1;
     let relevant_vocab =
@@ -345,7 +345,7 @@ impl<T> Display for LRTable<T> {
     write!(f, "{:count$}  ", "", count = state_index_print_width)?;
     for token in relevant_vocab
       .for_each()
-      .map(AugmentedVocabToken::<T>::from_ordinal)
+      .map(AugmentedVocabToken::<T>::from_id)
     {
       write!(
         f,

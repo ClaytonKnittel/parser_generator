@@ -29,14 +29,24 @@ pub struct VocabularyBuilder<T> {
 }
 
 impl<T: Clone + Eq + Hash> VocabularyBuilder<T> {
-  pub fn get_id_or_insert(&mut self, token: T) -> TokenId {
-    let next_id = TokenId(self.ordinal_map.len());
-    match self.ordinal_map.entry(token.clone()) {
-      Entry::Occupied(entry) => *entry.get(),
-      Entry::Vacant(entry) => {
-        self.id_map.push(token);
-        entry.insert(next_id);
-        next_id
+  pub fn get_id_or_insert(&mut self, token: AugmentedVocabToken<T>) -> TokenId {
+    match token {
+      AugmentedVocabToken::Token(token) => {
+        let next_id = TokenId(self.ordinal_map.len());
+        match self.ordinal_map.entry(token.clone()) {
+          Entry::Occupied(entry) => *entry.get(),
+          Entry::Vacant(entry) => {
+            self.id_map.push(token);
+            entry.insert(next_id);
+            next_id
+          }
+        }
+      }
+      AugmentedVocabToken::Epsilon => {
+        TokenId::from_id(AugmentedVocabToken::<TokenId>::Epsilon.id())
+      }
+      AugmentedVocabToken::EndOfStream => {
+        TokenId::from_id(AugmentedVocabToken::<TokenId>::EndOfStream.id())
       }
     }
   }
@@ -55,6 +65,12 @@ impl<T> VocabularyBuilder<T> {
       ordinal_map: self.ordinal_map,
       id_map: self.id_map,
     }
+  }
+}
+
+impl<T> Default for VocabularyBuilder<T> {
+  fn default() -> Self {
+    Self::new()
   }
 }
 
@@ -139,9 +155,9 @@ impl VocabSet {
     iter: impl IntoIterator<Item = AugmentedVocabToken<T>>,
     vocab: &AugmentedVocab<T>,
   ) -> Self {
-    let mut s = Self::new(&vocab);
+    let mut s = Self::new(vocab);
     for token in iter.into_iter() {
-      s.set(vocab.augmented_token_to_id(&token).into());
+      s.set(vocab.augmented_token_to_id(&token));
     }
     s
   }
