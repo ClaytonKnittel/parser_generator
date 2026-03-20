@@ -6,24 +6,21 @@ use crate::{
   indexed_grammar::{IndexedGrammar, ProductionLabel, SparsePartitionMap},
   kernel::Kernel,
   position::{Position, follow_set_for_rule, maybe_first_production_label},
-  vocab_set::VocabSet,
-  vocabulary::{AugmentedVocab, AugmentedVocabToken, VocabularyToken},
+  vocabulary::VocabSet,
 };
 
 /// Given a kernel, which is a list of `Position`, returns a map over all
 /// production labels which are transitively connected to the next nodes of
 /// any rule in the kernel, and the follow sets for those such production
 /// labels.
-fn closure_follow_sets<T: VocabularyToken>(
-  kernel: &Kernel<T>,
+fn closure_follow_sets<T>(
+  kernel: &Kernel,
   grammar: &IndexedGrammar<T>,
-  first_map: &FirstTable<T>,
-  vocab: &AugmentedVocab<T::Vocab>,
-) -> SparseFixedSizeMap<ProductionLabel, VocabSet<AugmentedVocabToken<T>>> {
+  first_map: &FirstTable,
+) -> SparseFixedSizeMap<ProductionLabel, VocabSet> {
   // A map from `ProductionLabel` to follow set. We only need to track the next
   // token set for each production label, not each individual rule.
-  let mut production_follow_sets =
-    grammar.new_sparse_production_label_map::<VocabSet<AugmentedVocabToken<T>>>();
+  let mut production_follow_sets = grammar.new_sparse_production_label_map::<VocabSet>();
 
   // It may seem we are at risk of duplicating rules in `kernel` if they are in
   // position 0 and are also circularly referenced. However, the only rule at
@@ -34,13 +31,11 @@ fn closure_follow_sets<T: VocabularyToken>(
     let mut productions_to_explore = Vec::new();
 
     for production_rule in kernel.positions() {
-      if let Some((label, follow_set)) =
-        production_rule.next_production_label(grammar, first_map, vocab)
-      {
+      if let Some((label, follow_set)) = production_rule.next_production_label(grammar, first_map) {
         production_follow_sets
           .get_mut_or_insert_with(&label, || {
             productions_to_explore.push(label);
-            VocabSet::new(vocab)
+            VocabSet::new(grammar.vocab())
           })
           .merge(&follow_set);
       }
@@ -52,7 +47,7 @@ fn closure_follow_sets<T: VocabularyToken>(
         if let Some(sub_label) = maybe_first_production_label(production_rule.rule()) {
           production_follow_sets.get_mut_or_insert_with(&sub_label, || {
             productions_to_explore.push(sub_label);
-            VocabSet::new(vocab)
+            VocabSet::new(grammar.vocab())
           });
         }
       }
@@ -74,8 +69,12 @@ fn closure_follow_sets<T: VocabularyToken>(
         };
 
         let follow_set = production_follow_sets.get(&label).unwrap();
-        let sub_follow_set =
-          follow_set_for_rule(&production_rule.rule()[1..], follow_set, first_map, vocab);
+        let sub_follow_set = follow_set_for_rule(
+          &production_rule.rule()[1..],
+          follow_set,
+          first_map,
+          grammar.vocab(),
+        );
 
         changed = production_follow_sets
           .get_mut(&sub_label)
@@ -96,17 +95,16 @@ fn closure_follow_sets<T: VocabularyToken>(
 /// Given a kernel, computes a partition over the positions of the kernel's
 /// closure grouped by next nodes (either productions or terminals). All
 /// positions at the end of their rules are grouped together under `None`.
-pub fn partition_closure_by_next_node<T: VocabularyToken>(
-  kernel: &Kernel<T>,
+pub fn partition_closure_by_next_node<T>(
+  kernel: &Kernel,
   grammar: &IndexedGrammar<T>,
-  first_map: &FirstTable<T>,
-  vocab: &AugmentedVocab<T::Vocab>,
-) -> SparsePartitionMap<T, Vec<Position<T>>> {
+  first_map: &FirstTable,
+) -> SparsePartitionMap<Vec<Position>> {
   kernel
     .positions()
     .cloned()
     .chain(
-      closure_follow_sets(kernel, grammar, first_map, vocab)
+      closure_follow_sets(kernel, grammar, first_map)
         .into_iter()
         .flat_map(|(label, follow_set)| {
           grammar
@@ -117,7 +115,7 @@ pub fn partition_closure_by_next_node<T: VocabularyToken>(
         }),
     )
     .fold(
-      grammar.new_sparse_partition_closure_map(vocab),
+      grammar.new_sparse_partition_closure_map(),
       |mut map, position| {
         map
           .get_mut_or_default(&position.next_node(grammar).cloned())
@@ -133,31 +131,22 @@ mod tests {
   use itertools::Itertools;
 
   use crate::{
+    augmented_vocab_token::AugmentedVocabToken,
     first_map::FirstTable,
     grammar::{Grammar, ProductionNode},
-    indexed_grammar::{IndexedGrammar, NextTokenCategory, ProductionLabel, ProductionRuleId},
+    indexed_grammar::{IndexedGrammar, NextTokenCategory, ProductionLabel},
     kernel::Kernel,
     position::Position,
-    vocab_set::VocabSet,
-    vocabulary::{AugmentedVocab, AugmentedVocabToken, VocabularyToken},
+    vocabulary::VocabSet,
   };
 
   fn closure_follow_sets<T>(
-    position: Position<T>,
+    position: Position,
     grammar: &IndexedGrammar<T>,
-  ) -> Vec<(ProductionLabel, VocabSet<AugmentedVocabToken<T>>)>
-  where
-    T: VocabularyToken,
-    T::Vocab: Default,
-  {
+  ) -> Vec<(ProductionLabel, VocabSet)> {
     let first_map = FirstTable::build_from_grammar_with_default_vocab(grammar);
     let kernel = Kernel::new(vec![position]);
-    let map = crate::closure::closure_follow_sets(
-      &kernel,
-      grammar,
-      &first_map,
-      &AugmentedVocab::<T::Vocab>::default(),
-    );
+    let map = crate::closure::closure_follow_sets(&kernel, grammar, &first_map);
     map
       .iter()
       .map(|(label, follow_set)| (label, follow_set.clone()))
@@ -165,31 +154,14 @@ mod tests {
   }
 
   fn partition_closure_by_next_node<T>(
-    kernel: impl IntoIterator<Item = Position<T>>,
+    kernel: impl IntoIterator<Item = Position>,
     grammar: &IndexedGrammar<T>,
-  ) -> Vec<(NextTokenCategory<T>, Vec<Position<T>>)>
-  where
-    T: VocabularyToken,
-    T::Vocab: Default,
-  {
+  ) -> Vec<(NextTokenCategory, Vec<Position>)> {
     let first_map = FirstTable::build_from_grammar_with_default_vocab(grammar);
     let kernel = Kernel::new(kernel.into_iter().collect());
-    crate::closure::partition_closure_by_next_node(
-      &kernel,
-      grammar,
-      &first_map,
-      &AugmentedVocab::<T::Vocab>::default(),
-    )
-    .into_iter()
-    .collect()
-  }
-
-  fn new_top_level_pos<T>(rule: ProductionRuleId) -> Position<T>
-  where
-    T: VocabularyToken,
-    T::Vocab: Default,
-  {
-    Position::new_top_level(rule, &AugmentedVocab::<T::Vocab>::default())
+    crate::closure::partition_closure_by_next_node(&kernel, grammar, &first_map)
+      .into_iter()
+      .collect()
   }
 
   #[gtest]
@@ -207,7 +179,10 @@ mod tests {
       .next()
       .unwrap();
     expect_that!(
-      closure_follow_sets(new_top_level_pos(production_id_a), &indexed),
+      closure_follow_sets(
+        Position::new_top_level(production_id_a, indexed.vocab()),
+        &indexed
+      ),
       is_empty()
     );
   }
@@ -231,7 +206,7 @@ mod tests {
         Position::new_at_pos(
           production_id_a,
           1,
-          VocabSet::from_iter([AugmentedVocabToken::EndOfStream])
+          VocabSet::from_iter([AugmentedVocabToken::EndOfStream], indexed.vocab())
         ),
         &indexed
       ),
@@ -259,13 +234,13 @@ mod tests {
         Position::new_at_pos(
           production_id_a,
           0,
-          VocabSet::from_iter([AugmentedVocabToken::EndOfStream])
+          VocabSet::from_iter([AugmentedVocabToken::EndOfStream], indexed.vocab())
         ),
         &indexed
       ),
       elements_are![&(
         label_b,
-        VocabSet::from_iter([AugmentedVocabToken::EndOfStream])
+        VocabSet::from_iter([AugmentedVocabToken::EndOfStream], indexed.vocab())
       )]
     );
   }
@@ -290,13 +265,13 @@ mod tests {
         Position::new_at_pos(
           production_id_a,
           1,
-          VocabSet::from_iter([AugmentedVocabToken::EndOfStream])
+          VocabSet::from_iter([AugmentedVocabToken::EndOfStream], indexed.vocab())
         ),
         &indexed
       ),
       elements_are![&(
         label_b,
-        VocabSet::from_iter([AugmentedVocabToken::EndOfStream])
+        VocabSet::from_iter([AugmentedVocabToken::EndOfStream], indexed.vocab())
       )]
     );
   }
@@ -322,18 +297,18 @@ mod tests {
         Position::new_at_pos(
           production_id_a,
           1,
-          VocabSet::from_iter([AugmentedVocabToken::EndOfStream])
+          VocabSet::from_iter([AugmentedVocabToken::EndOfStream], indexed.vocab())
         ),
         &indexed
       ),
       unordered_elements_are![
         &(
           label_a,
-          VocabSet::from_iter([AugmentedVocabToken::EndOfStream])
+          VocabSet::from_iter([AugmentedVocabToken::EndOfStream], indexed.vocab())
         ),
         &(
           label_b,
-          VocabSet::from_iter([AugmentedVocabToken::EndOfStream])
+          VocabSet::from_iter([AugmentedVocabToken::EndOfStream], indexed.vocab())
         ),
       ]
     );
@@ -363,22 +338,22 @@ mod tests {
         Position::new_at_pos(
           production_id_a,
           1,
-          VocabSet::from_iter([AugmentedVocabToken::EndOfStream])
+          VocabSet::from_iter([AugmentedVocabToken::EndOfStream], indexed.vocab())
         ),
         &indexed
       ),
       unordered_elements_are![
         &(
           label_b,
-          VocabSet::from_iter([AugmentedVocabToken::EndOfStream])
+          VocabSet::from_iter([AugmentedVocabToken::EndOfStream], indexed.vocab())
         ),
         &(
           label_c,
-          VocabSet::from_iter([AugmentedVocabToken::EndOfStream])
+          VocabSet::from_iter([AugmentedVocabToken::EndOfStream], indexed.vocab())
         ),
         &(
           label_d,
-          VocabSet::from_iter([AugmentedVocabToken::EndOfStream])
+          VocabSet::from_iter([AugmentedVocabToken::EndOfStream], indexed.vocab())
         ),
       ]
     );
@@ -401,10 +376,13 @@ mod tests {
       .unwrap();
     let label_b = *label_map.get("B").unwrap();
     expect_that!(
-      closure_follow_sets(new_top_level_pos(production_id_a), &indexed),
+      closure_follow_sets(
+        Position::new_top_level(production_id_a, indexed.vocab()),
+        &indexed
+      ),
       elements_are![&(
         label_b,
-        VocabSet::from_iter([AugmentedVocabToken::EndOfStream])
+        VocabSet::from_iter([AugmentedVocabToken::EndOfStream], indexed.vocab())
       )]
     );
   }
@@ -427,10 +405,16 @@ mod tests {
     let a_rules = indexed.production_rule_ids_for_label(label_a).collect_vec();
     let label_b = *label_map.get("B").unwrap();
     expect_that!(
-      closure_follow_sets(new_top_level_pos(a_rules[0]), &indexed),
+      closure_follow_sets(
+        Position::new_top_level(a_rules[0], indexed.vocab()),
+        &indexed
+      ),
       elements_are![&(
         label_b,
-        VocabSet::from_iter([b'c'.into(), b'd'.into(), AugmentedVocabToken::EndOfStream])
+        VocabSet::from_iter(
+          [b'c'.into(), b'd'.into(), AugmentedVocabToken::EndOfStream],
+          indexed.vocab()
+        )
       )]
     );
   }
@@ -451,8 +435,11 @@ mod tests {
       .unwrap();
     let label_b = *label_map.get("B").unwrap();
     expect_that!(
-      closure_follow_sets(new_top_level_pos(production_id_a), &indexed),
-      elements_are![&(label_b, VocabSet::from_iter([b'c']))]
+      closure_follow_sets(
+        Position::new_top_level(production_id_a, indexed.vocab()),
+        &indexed
+      ),
+      elements_are![&(label_b, VocabSet::from_iter([b'c'], indexed.vocab()))]
     );
   }
 
@@ -473,8 +460,11 @@ mod tests {
       .unwrap();
     let label_b = *label_map.get("B").unwrap();
     expect_that!(
-      closure_follow_sets(new_top_level_pos(production_id_a), &indexed),
-      elements_are![&(label_b, VocabSet::from_iter([b'c']))]
+      closure_follow_sets(
+        Position::new_top_level(production_id_a, indexed.vocab()),
+        &indexed
+      ),
+      elements_are![&(label_b, VocabSet::from_iter([b'c'], indexed.vocab()))]
     );
   }
 
@@ -496,8 +486,11 @@ mod tests {
       .unwrap();
     let label_b = *label_map.get("B").unwrap();
     expect_that!(
-      closure_follow_sets(new_top_level_pos(production_id_a), &indexed),
-      elements_are![&(label_b, VocabSet::from_iter([b'c', b'd']))]
+      closure_follow_sets(
+        Position::new_top_level(production_id_a, indexed.vocab()),
+        &indexed
+      ),
+      elements_are![&(label_b, VocabSet::from_iter([b'c', b'd'], indexed.vocab()))]
     );
   }
 
@@ -521,10 +514,16 @@ mod tests {
       .unwrap();
     let label_b = *label_map.get("B").unwrap();
     expect_that!(
-      closure_follow_sets(new_top_level_pos(production_id_a), &indexed),
+      closure_follow_sets(
+        Position::new_top_level(production_id_a, indexed.vocab()),
+        &indexed
+      ),
       elements_are![&(
         label_b,
-        VocabSet::from_iter([b'c'.into(), b'd'.into(), AugmentedVocabToken::EndOfStream])
+        VocabSet::from_iter(
+          [b'c'.into(), b'd'.into(), AugmentedVocabToken::EndOfStream],
+          indexed.vocab()
+        )
       )]
     );
   }
@@ -553,19 +552,31 @@ mod tests {
     let label_p = *label_map.get("P").unwrap();
     let label_v = *label_map.get("V").unwrap();
     expect_that!(
-      closure_follow_sets(new_top_level_pos(production_id_a), &indexed),
+      closure_follow_sets(
+        Position::new_top_level(production_id_a, indexed.vocab()),
+        &indexed
+      ),
       unordered_elements_are![
         &(
           label_s,
-          VocabSet::from_iter([b'p'.into(), AugmentedVocabToken::EndOfStream])
+          VocabSet::from_iter(
+            [b'p'.into(), AugmentedVocabToken::EndOfStream],
+            indexed.vocab()
+          )
         ),
         &(
           label_p,
-          VocabSet::from_iter([b'p'.into(), b'x'.into(), AugmentedVocabToken::EndOfStream])
+          VocabSet::from_iter(
+            [b'p'.into(), b'x'.into(), AugmentedVocabToken::EndOfStream],
+            indexed.vocab()
+          )
         ),
         &(
           label_v,
-          VocabSet::from_iter([b'p'.into(), b'x'.into(), AugmentedVocabToken::EndOfStream])
+          VocabSet::from_iter(
+            [b'p'.into(), b'x'.into(), AugmentedVocabToken::EndOfStream],
+            indexed.vocab()
+          )
         ),
       ]
     );
@@ -591,22 +602,22 @@ mod tests {
         [Position::new_at_pos(
           b_rules[0],
           1,
-          VocabSet::from_iter([AugmentedVocabToken::EndOfStream])
+          VocabSet::from_iter([AugmentedVocabToken::EndOfStream], indexed.vocab())
         )],
         &indexed
       ),
       unordered_elements_are![
         (
           some(eq(&ProductionNode::Production(label_c))),
-          elements_are![property!(&Position::<_>.position(), (b_rules[0], 1))]
+          elements_are![property!(&Position.position(), (b_rules[0], 1))]
         ),
         (
           some(eq(&ProductionNode::Terminal(b'b'.into()))),
-          elements_are![property!(&Position::<_>.position(), (c_rules[0], 0))]
+          elements_are![property!(&Position.position(), (c_rules[0], 0))]
         ),
         (
           some(eq(&ProductionNode::Terminal(b'c'.into()))),
-          elements_are![property!(&Position::<_>.position(), (c_rules[1], 0))]
+          elements_are![property!(&Position.position(), (c_rules[1], 0))]
         )
       ]
     );
@@ -628,13 +639,13 @@ mod tests {
         [Position::new_at_pos(
           b_rules[0],
           1,
-          VocabSet::from_iter([AugmentedVocabToken::EndOfStream])
+          VocabSet::from_iter([AugmentedVocabToken::EndOfStream], indexed.vocab())
         )],
         &indexed
       ),
       elements_are![(
         none(),
-        elements_are![property!(&Position::<_>.position(), (b_rules[0], 1))]
+        elements_are![property!(&Position.position(), (b_rules[0], 1))]
       )]
     );
   }
@@ -658,19 +669,22 @@ mod tests {
     let label_b = *label_map.get("B").unwrap();
     let b_rules = indexed.production_rule_ids_for_label(label_b).collect_vec();
     expect_that!(
-      partition_closure_by_next_node([new_top_level_pos(a_rules[0])], &indexed),
+      partition_closure_by_next_node(
+        [Position::new_top_level(a_rules[0], indexed.vocab())],
+        &indexed
+      ),
       unordered_elements_are![
         (
           none(),
-          elements_are![property!(&Position::<_>.position(), (b_rules[1], 0))]
+          elements_are![property!(&Position.position(), (b_rules[1], 0))]
         ),
         (
           some(eq(&ProductionNode::Production(label_b))),
-          elements_are![property!(&Position::<_>.position(), (a_rules[0], 0))]
+          elements_are![property!(&Position.position(), (a_rules[0], 0))]
         ),
         (
           some(eq(&ProductionNode::Terminal(b'b'.into()))),
-          elements_are![property!(&Position::<_>.position(), (b_rules[0], 0))]
+          elements_are![property!(&Position.position(), (b_rules[0], 0))]
         )
       ]
     );

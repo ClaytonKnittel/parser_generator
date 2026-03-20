@@ -1,3 +1,4 @@
+pub mod augmented_vocab_token;
 mod bit_set;
 mod closure;
 mod error;
@@ -11,6 +12,4 @@ mod kernel_table;
 pub mod lr_table;
 pub mod parse_simulator;
 mod position;
-mod u8_vocab;
-mod vocab_set;
 pub mod vocabulary;

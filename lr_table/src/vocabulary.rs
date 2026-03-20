@@ -1,110 +1,160 @@
-use std::fmt::{Debug, Display};
+use std::{
+  collections::{HashMap, hash_map::Entry},
+  fmt::{Debug, Display},
+  hash::Hash,
+};
 
-use crate::fixed_map::Label;
+use itertools::Itertools;
 
-pub trait VocabularyToken: Clone + Eq {
-  type Vocab: Vocabulary<Token = Self>;
+use crate::{augmented_vocab_token::AugmentedVocabToken, bit_set::BitSet, fixed_map::Label};
 
-  /// Returns a unique integer value in the range 0..Self::size() for each
-  /// element of the vocabulary.
-  fn ordinal(&self) -> usize;
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TokenId(usize);
 
-  /// Turns an ordinal back into `Self`. The inverse of `Self::ordinal()`.
-  fn from_ordinal(ordinal: usize) -> Self;
-}
-
-impl<T: VocabularyToken + Clone + Eq> Label for T {
+impl Label for TokenId {
   fn id(&self) -> usize {
-    self.ordinal()
+    self.0
   }
 
   fn from_id(id: usize) -> Self {
-    Self::from_ordinal(id)
+    Self(id)
   }
 }
 
-pub trait Vocabulary {
-  type Token: VocabularyToken<Vocab = Self>;
+pub type AugmentedTokenId = AugmentedVocabToken<TokenId>;
 
-  /// Returns the size of the vocabulary.
-  fn size(&self) -> usize;
-
-  /// Returns an iterator over all tokens in this vocabulary.
-  fn for_each(&self) -> impl Iterator<Item = Self::Token> {
-    (0..self.size()).map(Self::Token::from_ordinal)
-  }
+pub struct VocabularyBuilder<T> {
+  ordinal_map: HashMap<T, TokenId>,
+  id_map: Vec<T>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum AugmentedVocabToken<T> {
-  Token(T),
-  Epsilon,
-  EndOfStream,
-}
-
-impl<T: VocabularyToken> VocabularyToken for AugmentedVocabToken<T> {
-  type Vocab = AugmentedVocab<T::Vocab>;
-
-  fn ordinal(&self) -> usize {
-    match self {
-      AugmentedVocabToken::Token(token) => T::ordinal(token) + 2,
-      AugmentedVocabToken::Epsilon => 0,
-      AugmentedVocabToken::EndOfStream => 1,
-    }
-  }
-
-  fn from_ordinal(ordinal: usize) -> Self {
-    if ordinal == 0 {
-      AugmentedVocabToken::Epsilon
-    } else if ordinal == 1 {
-      AugmentedVocabToken::EndOfStream
-    } else {
-      AugmentedVocabToken::Token(T::from_ordinal(ordinal - 2))
+impl<T: Clone + Eq + Hash> VocabularyBuilder<T> {
+  pub fn get_id_or_insert(&mut self, token: T) -> TokenId {
+    let next_id = TokenId(self.ordinal_map.len());
+    match self.ordinal_map.entry(token.clone()) {
+      Entry::Occupied(entry) => *entry.get(),
+      Entry::Vacant(entry) => {
+        self.id_map.push(token);
+        entry.insert(next_id);
+        next_id
+      }
     }
   }
 }
 
-impl<T> From<T> for AugmentedVocabToken<T> {
-  fn from(value: T) -> Self {
-    Self::Token(value)
+impl<T> VocabularyBuilder<T> {
+  pub fn new() -> Self {
+    Self {
+      ordinal_map: HashMap::new(),
+      id_map: Vec::new(),
+    }
   }
-}
 
-impl<T: Display> Display for AugmentedVocabToken<T> {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      Self::Token(t) => write!(f, "{t}"),
-      Self::Epsilon => write!(f, "ε"),
-      Self::EndOfStream => write!(f, "$"),
+  pub fn build(self) -> AugmentedVocab<T> {
+    AugmentedVocab {
+      ordinal_map: self.ordinal_map,
+      id_map: self.id_map,
     }
   }
 }
 
-impl<T: Debug> Debug for AugmentedVocabToken<T> {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      Self::Token(t) => write!(f, "{t:?}"),
-      Self::Epsilon => write!(f, "ε"),
-      Self::EndOfStream => write!(f, "$"),
-    }
-  }
-}
-
-#[derive(Default)]
 pub struct AugmentedVocab<T> {
-  vocab: T,
+  ordinal_map: HashMap<T, TokenId>,
+  id_map: Vec<T>,
 }
 
-impl<T: Vocabulary> Vocabulary for AugmentedVocab<T> {
-  type Token = AugmentedVocabToken<T::Token>;
-
-  fn size(&self) -> usize {
-    self.vocab.size() + 2
+impl<T> AugmentedVocab<T> {
+  pub fn size(&self) -> usize {
+    self.id_map.len() + 2
   }
 }
 
-impl<T> From<T> for AugmentedVocab<T> {
-  fn from(value: T) -> Self {
-    Self { vocab: value }
+impl<T: Clone> AugmentedVocab<T> {
+  pub fn id_to_token(&self, id: TokenId) -> T {
+    debug_assert!(id.0 >= 2);
+    self.id_map[id.0 - 2].clone()
+  }
+
+  pub fn for_each_id(&self) -> impl Iterator<Item = AugmentedTokenId> {
+    (0..self.size()).map(AugmentedVocabToken::from_id)
+  }
+
+  pub fn for_each(&self) -> impl Iterator<Item = T> {
+    self.id_map.iter().cloned()
+  }
+}
+
+impl<T: Eq + Hash> AugmentedVocab<T> {
+  pub fn token_to_id(&self, token: &T) -> TokenId {
+    *self.ordinal_map.get(token).unwrap()
+  }
+
+  pub fn augmented_token_to_id(&self, token: &AugmentedVocabToken<T>) -> AugmentedTokenId {
+    match token {
+      AugmentedVocabToken::Token(token) => self.token_to_id(token).into(),
+      AugmentedVocabToken::Epsilon => AugmentedVocabToken::Epsilon,
+      AugmentedVocabToken::EndOfStream => AugmentedVocabToken::EndOfStream,
+    }
+  }
+}
+
+#[derive(Clone, Default, PartialEq, Eq, Hash)]
+pub struct VocabSet {
+  set: BitSet,
+}
+
+impl VocabSet {
+  pub fn new<T>(vocab: &AugmentedVocab<T>) -> Self {
+    Self {
+      set: BitSet::new(vocab.size()),
+    }
+  }
+
+  pub fn has(&self, token: AugmentedVocabToken<TokenId>) -> bool {
+    self.set.has(token.id())
+  }
+
+  pub fn set(&mut self, token: AugmentedVocabToken<TokenId>) {
+    self.set.set(token.id());
+  }
+
+  pub fn clear(&mut self, token: AugmentedVocabToken<TokenId>) {
+    self.set.clear(token.id());
+  }
+
+  /// Merges `other` into self, adding each entry of `other` which was not
+  /// already in `self`. Returns true if `self` changed.
+  pub fn merge(&mut self, other: &Self) -> bool {
+    self.set.merge(&other.set)
+  }
+
+  pub fn iter(&self) -> impl Iterator<Item = AugmentedVocabToken<TokenId>> {
+    self.set.for_each().map(AugmentedVocabToken::from_id)
+  }
+}
+
+#[cfg(test)]
+impl VocabSet {
+  pub fn from_iter<T: Eq + Hash>(
+    iter: impl IntoIterator<Item = AugmentedVocabToken<T>>,
+    vocab: &AugmentedVocab<T>,
+  ) -> Self {
+    let mut s = Self::new(&vocab);
+    for token in iter.into_iter() {
+      s.set(vocab.augmented_token_to_id(&token).into());
+    }
+    s
+  }
+}
+
+impl Display for VocabSet {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{}", self.set.for_each().join("/"))
+  }
+}
+
+impl Debug for VocabSet {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{}", self.set.for_each().join("/"))
   }
 }

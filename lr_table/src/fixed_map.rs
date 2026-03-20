@@ -72,21 +72,14 @@ pub struct FixedSizeMap<L, T> {
 
 impl<L: Label, T: Default> FixedSizeMap<L, T> {
   pub fn new(capacity: usize) -> Self {
-    Self::new_with_constructor(capacity, T::default)
+    Self {
+      map: (0..capacity).map(T::default).collect(),
+      _phantom: PhantomData,
+    }
   }
 }
 
 impl<L: Label, T> FixedSizeMap<L, T> {
-  pub fn new_with_constructor<F>(capacity: usize, mut constructor: F) -> Self
-  where
-    F: FnMut() -> T,
-  {
-    Self {
-      map: (0..capacity).map(move |_| constructor()).collect(),
-      _phantom: PhantomData,
-    }
-  }
-
   pub fn get(&self, label: &L) -> &T {
     &self.map[label.id()]
   }

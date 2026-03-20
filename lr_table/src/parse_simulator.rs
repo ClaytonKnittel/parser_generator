@@ -1,11 +1,11 @@
 use std::{borrow::Borrow, fmt::Debug, hash::Hash};
 
 use crate::{
+  augmented_vocab_token::AugmentedVocabToken,
   error::LRTableResult,
   grammar::{Grammar, ProductionNode},
   indexed_grammar::{IndexedGrammar, ProductionLabel},
   lr_table::{Action, LRTable, StateId},
-  vocabulary::{AugmentedVocab, AugmentedVocabToken, VocabularyToken},
 };
 
 pub struct Parser<T> {
@@ -13,22 +13,11 @@ pub struct Parser<T> {
   lr_table: LRTable<T>,
 }
 
-impl<T: VocabularyToken> Parser<T> {
-  pub fn new<L: Clone + Eq + Hash>(
-    grammar: &Grammar<T, L>,
-    vocab: &AugmentedVocab<T::Vocab>,
-  ) -> LRTableResult<Self> {
+impl<T: Clone> Parser<T> {
+  pub fn new<L: Clone + Eq + Hash>(grammar: &Grammar<T, L>) -> LRTableResult<Self> {
     let grammar = IndexedGrammar::build(grammar)?;
-    let lr_table = LRTable::build(&grammar, vocab)?;
+    let lr_table = LRTable::build(&grammar)?;
     Ok(Self { grammar, lr_table })
-  }
-
-  pub fn new_with_default_vocab<L>(grammar: &Grammar<T, L>) -> LRTableResult<Self>
-  where
-    L: Clone + Eq + Hash,
-    T::Vocab: Default,
-  {
-    Self::new(grammar, &AugmentedVocab::<T::Vocab>::default())
   }
 
   pub fn parse_stream<U: Borrow<T>>(&self, stream: impl IntoIterator<Item = U>) -> bool
@@ -48,6 +37,8 @@ impl<T: VocabularyToken> Parser<T> {
       println!("Stack: {:?}", states);
       println!("nodes: {:?}", nodes);
       println!("Token {:?}", token);
+
+      let token = self.grammar.vocab().token_to_id(token);
 
       let Some(action) = self.lr_table.get_action(state, token.clone()) else {
         println!("No action found");

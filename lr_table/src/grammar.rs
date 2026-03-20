@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
 use crate::{
+  augmented_vocab_token::AugmentedVocabToken,
   error::{LRTableError, LRTableResult},
-  vocabulary::AugmentedVocabToken,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -99,8 +99,8 @@ mod tests {
   use googletest::prelude::*;
 
   use crate::{
+    augmented_vocab_token::AugmentedVocabToken,
     grammar::{Grammar, ProductionNode, ProductionRule},
-    vocabulary::AugmentedVocabToken,
   };
 
   #[gtest]

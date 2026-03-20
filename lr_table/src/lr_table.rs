@@ -6,6 +6,7 @@ use std::{
 use itertools::{IntoChunks, Itertools};
 
 use crate::{
+  augmented_vocab_token::AugmentedVocabToken,
   bit_set::BitSet,
   closure::partition_closure_by_next_node,
   error::LRTableResult,
@@ -16,7 +17,7 @@ use crate::{
   kernel::Kernel,
   kernel_table::KernelTable,
   position::Position,
-  vocabulary::{AugmentedVocab, AugmentedVocabToken, Vocabulary, VocabularyToken},
+  vocabulary::AugmentedTokenId,
 };
 
 #[derive(Clone, Copy, Default)]
@@ -82,32 +83,31 @@ impl Debug for GotoAction {
   }
 }
 
-struct LRTableEntryBuilder<T> {
+struct LRTableEntryBuilder {
   /// A map from token -> action for all actions that may be taken from this
   /// state.
-  actions: SparseFixedSizeMap<AugmentedVocabToken<T>, Action>,
+  actions: SparseFixedSizeMap<AugmentedTokenId, Action>,
   /// A map from production label -> goto action for all production labels
   /// which may return to this state after reducing.
   gotos: SparseFixedSizeMap<ProductionLabel, GotoAction>,
 }
 
-impl<T: VocabularyToken> LRTableEntryBuilder<T> {
-  fn new(grammar: &IndexedGrammar<T>, vocab: &AugmentedVocab<T::Vocab>) -> Self {
+impl LRTableEntryBuilder {
+  fn new<T>(grammar: &IndexedGrammar<T>) -> Self {
     Self {
-      actions: grammar.new_sparse_augmented_vocab_map(vocab),
+      actions: grammar.new_sparse_augmented_vocab_map(),
       gotos: grammar.new_sparse_production_label_map(),
     }
   }
 
   /// Builds the LRTableEntry for the state given the partitions of a kernel +
   /// closure, which is the set of actions to be taken from this state.
-  fn try_build_from_partitions(
-    partitions: SparsePartitionMap<T, Vec<Position<T>>>,
-    kernel_table: &mut KernelTable<T>,
+  fn try_build_from_partitions<T>(
+    partitions: SparsePartitionMap<Vec<Position>>,
+    kernel_table: &mut KernelTable,
     grammar: &IndexedGrammar<T>,
-    vocab: &AugmentedVocab<T::Vocab>,
-  ) -> LRTableResult<LRTableEntryBuilder<T>> {
-    let mut builder = LRTableEntryBuilder::new(grammar, vocab);
+  ) -> LRTableResult<LRTableEntryBuilder> {
+    let mut builder = LRTableEntryBuilder::new(grammar);
 
     for (maybe_node, mut positions) in partitions {
       let Some(node) = maybe_node else {
@@ -162,11 +162,7 @@ impl<T: VocabularyToken> LRTableEntryBuilder<T> {
     Ok(builder)
   }
 
-  fn add_shift_action(
-    &mut self,
-    token: AugmentedVocabToken<T>,
-    next_state: StateId,
-  ) -> LRTableResult {
+  fn add_shift_action(&mut self, token: AugmentedTokenId, next_state: StateId) -> LRTableResult {
     self
       .actions
       .try_insert(&token, Action::Shift { next_state })
@@ -174,7 +170,7 @@ impl<T: VocabularyToken> LRTableEntryBuilder<T> {
 
   fn add_reduce_action(
     &mut self,
-    token: AugmentedVocabToken<T>,
+    token: AugmentedTokenId,
     rule: ProductionRuleId,
   ) -> LRTableResult {
     self.actions.try_insert(&token, Action::Reduce { rule })
@@ -184,23 +180,23 @@ impl<T: VocabularyToken> LRTableEntryBuilder<T> {
     self.gotos.try_insert(&label, GotoAction(next_state))
   }
 
-  fn add_accept(&mut self, token: AugmentedVocabToken<T>) -> LRTableResult {
+  fn add_accept(&mut self, token: AugmentedTokenId) -> LRTableResult {
     self.actions.try_insert(&token, Action::Accept)
   }
 
   /// Flattens the entry builder into action/goto vecs which correspond to rows
   /// in the `LRTable` for this state.
-  fn into_vecs(
+  fn into_vecs<T: Clone>(
     self,
     grammar: &IndexedGrammar<T>,
-    vocab: &AugmentedVocab<T::Vocab>,
   ) -> (
     impl Iterator<Item = Option<Action>>,
     impl Iterator<Item = Option<GotoAction>>,
   ) {
     (
-      vocab
-        .for_each()
+      grammar
+        .vocab()
+        .for_each_id()
         .map(move |token| self.actions.get(&token).cloned()),
       grammar
         .all_production_labels()
@@ -218,20 +214,19 @@ pub struct LRTable<T> {
   _phantom: PhantomData<T>,
 }
 
-impl<T: VocabularyToken> LRTable<T> {
+impl<T> LRTable<T> {
   fn generate_actions(
     grammar: &IndexedGrammar<T>,
-    vocab: &AugmentedVocab<T::Vocab>,
-  ) -> impl Iterator<Item = LRTableResult<LRTableEntryBuilder<T>>> {
-    let first_set = FirstTable::build_from_grammar(grammar, vocab);
-    let mut kernel_table = KernelTable::<T>::new();
+  ) -> impl Iterator<Item = LRTableResult<LRTableEntryBuilder>> {
+    let first_set = FirstTable::build_from_grammar(grammar);
+    let mut kernel_table = KernelTable::new();
 
     // Construct the root kernel, which exists of only the root rule.
     let root_label = grammar.root_production_label();
     let initial_kernel = Kernel::new(
       grammar
         .production_rule_ids_for_label(root_label)
-        .map(|rule_id| Position::new_top_level(rule_id, vocab))
+        .map(|rule_id| Position::new_top_level(rule_id, grammar.vocab()))
         .collect(),
     );
     let id = kernel_table.get_or_insert(initial_kernel);
@@ -246,25 +241,22 @@ impl<T: VocabularyToken> LRTable<T> {
       let kernel = kernel_table.get_state(state_id)?;
 
       // Partition the positions of the kernel's closure by next tokens.
-      let partitions = partition_closure_by_next_node(kernel, grammar, &first_set, vocab);
+      let partitions = partition_closure_by_next_node(kernel, grammar, &first_set);
 
       Some(LRTableEntryBuilder::try_build_from_partitions(
         partitions,
         &mut kernel_table,
         grammar,
-        vocab,
       ))
     })
   }
 
-  pub fn build(grammar: &IndexedGrammar<T>, vocab: &AugmentedVocab<T::Vocab>) -> LRTableResult<Self>
+  pub fn build(grammar: &IndexedGrammar<T>) -> LRTableResult<Self>
   where
     T: Clone,
   {
-    Self::generate_actions(grammar, vocab)
-      .map(|entry_builder| {
-        entry_builder.map(|entry_builder| entry_builder.into_vecs(grammar, vocab))
-      })
+    Self::generate_actions(grammar)
+      .map(|entry_builder| entry_builder.map(|entry_builder| entry_builder.into_vecs(grammar)))
       .try_fold(
         Self {
           action_table: Vec::new(),
@@ -283,15 +275,7 @@ impl<T: VocabularyToken> LRTable<T> {
       )
   }
 
-  pub fn build_with_default_vocab(grammar: &IndexedGrammar<T>) -> LRTableResult<Self>
-  where
-    T: Clone,
-    T::Vocab: Default,
-  {
-    Self::build(grammar, &AugmentedVocab::<T::Vocab>::default())
-  }
-
-  pub fn get_action(&self, state: StateId, token: AugmentedVocabToken<T>) -> Option<Action> {
+  pub fn get_action(&self, state: StateId, token: AugmentedTokenId) -> Option<Action> {
     let index = self.vocab_size() * state.id() + token.ordinal();
     self.action_table[index]
   }
@@ -324,7 +308,7 @@ impl<T> LRTable<T> {
   }
 }
 
-impl<T: VocabularyToken + Display> Display for LRTable<T> {
+impl<T> Display for LRTable<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let mut action_print_width = 1;
     let relevant_vocab =
