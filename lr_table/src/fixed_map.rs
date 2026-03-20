@@ -7,13 +7,23 @@ use crate::{
   error::{LRTableError, LRTableResult},
 };
 
-pub trait Label: Copy {
-  fn id(self) -> usize;
+pub trait Label: Clone {
+  fn id(&self) -> usize;
   fn from_id(id: usize) -> Self;
 }
 
+impl Label for usize {
+  fn id(&self) -> usize {
+    *self
+  }
+
+  fn from_id(id: usize) -> Self {
+    id
+  }
+}
+
 impl<L: Label> Label for Option<L> {
-  fn id(self) -> usize {
+  fn id(&self) -> usize {
     match self {
       Some(label) => label.id() + 1,
       None => 0,
@@ -42,11 +52,11 @@ impl<L: Label> FixedSizeSet<L> {
     }
   }
 
-  pub fn has(&self, label: L) -> bool {
+  pub fn has(&self, label: &L) -> bool {
     self.set.has(label.id())
   }
 
-  pub fn set(&mut self, label: L) {
+  pub fn set(&mut self, label: &L) {
     self.set.set(label.id())
   }
 
@@ -62,19 +72,26 @@ pub struct FixedSizeMap<L, T> {
 
 impl<L: Label, T: Default> FixedSizeMap<L, T> {
   pub fn new(capacity: usize) -> Self {
-    Self {
-      map: (0..capacity).map(|_| T::default()).collect(),
-      _phantom: PhantomData,
-    }
+    Self::new_with_constructor(capacity, T::default)
   }
 }
 
 impl<L: Label, T> FixedSizeMap<L, T> {
-  pub fn get(&self, label: L) -> &T {
+  pub fn new_with_constructor<F>(capacity: usize, mut constructor: F) -> Self
+  where
+    F: FnMut() -> T,
+  {
+    Self {
+      map: (0..capacity).map(move |_| constructor()).collect(),
+      _phantom: PhantomData,
+    }
+  }
+
+  pub fn get(&self, label: &L) -> &T {
     &self.map[label.id()]
   }
 
-  pub fn get_mut(&mut self, label: L) -> &mut T {
+  pub fn get_mut(&mut self, label: &L) -> &mut T {
     &mut self.map[label.id()]
   }
 }
@@ -86,7 +103,7 @@ impl<L: Debug + Label, T: Debug> Debug for FixedSizeMap<L, T> {
       "[{}]",
       (0..self.map.len())
         .map(L::from_id)
-        .map(|label| { format!("{label:?}: {:?}", self.get(label)) })
+        .map(|label| { format!("{label:?}: {:?}", self.get(&label)) })
         .join(", ")
     )
   }
@@ -110,7 +127,7 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
     }
   }
 
-  fn maybe_index(&self, label: L) -> Option<usize> {
+  fn maybe_index(&self, label: &L) -> Option<usize> {
     match self.index_map[label.id()] {
       Self::UNINITIALIZED_INDEX => None,
       index => Some(index),
@@ -119,17 +136,17 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
 
   /// Returns an optional reference to the value for the given label. Returns
   /// `None` if the label is not in the map.
-  pub fn get(&self, label: L) -> Option<&T> {
+  pub fn get(&self, label: &L) -> Option<&T> {
     self.maybe_index(label).map(|index| &self.map[index])
   }
 
   /// Returns an optional mutable reference to the value for the given label.
   /// Returns `None` if the label is not in the map.
-  pub fn get_mut(&mut self, label: L) -> Option<&mut T> {
+  pub fn get_mut(&mut self, label: &L) -> Option<&mut T> {
     self.maybe_index(label).map(|index| &mut self.map[index])
   }
 
-  fn insert(&mut self, label: L, value: T) -> &mut T {
+  fn insert(&mut self, label: &L, value: T) -> &mut T {
     debug_assert_eq!(self.index_map[label.id()], Self::UNINITIALIZED_INDEX);
 
     let next_index = self.map.len();
@@ -138,7 +155,7 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
     &mut self.map[next_index]
   }
 
-  pub fn try_insert(&mut self, label: L, value: T) -> LRTableResult {
+  pub fn try_insert(&mut self, label: &L, value: T) -> LRTableResult {
     if self.maybe_index(label).is_some() {
       Err(LRTableError::label_already_exists(label.id()))
     } else {
@@ -147,7 +164,7 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
     }
   }
 
-  pub fn get_mut_or_insert_with<F>(&mut self, label: L, construct: F) -> &mut T
+  pub fn get_mut_or_insert_with<F>(&mut self, label: &L, construct: F) -> &mut T
   where
     F: FnOnce() -> T,
   {
@@ -159,7 +176,7 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
 
   /// Either returns a mutable reference to the value with given label, or
   /// inserts a new one with default value.
-  pub fn get_mut_or_default(&mut self, label: L) -> &mut T
+  pub fn get_mut_or_default(&mut self, label: &L) -> &mut T
   where
     T: Default,
   {
@@ -172,7 +189,7 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
       .map(Label::from_id)
       .filter_map(|label| {
         self
-          .maybe_index(label)
+          .maybe_index(&label)
           .map(|index| (label, &self.map[index]))
       })
   }
@@ -190,7 +207,7 @@ impl<L: Label, T: Default> Iterator for SparseFixedSizeMapIntoIter<L, T> {
     while self.label_id < self.sparse_map.index_map.len() {
       let label = Label::from_id(self.label_id);
       self.label_id += 1;
-      let Some(index) = self.sparse_map.maybe_index(label) else {
+      let Some(index) = self.sparse_map.maybe_index(&label) else {
         continue;
       };
 

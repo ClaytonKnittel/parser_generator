@@ -5,7 +5,7 @@ use std::{
 
 use itertools::Itertools;
 
-use crate::{position::Position, vocabulary::Vocabulary};
+use crate::{position::Position, vocabulary::VocabularyToken};
 
 pub struct Kernel<T> {
   /// The positions in this kernel, sorted according to
@@ -39,13 +39,13 @@ impl<T> Hash for Kernel<T> {
   }
 }
 
-impl<T: Debug + Vocabulary> Debug for Kernel<T> {
+impl<T: Debug + VocabularyToken> Debug for Kernel<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{:?}", self.positions)
   }
 }
 
-impl<T: Display + Vocabulary> Display for Kernel<T> {
+impl<T: Display + VocabularyToken> Display for Kernel<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(
       f,

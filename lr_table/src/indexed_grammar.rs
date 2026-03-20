@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug, hash::Hash};
+use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData};
 
 use itertools::Itertools;
 
@@ -6,7 +6,7 @@ use crate::{
   error::{LRTableResult, grammar_error},
   fixed_map::{FixedSizeMap, FixedSizeSet, Label, SparseFixedSizeMap},
   grammar::{Grammar, ProductionNode, ProductionRule},
-  vocabulary::{AugmentedVocab, Vocabulary},
+  vocabulary::{AugmentedVocab, AugmentedVocabToken, Vocabulary, VocabularyToken},
 };
 
 /// Each production label is given a unique ID densely packed starting from 0.
@@ -26,7 +26,7 @@ impl Debug for ProductionRuleId {
 }
 
 impl Label for ProductionLabel {
-  fn id(self) -> usize {
+  fn id(&self) -> usize {
     self.0
   }
   fn from_id(id: usize) -> Self {
@@ -35,7 +35,7 @@ impl Label for ProductionLabel {
 }
 
 impl Label for ProductionRuleId {
-  fn id(self) -> usize {
+  fn id(&self) -> usize {
     self.0
   }
   fn from_id(id: usize) -> Self {
@@ -43,20 +43,80 @@ impl Label for ProductionRuleId {
   }
 }
 
-impl<T: Vocabulary> Label for ProductionNode<T, ProductionLabel> {
-  fn id(self) -> usize {
-    match self {
-      ProductionNode::Terminal(terminal) => terminal.ordinal(),
-      ProductionNode::Production(label) => T::SIZE + label.id(),
+/// The key for closure partitions. This is either a terminal, a production
+/// label, or `None` (special case for positions at the end of their rules).
+pub type NextTokenCategory<T> = Option<ProductionNode<T, ProductionLabel>>;
+
+pub struct SparsePartitionMap<T, V> {
+  map: SparseFixedSizeMap<usize, V>,
+  vocab_size: usize,
+  _phantom: PhantomData<T>,
+}
+
+impl<T, V> SparsePartitionMap<T, V> {
+  fn new(num_productions: usize, vocab_size: usize) -> Self {
+    Self {
+      map: SparseFixedSizeMap::new(num_productions + vocab_size + 1),
+      vocab_size,
+      _phantom: PhantomData,
+    }
+  }
+}
+
+impl<T: VocabularyToken, V> SparsePartitionMap<T, V> {
+  fn id(&self, label: &NextTokenCategory<T>) -> usize {
+    match label {
+      Some(ProductionNode::Production(label)) => self.vocab_size + 1 + label.id(),
+      Some(ProductionNode::Terminal(terminal)) => terminal.ordinal() + 1,
+      None => 0,
     }
   }
 
-  fn from_id(id: usize) -> Self {
-    if id < T::SIZE {
-      Self::Terminal(AugmentedVocab::from_ordinal(id))
+  fn from_id(&self, id: usize) -> NextTokenCategory<T> {
+    if id == 0 {
+      None
+    } else if id <= self.vocab_size {
+      Some(ProductionNode::Terminal(AugmentedVocabToken::from_ordinal(
+        id - 1,
+      )))
     } else {
-      Self::Production(ProductionLabel::from_id(id - T::SIZE))
+      Some(ProductionNode::Production(ProductionLabel::from_id(
+        id - (self.vocab_size + 1),
+      )))
     }
+  }
+
+  pub fn get(&self, label: &NextTokenCategory<T>) -> Option<&V> {
+    self.map.get(&self.id(label))
+  }
+
+  pub fn get_mut(&mut self, label: &NextTokenCategory<T>) -> Option<&mut V> {
+    self.map.get_mut(&self.id(label))
+  }
+
+  pub fn try_insert(&mut self, label: &NextTokenCategory<T>, value: V) -> LRTableResult {
+    self.map.try_insert(&self.id(label), value)
+  }
+
+  pub fn get_mut_or_insert_with<F>(&mut self, label: &NextTokenCategory<T>, construct: F) -> &mut V
+  where
+    F: FnOnce() -> V,
+  {
+    self.map.get_mut_or_insert_with(&self.id(label), construct)
+  }
+
+  pub fn get_mut_or_default(&mut self, label: &NextTokenCategory<T>) -> &mut V
+  where
+    V: Default,
+  {
+    self.map.get_mut_or_default(&self.id(label))
+  }
+
+  pub fn iter(&self) -> impl Iterator<Item = (NextTokenCategory<T>, &V)> {
+    self
+      .map
+      .iter()
+      .map(|(label_id, value)| (self.from_id(label_id), value))
   }
 }
 
@@ -75,16 +135,16 @@ impl<T: Clone> IndexedGrammar<T> {
   fn verify_connected(&self) -> LRTableResult {
     let mut rule_set = self.new_production_label_set();
     let mut labels_to_explore = vec![ProductionLabel(0)];
-    rule_set.set(ProductionLabel(0));
+    rule_set.set(&ProductionLabel(0));
 
     while let Some(label) = labels_to_explore.pop() {
-      debug_assert!(rule_set.has(label));
+      debug_assert!(rule_set.has(&label));
       for rule in self.production_rules_for_label(label) {
         for node in rule.rule() {
           if let ProductionNode::Production(label) = node
-            && !rule_set.has(*label)
+            && !rule_set.has(label)
           {
-            rule_set.set(*label);
+            rule_set.set(label);
             labels_to_explore.push(*label);
           }
         }
@@ -216,19 +276,25 @@ impl<T> IndexedGrammar<T> {
     self.rule_offset_map.len()
   }
 
-  pub fn new_sparse_augmented_vocab_map<U>(&self) -> SparseFixedSizeMap<AugmentedVocab<T>, U>
+  pub fn new_sparse_augmented_vocab_map<U>(
+    &self,
+    vocab: &AugmentedVocab<T::Vocab>,
+  ) -> SparseFixedSizeMap<AugmentedVocabToken<T>, U>
   where
-    T: Vocabulary,
+    T: VocabularyToken,
   {
-    SparseFixedSizeMap::new(AugmentedVocab::<T>::SIZE)
+    SparseFixedSizeMap::new(vocab.size())
   }
 
   fn new_production_label_set(&self) -> FixedSizeSet<ProductionLabel> {
     FixedSizeSet::new(self.labels_count())
   }
 
-  pub fn new_production_label_map<U: Default>(&self) -> FixedSizeMap<ProductionLabel, U> {
-    FixedSizeMap::new(self.labels_count())
+  pub fn new_production_label_map<U, F>(&self, constructor: F) -> FixedSizeMap<ProductionLabel, U>
+  where
+    F: FnMut() -> U,
+  {
+    FixedSizeMap::new_with_constructor(self.labels_count(), constructor)
   }
 
   pub fn new_sparse_production_label_map<U>(&self) -> SparseFixedSizeMap<ProductionLabel, U> {
@@ -237,11 +303,12 @@ impl<T> IndexedGrammar<T> {
 
   pub fn new_sparse_partition_closure_map<U>(
     &self,
-  ) -> SparseFixedSizeMap<Option<ProductionNode<T, ProductionLabel>>, U>
+    vocab: &AugmentedVocab<T::Vocab>,
+  ) -> SparsePartitionMap<T, U>
   where
-    T: Vocabulary,
+    T: VocabularyToken,
   {
-    SparseFixedSizeMap::new(T::SIZE + self.labels_count() + 1)
+    SparsePartitionMap::new(self.labels_count(), vocab.size())
   }
 
   pub fn production_rule(&self, id: ProductionRuleId) -> &ProductionRule<T, ProductionLabel> {
@@ -278,7 +345,7 @@ mod tests {
     error::{BuildGrammarError, LRTableError},
     grammar::{Grammar, ProductionNode, ProductionRule},
     indexed_grammar::{IndexedGrammar, ProductionLabel},
-    vocabulary::AugmentedVocab,
+    vocabulary::AugmentedVocabToken,
   };
 
   fn production_rules<T>(
@@ -299,7 +366,7 @@ mod tests {
       production_rules(&indexed_grammar, label_a),
       elements_are![&&ProductionRule::new(
         label_a,
-        vec![ProductionNode::Terminal(AugmentedVocab::Token(b'a'))]
+        vec![ProductionNode::Terminal(AugmentedVocabToken::Token(b'a'))]
       )]
     );
   }
@@ -377,11 +444,11 @@ mod tests {
       elements_are![
         &&ProductionRule::new(
           label_a,
-          vec![ProductionNode::Terminal(AugmentedVocab::Token(b'a'))]
+          vec![ProductionNode::Terminal(AugmentedVocabToken::Token(b'a'))]
         ),
         &&ProductionRule::new(
           label_a,
-          vec![ProductionNode::Terminal(AugmentedVocab::Token(b'b'))]
+          vec![ProductionNode::Terminal(AugmentedVocabToken::Token(b'b'))]
         )
       ]
     );

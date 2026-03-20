@@ -8,7 +8,7 @@ use crate::{
   grammar::ProductionNode,
   indexed_grammar::{IndexedGrammar, ProductionLabel, ProductionRuleId},
   vocab_set::VocabSet,
-  vocabulary::{AugmentedVocab, Vocabulary},
+  vocabulary::{AugmentedVocab, AugmentedVocabToken, VocabularyToken},
 };
 
 /// Returns the production label of the first node of `rule` if it is a
@@ -31,25 +31,26 @@ pub fn maybe_first_production_label<T>(
 /// succeed the production rule at `rule[0]`.
 ///
 /// The first node of `rule` must be a production rule.
-pub fn follow_set_for_rule<T: Vocabulary>(
+pub fn follow_set_for_rule<T: VocabularyToken>(
   rule: &[ProductionNode<T, ProductionLabel>],
-  rule_follow_set: &VocabSet<AugmentedVocab<T>>,
+  rule_follow_set: &VocabSet<AugmentedVocabToken<T>>,
   first_map: &FirstTable<T>,
-) -> VocabSet<AugmentedVocab<T>> {
-  let mut token_set = VocabSet::new();
+  vocab: &AugmentedVocab<T::Vocab>,
+) -> VocabSet<AugmentedVocabToken<T>> {
+  let mut token_set = VocabSet::new(vocab);
   for node in rule {
     match node {
       ProductionNode::Production(label) => {
         let first_set = first_map.first_set(*label);
         token_set.merge(first_set);
         // If this set does not contain epsilon, then we can stop
-        if !first_set.get(&AugmentedVocab::Epsilon) {
+        if !first_set.get(&AugmentedVocabToken::Epsilon) {
           return token_set;
         }
         // If `first_set` had epsilon, we need to remove it from `token_set`.
-        token_set.clear(&AugmentedVocab::Epsilon);
+        token_set.clear(&AugmentedVocabToken::Epsilon);
       }
-      ProductionNode::Terminal(AugmentedVocab::Epsilon) => {}
+      ProductionNode::Terminal(AugmentedVocabToken::Epsilon) => {}
       ProductionNode::Terminal(token) => {
         token_set.set(token);
         return token_set;
@@ -67,7 +68,7 @@ pub fn follow_set_for_rule<T: Vocabulary>(
 pub struct Position<T> {
   production_id: ProductionRuleId,
   position: usize,
-  follow_set: VocabSet<AugmentedVocab<T>>,
+  follow_set: VocabSet<AugmentedVocabToken<T>>,
 }
 
 impl<T> Position<T> {
@@ -75,7 +76,7 @@ impl<T> Position<T> {
     self.production_id
   }
 
-  pub fn follow_set(&self) -> &VocabSet<AugmentedVocab<T>> {
+  pub fn follow_set(&self) -> &VocabSet<AugmentedVocabToken<T>> {
     &self.follow_set
   }
 
@@ -98,7 +99,7 @@ impl<T> Position<T> {
     let production = grammar.production_rule(self.production_id);
     production.rule()[self.position..]
       .iter()
-      .find(|node| !matches!(node, ProductionNode::Terminal(AugmentedVocab::Epsilon)))
+      .find(|node| !matches!(node, ProductionNode::Terminal(AugmentedVocabToken::Epsilon)))
   }
 
   /// Advances this position to the next node. This must not be called on
@@ -119,10 +120,10 @@ impl<T> Position<T> {
   }
 }
 
-impl<T: Vocabulary> Position<T> {
+impl<T: VocabularyToken> Position<T> {
   pub fn new_from_start_with_follow_set(
     production_id: ProductionRuleId,
-    follow_set: VocabSet<AugmentedVocab<T>>,
+    follow_set: VocabSet<AugmentedVocabToken<T>>,
   ) -> Self {
     Self {
       production_id,
@@ -135,7 +136,7 @@ impl<T: Vocabulary> Position<T> {
   pub fn new_at_pos(
     production_id: ProductionRuleId,
     position: usize,
-    follow_set: VocabSet<AugmentedVocab<T>>,
+    follow_set: VocabSet<AugmentedVocabToken<T>>,
   ) -> Self {
     Self {
       production_id,
@@ -144,9 +145,9 @@ impl<T: Vocabulary> Position<T> {
     }
   }
 
-  pub fn new_top_level(production_id: ProductionRuleId) -> Self {
-    let mut follow_set = VocabSet::new();
-    follow_set.set(&AugmentedVocab::<T>::EndOfStream);
+  pub fn new_top_level(production_id: ProductionRuleId, vocab: &AugmentedVocab<T::Vocab>) -> Self {
+    let mut follow_set = VocabSet::new(vocab);
+    follow_set.set(&AugmentedVocabToken::<T>::EndOfStream);
     Self::new_from_start_with_follow_set(production_id, follow_set)
   }
 
@@ -157,7 +158,8 @@ impl<T: Vocabulary> Position<T> {
     &self,
     grammar: &IndexedGrammar<T>,
     first_map: &FirstTable<T>,
-  ) -> Option<(ProductionLabel, VocabSet<AugmentedVocab<T>>)> {
+    vocab: &AugmentedVocab<T::Vocab>,
+  ) -> Option<(ProductionLabel, VocabSet<AugmentedVocabToken<T>>)> {
     let production = grammar.production_rule(self.production_id);
 
     let label = maybe_first_production_label(&production.rule()[self.position..])?;
@@ -166,6 +168,7 @@ impl<T: Vocabulary> Position<T> {
       &production.rule()[self.position + 1..],
       &self.follow_set,
       first_map,
+      vocab,
     );
     Some((label, follow_set))
   }
@@ -199,7 +202,7 @@ impl<T> Hash for Position<T> {
   }
 }
 
-impl<T: Vocabulary + Display> Display for Position<T> {
+impl<T: VocabularyToken + Display> Display for Position<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(
       f,
@@ -209,7 +212,7 @@ impl<T: Vocabulary + Display> Display for Position<T> {
   }
 }
 
-impl<T: Vocabulary + Debug> Debug for Position<T> {
+impl<T: VocabularyToken + Debug> Debug for Position<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(
       f,

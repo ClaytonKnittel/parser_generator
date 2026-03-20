@@ -1,11 +1,13 @@
+use std::fmt::Debug;
+
 use crate::{
   error::{LRTableError, LRTableResult},
-  vocabulary::AugmentedVocab,
+  vocabulary::AugmentedVocabToken,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ProductionNode<T, L> {
-  Terminal(AugmentedVocab<T>),
+  Terminal(AugmentedVocabToken<T>),
   Production(L),
 }
 
@@ -33,7 +35,7 @@ impl<T, L> ProductionRule<T, L> {
     self
       .rule()
       .iter()
-      .filter(|node| !matches!(node, ProductionNode::Terminal(AugmentedVocab::Epsilon)))
+      .filter(|node| !matches!(node, ProductionNode::Terminal(AugmentedVocabToken::Epsilon)))
   }
 }
 
@@ -73,11 +75,11 @@ impl Grammar<u8, String> {
               .map(|node| {
                 let bytes = node.as_bytes();
                 if node == "!" {
-                  Ok(ProductionNode::Terminal(AugmentedVocab::Epsilon))
+                  Ok(ProductionNode::Terminal(AugmentedVocabToken::Epsilon))
                 } else if node.chars().all(|c| c.is_ascii_uppercase()) {
                   Ok(ProductionNode::Production(node.to_owned()))
                 } else if bytes.len() == 1 && bytes[0].is_ascii() {
-                  Ok(ProductionNode::Terminal(AugmentedVocab::Token(bytes[0])))
+                  Ok(ProductionNode::Terminal(AugmentedVocabToken::Token(bytes[0])))
                 } else {
                   Err(LRTableError::new_generic(format!(
                     "Node \"{node}\" is not all ASCII uppercase (production) or lowercase letter (terminal)"
@@ -98,7 +100,7 @@ mod tests {
 
   use crate::{
     grammar::{Grammar, ProductionNode, ProductionRule},
-    vocabulary::AugmentedVocab,
+    vocabulary::AugmentedVocabToken,
   };
 
   #[gtest]
@@ -118,7 +120,7 @@ mod tests {
         ),
         &ProductionRule::new(
           "B".to_owned(),
-          vec![ProductionNode::Terminal(AugmentedVocab::Token(b'c'))]
+          vec![ProductionNode::Terminal(AugmentedVocabToken::Token(b'c'))]
         )
       ]
     );

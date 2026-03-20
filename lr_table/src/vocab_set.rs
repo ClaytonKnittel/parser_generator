@@ -6,17 +6,20 @@ use std::{
 
 use itertools::Itertools;
 
-use crate::{bit_set::BitSet, vocabulary::Vocabulary};
+use crate::{
+  bit_set::BitSet,
+  vocabulary::{Vocabulary, VocabularyToken},
+};
 
 pub struct VocabSet<T> {
   set: BitSet,
   _phantom: PhantomData<T>,
 }
 
-impl<T: Vocabulary> VocabSet<T> {
-  pub fn new() -> Self {
+impl<T: VocabularyToken> VocabSet<T> {
+  pub fn new(vocab: &T::Vocab) -> Self {
     Self {
-      set: BitSet::new(T::SIZE),
+      set: BitSet::new(vocab.size()),
       _phantom: PhantomData,
     }
   }
@@ -45,22 +48,18 @@ impl<T: Vocabulary> VocabSet<T> {
 }
 
 #[cfg(test)]
-impl<T: Vocabulary> VocabSet<T> {
+impl<T: VocabularyToken> VocabSet<T> {
   pub fn from_iter<U>(iter: impl IntoIterator<Item = U>) -> Self
   where
     U: Into<T>,
+    T::Vocab: Default,
   {
-    let mut s = Self::new();
+    let vocab = T::Vocab::default();
+    let mut s = Self::new(&vocab);
     for token in iter.into_iter() {
       s.set(&token.into());
     }
     s
-  }
-}
-
-impl<T: Vocabulary> Default for VocabSet<T> {
-  fn default() -> Self {
-    Self::new()
   }
 }
 
@@ -87,13 +86,13 @@ impl<T> Clone for VocabSet<T> {
   }
 }
 
-impl<T: Display + Vocabulary> Display for VocabSet<T> {
+impl<T: VocabularyToken + Display> Display for VocabSet<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{}", self.set.for_each().map(T::from_ordinal).join("/"))
   }
 }
 
-impl<T: Debug + Vocabulary> Debug for VocabSet<T> {
+impl<T: VocabularyToken + Debug> Debug for VocabSet<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(
       f,

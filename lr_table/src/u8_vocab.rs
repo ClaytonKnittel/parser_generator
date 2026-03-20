@@ -1,9 +1,19 @@
 use crate::vocabulary::{Vocabulary, VocabularyToken};
 
+#[derive(Default)]
 pub struct U8Vocab;
 
 impl VocabularyToken for u8 {
   type Vocab = U8Vocab;
+
+  fn ordinal(&self) -> usize {
+    *self as usize
+  }
+
+  fn from_ordinal(ordinal: usize) -> Self {
+    debug_assert!(ordinal <= u8::MAX as usize);
+    ordinal as u8
+  }
 }
 
 impl Vocabulary for U8Vocab {
@@ -11,14 +21,5 @@ impl Vocabulary for U8Vocab {
 
   fn size(&self) -> usize {
     u8::MAX as usize + 1
-  }
-
-  fn ordinal(token: &Self::Token) -> usize {
-    *token as usize
-  }
-
-  fn from_ordinal(ordinal: usize) -> Self::Token {
-    debug_assert!(ordinal <= u8::MAX as usize);
-    ordinal as u8
   }
 }

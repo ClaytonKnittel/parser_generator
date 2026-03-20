@@ -16,7 +16,7 @@ use crate::{
   kernel::Kernel,
   kernel_table::KernelTable,
   position::Position,
-  vocabulary::{AugmentedVocab, Vocabulary},
+  vocabulary::{AugmentedVocab, AugmentedVocabToken, Vocabulary, VocabularyToken},
 };
 
 #[derive(Clone, Copy, Default)]
@@ -85,16 +85,16 @@ impl Debug for GotoAction {
 struct LRTableEntryBuilder<T> {
   /// A map from token -> action for all actions that may be taken from this
   /// state.
-  actions: SparseFixedSizeMap<AugmentedVocab<T>, Action>,
+  actions: SparseFixedSizeMap<AugmentedVocabToken<T>, Action>,
   /// A map from production label -> goto action for all production labels
   /// which may return to this state after reducing.
   gotos: SparseFixedSizeMap<ProductionLabel, GotoAction>,
 }
 
-impl<T: Vocabulary> LRTableEntryBuilder<T> {
-  fn new(grammar: &IndexedGrammar<T>) -> Self {
+impl<T: VocabularyToken> LRTableEntryBuilder<T> {
+  fn new(grammar: &IndexedGrammar<T>, vocab: &T::Vocab) -> Self {
     Self {
-      actions: grammar.new_sparse_augmented_vocab_map(),
+      actions: grammar.new_sparse_augmented_vocab_map(vocab),
       gotos: grammar.new_sparse_production_label_map(),
     }
   }
@@ -105,8 +105,9 @@ impl<T: Vocabulary> LRTableEntryBuilder<T> {
     partitions: SparseFixedSizeMap<Option<ProductionNode<T, ProductionLabel>>, Vec<Position<T>>>,
     kernel_table: &mut KernelTable<T>,
     grammar: &IndexedGrammar<T>,
+    vocab: &T::Vocab,
   ) -> LRTableResult<LRTableEntryBuilder<T>> {
-    let mut builder = LRTableEntryBuilder::new(grammar);
+    let mut builder = LRTableEntryBuilder::new(grammar, vocab);
 
     for (maybe_node, mut positions) in partitions {
       let Some(node) = maybe_node else {
@@ -123,9 +124,9 @@ impl<T: Vocabulary> LRTableEntryBuilder<T> {
               position
                 .follow_set()
                 .iter()
-                .all(|token| matches!(token, AugmentedVocab::EndOfStream))
+                .all(|token| matches!(token, AugmentedVocabToken::EndOfStream))
             );
-            builder.add_accept(AugmentedVocab::EndOfStream)?;
+            builder.add_accept(AugmentedVocabToken::EndOfStream)?;
           } else {
             for follow_token in position.follow_set().iter() {
               builder.add_reduce_action(follow_token, position.rule())?;
@@ -161,24 +162,30 @@ impl<T: Vocabulary> LRTableEntryBuilder<T> {
     Ok(builder)
   }
 
-  fn add_shift_action(&mut self, token: AugmentedVocab<T>, next_state: StateId) -> LRTableResult {
-    self.actions.try_insert(token, Action::Shift { next_state })
+  fn add_shift_action(
+    &mut self,
+    token: AugmentedVocabToken<T>,
+    next_state: StateId,
+  ) -> LRTableResult {
+    self
+      .actions
+      .try_insert(&token, Action::Shift { next_state })
   }
 
   fn add_reduce_action(
     &mut self,
-    token: AugmentedVocab<T>,
+    token: AugmentedVocabToken<T>,
     rule: ProductionRuleId,
   ) -> LRTableResult {
-    self.actions.try_insert(token, Action::Reduce { rule })
+    self.actions.try_insert(&token, Action::Reduce { rule })
   }
 
   fn add_goto_action(&mut self, label: ProductionLabel, next_state: StateId) -> LRTableResult {
-    self.gotos.try_insert(label, GotoAction(next_state))
+    self.gotos.try_insert(&label, GotoAction(next_state))
   }
 
-  fn add_accept(&mut self, token: AugmentedVocab<T>) -> LRTableResult {
-    self.actions.try_insert(token, Action::Accept)
+  fn add_accept(&mut self, token: AugmentedVocabToken<T>) -> LRTableResult {
+    self.actions.try_insert(&token, Action::Accept)
   }
 
   /// Flattens the entry builder into action/goto vecs which correspond to rows
@@ -186,15 +193,18 @@ impl<T: Vocabulary> LRTableEntryBuilder<T> {
   fn into_vecs(
     self,
     grammar: &IndexedGrammar<T>,
+    vocab: &AugmentedVocab<T::Vocab>,
   ) -> (
     impl Iterator<Item = Option<Action>>,
     impl Iterator<Item = Option<GotoAction>>,
   ) {
     (
-      AugmentedVocab::<T>::for_each().map(move |token| self.actions.get(token).cloned()),
+      vocab
+        .for_each()
+        .map(move |token| self.actions.get(&token).cloned()),
       grammar
         .all_production_labels()
-        .map(move |label| self.gotos.get(label).cloned()),
+        .map(move |label| self.gotos.get(&label).cloned()),
     )
   }
 }
