@@ -120,7 +120,7 @@ pub fn partition_closure_by_next_node<T: VocabularyToken>(
       grammar.new_sparse_partition_closure_map(vocab),
       |mut map, position| {
         map
-          .get_mut_or_default(position.next_node(grammar).cloned())
+          .get_mut_or_default(&position.next_node(grammar).cloned())
           .push(position.clone());
         map
       },
@@ -139,7 +139,7 @@ mod tests {
     kernel::Kernel,
     position::Position,
     vocab_set::VocabSet,
-    vocabulary::{AugmentedVocab, AugmentedVocabToken, Vocabulary, VocabularyToken},
+    vocabulary::{AugmentedVocab, AugmentedVocabToken, VocabularyToken},
   };
 
   fn closure_follow_sets<T>(

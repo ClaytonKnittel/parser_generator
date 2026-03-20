@@ -63,6 +63,15 @@ impl<T: VocabularyToken> VocabSet<T> {
   }
 }
 
+impl<T> Default for VocabSet<T> {
+  fn default() -> Self {
+    Self {
+      set: BitSet::new(0),
+      _phantom: PhantomData,
+    }
+  }
+}
+
 impl<T> PartialEq for VocabSet<T> {
   fn eq(&self, other: &Self) -> bool {
     self.set == other.set

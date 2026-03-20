@@ -12,7 +12,7 @@ use crate::{
   first_map::FirstTable,
   fixed_map::{Label, SparseFixedSizeMap},
   grammar::ProductionNode,
-  indexed_grammar::{IndexedGrammar, ProductionLabel, ProductionRuleId},
+  indexed_grammar::{IndexedGrammar, ProductionLabel, ProductionRuleId, SparsePartitionMap},
   kernel::Kernel,
   kernel_table::KernelTable,
   position::Position,
@@ -92,7 +92,7 @@ struct LRTableEntryBuilder<T> {
 }
 
 impl<T: VocabularyToken> LRTableEntryBuilder<T> {
-  fn new(grammar: &IndexedGrammar<T>, vocab: &T::Vocab) -> Self {
+  fn new(grammar: &IndexedGrammar<T>, vocab: &AugmentedVocab<T::Vocab>) -> Self {
     Self {
       actions: grammar.new_sparse_augmented_vocab_map(vocab),
       gotos: grammar.new_sparse_production_label_map(),
@@ -102,10 +102,10 @@ impl<T: VocabularyToken> LRTableEntryBuilder<T> {
   /// Builds the LRTableEntry for the state given the partitions of a kernel +
   /// closure, which is the set of actions to be taken from this state.
   fn try_build_from_partitions(
-    partitions: SparseFixedSizeMap<Option<ProductionNode<T, ProductionLabel>>, Vec<Position<T>>>,
+    partitions: SparsePartitionMap<T, Vec<Position<T>>>,
     kernel_table: &mut KernelTable<T>,
     grammar: &IndexedGrammar<T>,
-    vocab: &T::Vocab,
+    vocab: &AugmentedVocab<T::Vocab>,
   ) -> LRTableResult<LRTableEntryBuilder<T>> {
     let mut builder = LRTableEntryBuilder::new(grammar, vocab);
 
@@ -218,11 +218,12 @@ pub struct LRTable<T> {
   _phantom: PhantomData<T>,
 }
 
-impl<T: Vocabulary> LRTable<T> {
+impl<T: VocabularyToken> LRTable<T> {
   fn generate_actions(
     grammar: &IndexedGrammar<T>,
+    vocab: &AugmentedVocab<T::Vocab>,
   ) -> impl Iterator<Item = LRTableResult<LRTableEntryBuilder<T>>> {
-    let first_set = FirstTable::build_from_grammar(grammar);
+    let first_set = FirstTable::build_from_grammar(grammar, vocab);
     let mut kernel_table = KernelTable::<T>::new();
 
     // Construct the root kernel, which exists of only the root rule.
@@ -230,7 +231,7 @@ impl<T: Vocabulary> LRTable<T> {
     let initial_kernel = Kernel::new(
       grammar
         .production_rule_ids_for_label(root_label)
-        .map(|rule_id| Position::new_top_level(rule_id))
+        .map(|rule_id| Position::new_top_level(rule_id, vocab))
         .collect(),
     );
     let id = kernel_table.get_or_insert(initial_kernel);
@@ -245,22 +246,25 @@ impl<T: Vocabulary> LRTable<T> {
       let kernel = kernel_table.get_state(state_id)?;
 
       // Partition the positions of the kernel's closure by next tokens.
-      let partitions = partition_closure_by_next_node(kernel, grammar, &first_set);
+      let partitions = partition_closure_by_next_node(kernel, grammar, &first_set, vocab);
 
       Some(LRTableEntryBuilder::try_build_from_partitions(
         partitions,
         &mut kernel_table,
         grammar,
+        vocab,
       ))
     })
   }
 
-  pub fn build(grammar: &IndexedGrammar<T>) -> LRTableResult<Self>
+  pub fn build(grammar: &IndexedGrammar<T>, vocab: &AugmentedVocab<T::Vocab>) -> LRTableResult<Self>
   where
     T: Clone,
   {
-    Self::generate_actions(grammar)
-      .map(|entry_builder| entry_builder.map(|entry_builder| entry_builder.into_vecs(grammar)))
+    Self::generate_actions(grammar, vocab)
+      .map(|entry_builder| {
+        entry_builder.map(|entry_builder| entry_builder.into_vecs(grammar, vocab))
+      })
       .try_fold(
         Self {
           action_table: Vec::new(),
@@ -279,7 +283,15 @@ impl<T: Vocabulary> LRTable<T> {
       )
   }
 
-  pub fn get_action(&self, state: StateId, token: AugmentedVocab<T>) -> Option<Action> {
+  pub fn build_with_default_vocab(grammar: &IndexedGrammar<T>) -> LRTableResult<Self>
+  where
+    T: Clone,
+    T::Vocab: Default,
+  {
+    Self::build(grammar, &AugmentedVocab::<T::Vocab>::default())
+  }
+
+  pub fn get_action(&self, state: StateId, token: AugmentedVocabToken<T>) -> Option<Action> {
     let index = self.vocab_size() * state.id() + token.ordinal();
     self.action_table[index]
   }
@@ -312,7 +324,7 @@ impl<T> LRTable<T> {
   }
 }
 
-impl<T: Vocabulary + Display> Display for LRTable<T> {
+impl<T: VocabularyToken + Display> Display for LRTable<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let mut action_print_width = 1;
     let relevant_vocab =
@@ -349,7 +361,7 @@ impl<T: Vocabulary + Display> Display for LRTable<T> {
     write!(f, "{:count$}  ", "", count = state_index_print_width)?;
     for token in relevant_vocab
       .for_each()
-      .map(AugmentedVocab::<T>::from_ordinal)
+      .map(AugmentedVocabToken::<T>::from_ordinal)
     {
       write!(
         f,

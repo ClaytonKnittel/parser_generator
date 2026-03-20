@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 use crate::{
   error::{LRTableResult, grammar_error},
-  fixed_map::{FixedSizeMap, FixedSizeSet, Label, SparseFixedSizeMap},
+  fixed_map::{FixedSizeMap, FixedSizeSet, Label, SparseFixedSizeMap, SparseFixedSizeMapIntoIter},
   grammar::{Grammar, ProductionNode, ProductionRule},
   vocabulary::{AugmentedVocab, AugmentedVocabToken, Vocabulary, VocabularyToken},
 };
@@ -64,59 +64,99 @@ impl<T, V> SparsePartitionMap<T, V> {
 }
 
 impl<T: VocabularyToken, V> SparsePartitionMap<T, V> {
-  fn id(&self, label: &NextTokenCategory<T>) -> usize {
+  fn static_id(label: &NextTokenCategory<T>, vocab_size: usize) -> usize {
     match label {
-      Some(ProductionNode::Production(label)) => self.vocab_size + 1 + label.id(),
+      Some(ProductionNode::Production(label)) => vocab_size + 1 + label.id(),
       Some(ProductionNode::Terminal(terminal)) => terminal.ordinal() + 1,
       None => 0,
     }
   }
 
-  fn from_id(&self, id: usize) -> NextTokenCategory<T> {
+  fn static_from_id(id: usize, vocab_size: usize) -> NextTokenCategory<T> {
     if id == 0 {
       None
-    } else if id <= self.vocab_size {
+    } else if id <= vocab_size {
       Some(ProductionNode::Terminal(AugmentedVocabToken::from_ordinal(
         id - 1,
       )))
     } else {
       Some(ProductionNode::Production(ProductionLabel::from_id(
-        id - (self.vocab_size + 1),
+        id - (vocab_size + 1),
       )))
     }
   }
 
+  fn category_id(&self, label: &NextTokenCategory<T>) -> usize {
+    Self::static_id(label, self.vocab_size)
+  }
+
+  fn category_from_id(&self, id: usize) -> NextTokenCategory<T> {
+    Self::static_from_id(id, self.vocab_size)
+  }
+
   pub fn get(&self, label: &NextTokenCategory<T>) -> Option<&V> {
-    self.map.get(&self.id(label))
+    self.map.get(&self.category_id(label))
   }
 
   pub fn get_mut(&mut self, label: &NextTokenCategory<T>) -> Option<&mut V> {
-    self.map.get_mut(&self.id(label))
+    self.map.get_mut(&self.category_id(label))
   }
 
   pub fn try_insert(&mut self, label: &NextTokenCategory<T>, value: V) -> LRTableResult {
-    self.map.try_insert(&self.id(label), value)
+    self.map.try_insert(&self.category_id(label), value)
   }
 
   pub fn get_mut_or_insert_with<F>(&mut self, label: &NextTokenCategory<T>, construct: F) -> &mut V
   where
     F: FnOnce() -> V,
   {
-    self.map.get_mut_or_insert_with(&self.id(label), construct)
+    self
+      .map
+      .get_mut_or_insert_with(&self.category_id(label), construct)
   }
 
   pub fn get_mut_or_default(&mut self, label: &NextTokenCategory<T>) -> &mut V
   where
     V: Default,
   {
-    self.map.get_mut_or_default(&self.id(label))
+    self.map.get_mut_or_default(&self.category_id(label))
   }
 
   pub fn iter(&self) -> impl Iterator<Item = (NextTokenCategory<T>, &V)> {
     self
       .map
       .iter()
-      .map(|(label_id, value)| (self.from_id(label_id), value))
+      .map(|(label_id, value)| (self.category_from_id(label_id), value))
+  }
+}
+
+pub struct SparsePartitionMapIntoIter<T, V> {
+  iter: SparseFixedSizeMapIntoIter<usize, V>,
+  vocab_size: usize,
+  _phantom: PhantomData<T>,
+}
+
+impl<T: VocabularyToken, V: Default> Iterator for SparsePartitionMapIntoIter<T, V> {
+  type Item = (NextTokenCategory<T>, V);
+
+  fn next(&mut self) -> Option<Self::Item> {
+    let (label_id, value) = self.iter.next()?;
+    let label = SparsePartitionMap::<T, V>::static_from_id(label_id, self.vocab_size);
+    Some((label, value))
+  }
+}
+
+impl<T: VocabularyToken, V: Default> IntoIterator for SparsePartitionMap<T, V> {
+  type Item = (NextTokenCategory<T>, V);
+  type IntoIter = SparsePartitionMapIntoIter<T, V>;
+
+  fn into_iter(self) -> Self::IntoIter {
+    let vocab_size = self.vocab_size;
+    Self::IntoIter {
+      iter: self.map.into_iter(),
+      vocab_size,
+      _phantom: PhantomData,
+    }
   }
 }
 

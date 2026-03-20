@@ -13,7 +13,7 @@ fn main() {
   )
   .unwrap();
   let indexed_grammar = IndexedGrammar::build(&grammar).unwrap();
-  let lr_table = LRTable::build(&indexed_grammar).unwrap();
+  let lr_table = LRTable::build_with_default_vocab(&indexed_grammar).unwrap();
 
   println!("{lr_table}");
 }
