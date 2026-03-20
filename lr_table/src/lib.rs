@@ -11,5 +11,6 @@ mod kernel_table;
 pub mod lr_table;
 pub mod parse_simulator;
 mod position;
+mod u8_vocab;
 mod vocab_set;
 pub mod vocabulary;

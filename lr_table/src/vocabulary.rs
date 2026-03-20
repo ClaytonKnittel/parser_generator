@@ -1,57 +1,36 @@
 use std::fmt::{Debug, Display};
 
-use crate::fixed_map::Label;
+pub trait VocabularyToken: Clone + Eq {
+  type Vocab: Vocabulary;
+}
 
-pub trait Vocabulary: Copy + Eq {
-  /// The size of the vocabulary.
-  const SIZE: usize;
+pub trait Vocabulary {
+  type Token: VocabularyToken;
 
-  /// Returns a unique integer value in the range 0..Self::SIZE for each
+  /// Returns the size of the vocabulary.
+  fn size(&self) -> usize;
+
+  /// Returns a unique integer value in the range 0..Self::size() for each
   /// element of the vocabulary.
-  fn ordinal(&self) -> usize;
+  fn ordinal(token: &Self::Token) -> usize;
 
   /// Turns an ordinal back into `Self`. The inverse of `Self::ordinal()`.
-  fn from_ordinal(ordinal: usize) -> Self;
+  fn from_ordinal(ordinal: usize) -> Self::Token;
 
   /// Returns an iterator over all tokens in this vocabulary.
-  fn for_each() -> impl Iterator<Item = Self> {
-    (0..Self::SIZE).map(Self::from_ordinal)
-  }
-}
-
-impl Vocabulary for u8 {
-  const SIZE: usize = u8::MAX as usize + 1;
-
-  fn ordinal(&self) -> usize {
-    *self as usize
-  }
-
-  fn from_ordinal(ordinal: usize) -> Self {
-    ordinal as u8
-  }
-}
-
-impl<T: Vocabulary> Label for T {
-  fn id(self) -> usize {
-    self.ordinal()
-  }
-
-  fn from_id(id: usize) -> Self {
-    debug_assert!(id < Self::SIZE);
-    Self::from_ordinal(id)
+  fn for_each(&self) -> impl Iterator<Item = Self::Token> {
+    (0..self.size()).map(Self::from_ordinal)
   }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum AugmentedVocab<T> {
+pub enum AugmentedVocabToken<T> {
   Token(T),
   Epsilon,
   EndOfStream,
 }
 
-impl<T: Vocabulary> Vocabulary for AugmentedVocab<T> {
-  const SIZE: usize = T::SIZE + 2;
-
+impl<T: VocabularyToken> VocabularyToken for AugmentedVocab<T> {
   fn ordinal(&self) -> usize {
     match self {
       Self::Token(t) => t.ordinal() + 2,
