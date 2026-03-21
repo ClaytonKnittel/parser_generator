@@ -1,9 +1,8 @@
 use crate::{
-  augmented_vocab_token::AugmentedVocabToken,
   fixed_map::FixedSizeMap,
   grammar::ProductionNode,
   indexed_grammar::{IndexedGrammar, ProductionLabel},
-  vocabulary::VocabSet,
+  vocabulary::{AugmentedVocabToken, VocabSet},
 };
 
 /// A map from production labels to the set of possible first tokens.
@@ -71,8 +70,10 @@ mod tests {
   use googletest::prelude::*;
 
   use crate::{
-    augmented_vocab_token::AugmentedVocabToken, first_map::FirstTable, grammar::Grammar,
-    indexed_grammar::IndexedGrammar, vocabulary::VocabSet,
+    first_map::FirstTable,
+    grammar::Grammar,
+    indexed_grammar::IndexedGrammar,
+    vocabulary::{AugmentedVocabToken, VocabSet},
   };
 
   #[gtest]

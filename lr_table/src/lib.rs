@@ -1,4 +1,3 @@
-pub mod augmented_vocab_token;
 mod bit_set;
 mod closure;
 mod error;

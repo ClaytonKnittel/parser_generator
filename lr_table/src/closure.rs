@@ -131,13 +131,12 @@ mod tests {
   use itertools::Itertools;
 
   use crate::{
-    augmented_vocab_token::AugmentedVocabToken,
     first_map::FirstTable,
     grammar::{Grammar, ProductionNode},
     indexed_grammar::{IndexedGrammar, NextTokenCategory, ProductionLabel},
     kernel::Kernel,
     position::Position,
-    vocabulary::VocabSet,
+    vocabulary::{AugmentedVocabToken, VocabSet},
   };
 
   fn closure_follow_sets<T>(

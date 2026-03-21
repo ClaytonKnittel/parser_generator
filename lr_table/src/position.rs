@@ -4,11 +4,10 @@ use std::{
 };
 
 use crate::{
-  augmented_vocab_token::AugmentedVocabToken,
   first_map::FirstTable,
   grammar::ProductionNode,
   indexed_grammar::{IndexedGrammar, IndexedProductionNode, ProductionLabel, ProductionRuleId},
-  vocabulary::{AugmentedVocab, VocabSet},
+  vocabulary::{AugmentedVocab, AugmentedVocabToken, VocabSet},
 };
 
 /// Returns the production label of the first node of `rule` if it is a

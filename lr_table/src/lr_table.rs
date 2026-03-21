@@ -6,7 +6,6 @@ use std::{
 use itertools::{IntoChunks, Itertools};
 
 use crate::{
-  augmented_vocab_token::AugmentedVocabToken,
   bit_set::BitSet,
   closure::partition_closure_by_next_node,
   error::LRTableResult,
@@ -17,7 +16,7 @@ use crate::{
   kernel::Kernel,
   kernel_table::KernelTable,
   position::Position,
-  vocabulary::AugmentedTokenId,
+  vocabulary::{AugmentedTokenId, AugmentedVocabToken, TokenId},
 };
 
 #[derive(Clone, Copy, Default)]
@@ -345,7 +344,7 @@ impl<T: Label + Display> Display for LRTable<T> {
     write!(f, "{:count$}  ", "", count = state_index_print_width)?;
     for token in relevant_vocab
       .for_each()
-      .map(AugmentedVocabToken::<T>::from_id)
+      .map(AugmentedVocabToken::<TokenId>::from_id)
     {
       write!(
         f,

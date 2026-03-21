@@ -1,11 +1,11 @@
 use std::{borrow::Borrow, fmt::Debug, hash::Hash};
 
 use crate::{
-  augmented_vocab_token::AugmentedVocabToken,
   error::LRTableResult,
   grammar::{Grammar, ProductionNode},
   indexed_grammar::{IndexedGrammar, IndexedProductionNode},
   lr_table::{Action, LRTable, StateId},
+  vocabulary::AugmentedVocabToken,
 };
 
 pub struct Parser<T> {

@@ -3,11 +3,10 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash};
 use itertools::Itertools;
 
 use crate::{
-  augmented_vocab_token::AugmentedVocabToken,
   error::{LRTableResult, grammar_error},
   fixed_map::{FixedSizeMap, FixedSizeSet, Label, SparseFixedSizeMap},
   grammar::{Grammar, ProductionNode, ProductionRule},
-  vocabulary::{AugmentedTokenId, AugmentedVocab, TokenId, VocabularyBuilder},
+  vocabulary::{AugmentedTokenId, AugmentedVocab, AugmentedVocabToken, TokenId, VocabularyBuilder},
 };
 
 /// Each production label is given a unique ID densely packed starting from 0.
@@ -370,10 +369,10 @@ mod tests {
   use googletest::prelude::*;
 
   use crate::{
-    augmented_vocab_token::AugmentedVocabToken,
     error::{BuildGrammarError, LRTableError},
     grammar::{Grammar, ProductionNode, ProductionRule},
     indexed_grammar::{IndexedGrammar, IndexedProductionRule, ProductionLabel},
+    vocabulary::AugmentedVocabToken,
   };
 
   fn production_rules<T>(

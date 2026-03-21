@@ -6,24 +6,73 @@ use std::{
 
 use itertools::Itertools;
 
-use crate::{augmented_vocab_token::AugmentedVocabToken, bit_set::BitSet, fixed_map::Label};
+use crate::{bit_set::BitSet, fixed_map::Label};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TokenId(usize);
 
-impl Label for TokenId {
-  fn id(&self) -> usize {
-    self.0
-  }
-
-  fn from_id(id: usize) -> Self {
-    Self(id)
+impl Display for TokenId {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{}", self.0)
   }
 }
 
-pub type AugmentedTokenId = AugmentedVocabToken<TokenId>;
+pub(crate) type AugmentedTokenId = AugmentedVocabToken<TokenId>;
 
-pub struct VocabularyBuilder<T> {
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AugmentedVocabToken<T> {
+  Token(T),
+  Epsilon,
+  EndOfStream,
+}
+
+impl Label for AugmentedVocabToken<TokenId> {
+  fn id(&self) -> usize {
+    match self {
+      AugmentedVocabToken::Token(token) => token.0 + 2,
+      AugmentedVocabToken::Epsilon => 0,
+      AugmentedVocabToken::EndOfStream => 1,
+    }
+  }
+
+  fn from_id(ordinal: usize) -> Self {
+    if ordinal == 0 {
+      AugmentedVocabToken::Epsilon
+    } else if ordinal == 1 {
+      AugmentedVocabToken::EndOfStream
+    } else {
+      AugmentedVocabToken::Token(TokenId(ordinal - 2))
+    }
+  }
+}
+
+impl<T> From<T> for AugmentedVocabToken<T> {
+  fn from(value: T) -> Self {
+    Self::Token(value)
+  }
+}
+
+impl<T: Display> Display for AugmentedVocabToken<T> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      Self::Token(t) => write!(f, "{t}"),
+      Self::Epsilon => write!(f, "ε"),
+      Self::EndOfStream => write!(f, "$"),
+    }
+  }
+}
+
+impl<T: Debug> Debug for AugmentedVocabToken<T> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      Self::Token(t) => write!(f, "{t:?}"),
+      Self::Epsilon => write!(f, "ε"),
+      Self::EndOfStream => write!(f, "$"),
+    }
+  }
+}
+
+pub(crate) struct VocabularyBuilder<T> {
   token_map: HashMap<T, TokenId>,
   id_map: Vec<T>,
 }
@@ -42,12 +91,8 @@ impl<T: Clone + Eq + Hash> VocabularyBuilder<T> {
           }
         }
       }
-      AugmentedVocabToken::Epsilon => {
-        TokenId::from_id(AugmentedVocabToken::<TokenId>::Epsilon.id())
-      }
-      AugmentedVocabToken::EndOfStream => {
-        TokenId::from_id(AugmentedVocabToken::<TokenId>::EndOfStream.id())
-      }
+      AugmentedVocabToken::Epsilon => TokenId(AugmentedVocabToken::<TokenId>::Epsilon.id()),
+      AugmentedVocabToken::EndOfStream => TokenId(AugmentedVocabToken::<TokenId>::EndOfStream.id()),
     }
   }
 }
@@ -104,7 +149,7 @@ impl<T: Eq + Hash> AugmentedVocab<T> {
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct VocabSet {
+pub(crate) struct VocabSet {
   set: BitSet,
 }
 
@@ -170,14 +215,14 @@ mod tests {
   use itertools::Itertools;
 
   use crate::{
-    augmented_vocab_token::AugmentedVocabToken,
     fixed_map::Label,
-    vocabulary::{AugmentedTokenId, TokenId, VocabularyBuilder},
+    vocabulary::{AugmentedTokenId, AugmentedVocabToken, TokenId, VocabularyBuilder},
   };
 
   #[gtest]
   fn test_empty_vocab() {
     let vocab = VocabularyBuilder::<u8>::new().build();
+    expect_eq!(vocab.size(), 2);
     expect_eq!(
       vocab.augmented_token_to_id(&AugmentedVocabToken::Epsilon),
       AugmentedTokenId::Epsilon
@@ -208,6 +253,7 @@ mod tests {
     expect_eq!(a_id, TokenId(0));
 
     let vocab = builder.build();
+    expect_eq!(vocab.size(), 3);
     expect_eq!(
       vocab.augmented_token_to_id(&AugmentedVocabToken::Epsilon),
       AugmentedTokenId::Epsilon
@@ -245,6 +291,7 @@ mod tests {
     expect_eq!(c_id, TokenId(2));
 
     let vocab = builder.build();
+    expect_eq!(vocab.size(), 5);
     expect_eq!(
       vocab.augmented_token_to_id(&AugmentedVocabToken::Epsilon),
       AugmentedTokenId::Epsilon
@@ -287,6 +334,7 @@ mod tests {
     builder.get_id_or_insert(b'e'.into());
 
     let vocab = builder.build();
+    expect_eq!(vocab.size(), 7);
     expect_that!(
       vocab
         .for_each_id()
@@ -305,5 +353,8 @@ mod tests {
 
     expect_eq!(builder.get_id_or_insert(b'b'.into()), b_id);
     expect_eq!(builder.get_id_or_insert(b'a'.into()), a_id);
+
+    let vocab = builder.build();
+    expect_eq!(vocab.size(), 4);
   }
 }
