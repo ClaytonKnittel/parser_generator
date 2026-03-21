@@ -5,7 +5,7 @@ use itertools::Itertools;
 use crate::{
   augmented_vocab_token::AugmentedVocabToken,
   error::{LRTableResult, grammar_error},
-  fixed_map::{FixedSizeMap, FixedSizeSet, Label, SparseFixedSizeMap, SparseFixedSizeMapIntoIter},
+  fixed_map::{FixedSizeMap, FixedSizeSet, Label, SparseFixedSizeMap},
   grammar::{Grammar, ProductionNode, ProductionRule},
   vocabulary::{AugmentedTokenId, AugmentedVocab, TokenId, VocabularyBuilder},
 };
@@ -131,31 +131,16 @@ impl<V> SparsePartitionMap<V> {
   }
 }
 
-pub struct SparsePartitionMapIntoIter<V> {
-  iter: SparseFixedSizeMapIntoIter<usize, V>,
-  vocab_size: usize,
-}
-
-impl<V: Default> Iterator for SparsePartitionMapIntoIter<V> {
+impl<V: Default + 'static> IntoIterator for SparsePartitionMap<V> {
   type Item = (NextTokenCategory, V);
-
-  fn next(&mut self) -> Option<Self::Item> {
-    let (label_id, value) = self.iter.next()?;
-    let label = SparsePartitionMap::<V>::static_from_id(label_id, self.vocab_size);
-    Some((label, value))
-  }
-}
-
-impl<V: Default> IntoIterator for SparsePartitionMap<V> {
-  type Item = (NextTokenCategory, V);
-  type IntoIter = SparsePartitionMapIntoIter<V>;
+  type IntoIter = Box<dyn Iterator<Item = (NextTokenCategory, V)>>;
 
   fn into_iter(self) -> Self::IntoIter {
     let vocab_size = self.vocab_size;
-    Self::IntoIter {
-      iter: self.map.into_iter(),
-      vocab_size,
-    }
+    Box::new(self.map.into_iter().map(move |(label_id, value)| {
+      let label = SparsePartitionMap::<V>::static_from_id(label_id, vocab_size);
+      (label, value)
+    }))
   }
 }
 
@@ -339,8 +324,11 @@ impl<T> IndexedGrammar<T> {
     FixedSizeSet::new(self.labels_count())
   }
 
-  pub fn new_production_label_map<U: Default>(&self) -> FixedSizeMap<ProductionLabel, U> {
-    FixedSizeMap::new(self.labels_count())
+  pub fn new_production_label_map<U, F>(&self, constructor: F) -> FixedSizeMap<ProductionLabel, U>
+  where
+    F: FnMut() -> U,
+  {
+    FixedSizeMap::new_with_constructor(self.labels_count(), constructor)
   }
 
   pub fn new_sparse_production_label_map<U>(&self) -> SparseFixedSizeMap<ProductionLabel, U> {

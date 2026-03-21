@@ -114,7 +114,7 @@ impl<T: Eq + Hash> AugmentedVocab<T> {
   }
 }
 
-#[derive(Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct VocabSet {
   set: BitSet,
 }

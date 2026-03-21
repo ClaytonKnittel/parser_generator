@@ -83,8 +83,17 @@ pub struct FixedSizeMap<L, T> {
 
 impl<L: Label, T: Default> FixedSizeMap<L, T> {
   pub fn new(capacity: usize) -> Self {
+    Self::new_with_constructor(capacity, T::default)
+  }
+}
+
+impl<L: Label, T> FixedSizeMap<L, T> {
+  pub fn new_with_constructor<F>(capacity: usize, mut constructor: F) -> Self
+  where
+    F: FnMut() -> T,
+  {
     Self {
-      map: (0..capacity).map(|_| T::default()).collect(),
+      map: (0..capacity).map(move |_| constructor()).collect(),
       _phantom: PhantomData,
     }
   }
@@ -114,9 +123,15 @@ impl<L: Debug + Label, T: Debug> Debug for FixedSizeMap<L, T> {
 }
 
 #[derive(Clone)]
+struct SparseFixedSizedEntry<L, T> {
+  label: L,
+  value: T,
+}
+
+#[derive(Clone)]
 pub struct SparseFixedSizeMap<L, T> {
   index_map: Vec<usize>,
-  map: Vec<T>,
+  map: Vec<SparseFixedSizedEntry<L, T>>,
   _phantom: PhantomData<L>,
 }
 
@@ -141,22 +156,27 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
   /// Returns an optional reference to the value for the given label. Returns
   /// `None` if the label is not in the map.
   pub fn get(&self, label: &L) -> Option<&T> {
-    self.maybe_index(label).map(|index| &self.map[index])
+    self.maybe_index(label).map(|index| &self.map[index].value)
   }
 
   /// Returns an optional mutable reference to the value for the given label.
   /// Returns `None` if the label is not in the map.
   pub fn get_mut(&mut self, label: &L) -> Option<&mut T> {
-    self.maybe_index(label).map(|index| &mut self.map[index])
+    self
+      .maybe_index(label)
+      .map(|index| &mut self.map[index].value)
   }
 
   fn insert(&mut self, label: &L, value: T) -> &mut T {
     debug_assert_eq!(self.index_map[label.id()], Self::UNINITIALIZED_INDEX);
 
-    let next_index = self.map.len();
-    self.index_map[label.id()] = next_index;
-    self.map.push(value);
-    &mut self.map[next_index]
+    let index = self.map.len();
+    self.index_map[label.id()] = index;
+    self.map.push(SparseFixedSizedEntry {
+      label: label.clone(),
+      value,
+    });
+    &mut self.map[index].value
   }
 
   pub fn try_insert(&mut self, label: &L, value: T) -> LRTableResult {
@@ -173,7 +193,7 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
     F: FnOnce() -> T,
   {
     match self.maybe_index(label) {
-      Some(index) => &mut self.map[index],
+      Some(index) => &mut self.map[index].value,
       None => self.insert(label, construct()),
     }
   }
@@ -194,45 +214,17 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
       .filter_map(|label| {
         self
           .maybe_index(&label)
-          .map(|index| (label, &self.map[index]))
+          .map(|index| (label, &self.map[index].value))
       })
   }
 }
 
-pub struct SparseFixedSizeMapIntoIter<L, T> {
-  sparse_map: SparseFixedSizeMap<L, T>,
-  label_id: usize,
-}
-
-impl<L: Label, T: Default> Iterator for SparseFixedSizeMapIntoIter<L, T> {
+impl<L: Label + 'static, T: 'static> IntoIterator for SparseFixedSizeMap<L, T> {
   type Item = (L, T);
-
-  fn next(&mut self) -> Option<Self::Item> {
-    while self.label_id < self.sparse_map.index_map.len() {
-      let label = Label::from_id(self.label_id);
-      self.label_id += 1;
-      let Some(index) = self.sparse_map.maybe_index(&label) else {
-        continue;
-      };
-
-      let mut tmp = T::default();
-      std::mem::swap(&mut self.sparse_map.map[index], &mut tmp);
-      return Some((label, tmp));
-    }
-
-    None
-  }
-}
-
-impl<L: Label, T: Default> IntoIterator for SparseFixedSizeMap<L, T> {
-  type Item = (L, T);
-  type IntoIter = SparseFixedSizeMapIntoIter<L, T>;
+  type IntoIter = Box<dyn Iterator<Item = (L, T)>>;
 
   fn into_iter(self) -> Self::IntoIter {
-    Self::IntoIter {
-      sparse_map: self,
-      label_id: 0,
-    }
+    Box::new(self.map.into_iter().map(|entry| (entry.label, entry.value)))
   }
 }
 
@@ -246,5 +238,39 @@ impl<L: Debug + Label, T: Debug> Debug for SparseFixedSizeMap<L, T> {
         .map(|(label, value)| { format!("{label:?}: {value:?}") })
         .join(", ")
     )
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use googletest::prelude::*;
+  use itertools::Itertools;
+
+  use crate::fixed_map::SparseFixedSizeMap;
+
+  #[gtest]
+  fn test_sparse_iter_empty() {
+    let sparse = SparseFixedSizeMap::<usize, usize>::new(10);
+    expect_that!(sparse.iter().collect_vec(), is_empty());
+  }
+
+  #[gtest]
+  fn test_sparse_into_iter_empty() {
+    let sparse = SparseFixedSizeMap::<usize, usize>::new(10);
+    expect_that!(sparse.into_iter().collect_vec(), is_empty());
+  }
+
+  #[gtest]
+  fn test_sparse_iter_one() {
+    let mut sparse = SparseFixedSizeMap::<usize, usize>::new(10);
+    expect_eq!(sparse.get_mut_or_insert_with(&5, || 1000), &mut 1000);
+    expect_that!(sparse.iter().collect_vec(), elements_are![&(5, &1000)]);
+  }
+
+  #[gtest]
+  fn test_sparse_into_iter_one() {
+    let mut sparse = SparseFixedSizeMap::<usize, usize>::new(10);
+    expect_eq!(sparse.get_mut_or_insert_with(&5, || 1000), &mut 1000);
+    expect_that!(sparse.into_iter().collect_vec(), elements_are![&(5, 1000)]);
   }
 }

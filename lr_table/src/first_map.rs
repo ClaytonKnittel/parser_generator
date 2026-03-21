@@ -55,7 +55,7 @@ impl FirstTable {
   }
 
   pub fn build_from_grammar<T>(grammar: &IndexedGrammar<T>) -> Self {
-    let mut map = grammar.new_production_label_map();
+    let mut map = grammar.new_production_label_map(|| VocabSet::new(grammar.vocab()));
     while Self::propagate_map(&mut map, grammar) {}
 
     Self { map }
