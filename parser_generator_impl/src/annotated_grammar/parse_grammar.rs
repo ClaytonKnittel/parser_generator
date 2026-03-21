@@ -27,7 +27,7 @@ where
 {
   expect_symbol_with(
     stream,
-    |sym| sym.is_identifier_with_name("terminal"),
+    |sym| sym.is_identifier_with_name(option_name),
     format!("Expected \"{option_name}\" keyword"),
   )?;
   expect_symbol_with(

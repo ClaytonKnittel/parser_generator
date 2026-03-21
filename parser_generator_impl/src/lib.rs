@@ -2,6 +2,7 @@
 
 extern crate proc_macro;
 mod annotated_grammar;
+mod code_gen;
 mod error;
 mod ident;
 mod symbol;
