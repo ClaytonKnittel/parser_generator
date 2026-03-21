@@ -174,15 +174,15 @@ impl VocabSet {
     }
   }
 
-  pub fn has(&self, token: AugmentedVocabToken<TokenId>) -> bool {
+  pub fn has(&self, token: AugmentedTokenId) -> bool {
     self.set.has(token.id())
   }
 
-  pub fn set(&mut self, token: AugmentedVocabToken<TokenId>) {
+  pub fn set(&mut self, token: AugmentedTokenId) {
     self.set.set(token.id());
   }
 
-  pub fn clear(&mut self, token: AugmentedVocabToken<TokenId>) {
+  pub fn clear(&mut self, token: AugmentedTokenId) {
     self.set.clear(token.id());
   }
 
@@ -192,7 +192,7 @@ impl VocabSet {
     self.set.merge(&other.set)
   }
 
-  pub fn iter(&self) -> impl Iterator<Item = AugmentedVocabToken<TokenId>> {
+  pub fn iter(&self) -> impl Iterator<Item = AugmentedTokenId> {
     self.set.for_each().map(AugmentedVocabToken::from_id)
   }
 }

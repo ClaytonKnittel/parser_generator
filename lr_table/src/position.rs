@@ -12,9 +12,7 @@ use crate::{
 
 /// Returns the production label of the first node of `rule` if it is a
 /// production node, otherwise `None`.
-pub fn maybe_first_production_label<T>(
-  rule: &[ProductionNode<T, ProductionLabel>],
-) -> Option<ProductionLabel> {
+pub fn maybe_first_production_label(rule: &[IndexedProductionNode]) -> Option<ProductionLabel> {
   if rule.is_empty() {
     return None;
   }
