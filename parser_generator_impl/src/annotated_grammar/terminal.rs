@@ -4,16 +4,16 @@ use crate::{
   ParserGeneratorResult,
 };
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum TerminalSymbol {
   Symbol(String),
   Epsilon,
 }
 
-impl From<TerminalSymbol> for lr_table::vocabulary::AugmentedVocab<String> {
+impl From<TerminalSymbol> for lr_table::vocabulary::AugmentedVocabToken<String> {
   fn from(value: TerminalSymbol) -> Self {
     match value {
-      TerminalSymbol::Symbol(symbol) => todo!(),
+      TerminalSymbol::Symbol(symbol) => Self::Token(symbol),
       TerminalSymbol::Epsilon => Self::Epsilon,
     }
   }
@@ -37,6 +37,10 @@ impl Terminal {
       symbol: TerminalSymbol::Epsilon,
       meta,
     }
+  }
+
+  pub fn symbol(&self) -> &TerminalSymbol {
+    &self.symbol
   }
 
   pub fn parse(stream: &mut impl SymbolStream) -> ParserGeneratorResult<Self> {

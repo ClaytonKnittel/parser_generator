@@ -55,9 +55,13 @@ pub struct GrammarInfo {
 
 impl GrammarInfo {
   pub fn build_lr_table_grammar(&self) -> Grammar<TerminalSymbol, ProductionRefName> {
-    Grammar::new(self.production_rules.map(|rule| {
-      // lr_table::grammar::ProductionRule::new(symbol, rule)
-    }))
+    Grammar::new(
+      self
+        .production_rules
+        .iter()
+        .map(ProductionRule::to_lr_production_rule)
+        .collect(),
+    )
   }
 }
 

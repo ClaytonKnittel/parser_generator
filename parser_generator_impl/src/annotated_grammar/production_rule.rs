@@ -29,6 +29,15 @@ pub struct ProductionRule {
 }
 
 impl ProductionRule {
+  pub fn to_lr_production_rule(
+    &self,
+  ) -> lr_table::grammar::ProductionRule<TerminalSymbol, ProductionRefName> {
+    lr_table::grammar::ProductionRule::new(
+      self.name.name().clone(),
+      self.rule.iter().map(ProductionNode::to_lr_node).collect(),
+    )
+  }
+
   pub fn parse(stream: &mut impl SymbolStream) -> ParserGeneratorResult<Self> {
     let name = ProductionRef::parse(stream)?;
     let mut meta = name.meta().clone();
@@ -74,14 +83,5 @@ impl ProductionRule {
       block,
       meta,
     })
-  }
-}
-
-impl From<ProductionRule> for lr_table::grammar::ProductionRule<TerminalSymbol, ProductionRefName> {
-  fn from(value: ProductionRule) -> Self {
-    Self::new(
-      value.name.name().clone(),
-      value.rule.into_iter().map(|node| node.into()).collect(),
-    )
   }
 }

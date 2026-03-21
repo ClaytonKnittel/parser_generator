@@ -20,6 +20,10 @@ impl ParserGeneratorError {
     }
   }
 
+  pub fn from_foreign_error(error: impl Error, span: Span) -> Self {
+    Self::new(format!("{error}"), span)
+  }
+
   pub fn abort(&self) -> ! {
     abort!(self.span, self.message)
   }

@@ -5,7 +5,7 @@ use crate::{
   ParserGeneratorResult,
 };
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ProductionRefName(String);
 
 pub struct ProductionRef {
