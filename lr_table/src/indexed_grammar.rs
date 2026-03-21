@@ -94,27 +94,6 @@ impl<V> SparsePartitionMap<V> {
     Self::static_from_id(id, self.vocab_size)
   }
 
-  pub fn get(&self, label: &NextTokenCategory) -> Option<&V> {
-    self.map.get(&self.category_id(label))
-  }
-
-  pub fn get_mut(&mut self, label: &NextTokenCategory) -> Option<&mut V> {
-    self.map.get_mut(&self.category_id(label))
-  }
-
-  pub fn try_insert(&mut self, label: &NextTokenCategory, value: V) -> LRTableResult {
-    self.map.try_insert(&self.category_id(label), value)
-  }
-
-  pub fn get_mut_or_insert_with<F>(&mut self, label: &NextTokenCategory, construct: F) -> &mut V
-  where
-    F: FnOnce() -> V,
-  {
-    self
-      .map
-      .get_mut_or_insert_with(&self.category_id(label), construct)
-  }
-
   pub fn get_mut_or_default(&mut self, label: &NextTokenCategory) -> &mut V
   where
     V: Default,
@@ -193,9 +172,6 @@ impl<T: Clone + Eq + Hash> IndexedGrammar<T> {
     let mut label_map =
       HashMap::from_iter([(root_production.symbol().clone(), ProductionLabel(0))]);
     let mut label_groups = vec![vec![root_production]];
-
-    // TODO: create dynamic vocab here and store it in IndexedGrammar. Then
-    // users don't have to pass their own vocabs.
     let mut vocab_builder = VocabularyBuilder::new();
 
     for production in productions_iter {
@@ -271,10 +247,12 @@ impl<T: Clone + Eq + Hash> IndexedGrammar<T> {
       })
       .collect_vec();
 
+    let vocab = vocab_builder.build();
+
     let indexed_grammar = Self {
       rules,
       rule_offset_map,
-      vocab: vocab_builder.build(),
+      vocab,
     };
 
     indexed_grammar.verify_connected()?;

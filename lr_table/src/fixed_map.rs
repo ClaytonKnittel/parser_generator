@@ -124,6 +124,7 @@ impl<L: Debug + Label, T: Debug> Debug for FixedSizeMap<L, T> {
 
 #[derive(Clone)]
 struct SparseFixedSizedEntry<L, T> {
+  /// Replicate the label here for use in `iter()` / `into_iter()`.
   label: L,
   value: T,
 }
@@ -209,13 +210,10 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
 
   /// Returns an iterator over all initialized entries in the map.
   pub fn iter(&self) -> impl Iterator<Item = (L, &T)> {
-    (0..self.index_map.len())
-      .map(Label::from_id)
-      .filter_map(|label| {
-        self
-          .maybe_index(&label)
-          .map(|index| (label, &self.map[index].value))
-      })
+    self
+      .map
+      .iter()
+      .map(|entry| (entry.label.clone(), &entry.value))
   }
 }
 

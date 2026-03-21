@@ -16,7 +16,7 @@ use crate::{
   kernel::Kernel,
   kernel_table::KernelTable,
   position::Position,
-  vocabulary::{AugmentedTokenId, AugmentedVocabToken, TokenId},
+  vocabulary::{AugmentedTokenId, AugmentedVocabToken},
 };
 
 #[derive(Clone, Copy, Default)]
@@ -342,10 +342,7 @@ impl<T: Label + Display> Display for LRTable<T> {
 
     // Print header
     write!(f, "{:count$}  ", "", count = state_index_print_width)?;
-    for token in relevant_vocab
-      .for_each()
-      .map(AugmentedVocabToken::<TokenId>::from_id)
-    {
+    for token in relevant_vocab.for_each().map(AugmentedTokenId::from_id) {
       write!(
         f,
         "{:count$} ",
