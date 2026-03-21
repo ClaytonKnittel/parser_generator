@@ -6,7 +6,7 @@ use crate::{
   error::{LRTableResult, grammar_error},
   fixed_map::{FixedSizeMap, FixedSizeSet, Label, SparseFixedSizeMap},
   grammar::{Grammar, ProductionNode, ProductionRule},
-  vocabulary::{AugmentedVocab, Vocabulary},
+  vocabulary::{AugmentedTokenId, AugmentedVocab, AugmentedVocabToken, TokenId, VocabularyBuilder},
 };
 
 /// Each production label is given a unique ID densely packed starting from 0.
@@ -26,7 +26,7 @@ impl Debug for ProductionRuleId {
 }
 
 impl Label for ProductionLabel {
-  fn id(self) -> usize {
+  fn id(&self) -> usize {
     self.0
   }
   fn from_id(id: usize) -> Self {
@@ -35,7 +35,7 @@ impl Label for ProductionLabel {
 }
 
 impl Label for ProductionRuleId {
-  fn id(self) -> usize {
+  fn id(&self) -> usize {
     self.0
   }
   fn from_id(id: usize) -> Self {
@@ -43,20 +43,82 @@ impl Label for ProductionRuleId {
   }
 }
 
-impl<T: Vocabulary> Label for ProductionNode<T, ProductionLabel> {
-  fn id(self) -> usize {
-    match self {
-      ProductionNode::Terminal(terminal) => terminal.ordinal(),
-      ProductionNode::Production(label) => T::SIZE + label.id(),
+pub type IndexedProductionNode = ProductionNode<TokenId, ProductionLabel>;
+
+pub type IndexedProductionRule = ProductionRule<TokenId, ProductionLabel>;
+
+/// The key for closure partitions. This is either a terminal, a production
+/// label, or `None` (special case for positions at the end of their rules).
+pub type NextTokenCategory = Option<IndexedProductionNode>;
+
+pub struct SparsePartitionMap<V> {
+  map: SparseFixedSizeMap<usize, V>,
+  vocab_size: usize,
+}
+
+impl<V> SparsePartitionMap<V> {
+  fn new(num_productions: usize, vocab_size: usize) -> Self {
+    Self {
+      map: SparseFixedSizeMap::new(num_productions + vocab_size + 1),
+      vocab_size,
     }
   }
 
-  fn from_id(id: usize) -> Self {
-    if id < T::SIZE {
-      Self::Terminal(AugmentedVocab::from_ordinal(id))
-    } else {
-      Self::Production(ProductionLabel::from_id(id - T::SIZE))
+  fn static_id(label: &NextTokenCategory, vocab_size: usize) -> usize {
+    match label {
+      Some(ProductionNode::Production(label)) => vocab_size + 1 + label.id(),
+      Some(ProductionNode::Terminal(terminal)) => terminal.id() + 1,
+      None => 0,
     }
+  }
+
+  fn static_from_id(id: usize, vocab_size: usize) -> NextTokenCategory {
+    if id == 0 {
+      None
+    } else if id <= vocab_size {
+      Some(ProductionNode::Terminal(AugmentedVocabToken::from_id(
+        id - 1,
+      )))
+    } else {
+      Some(ProductionNode::Production(ProductionLabel::from_id(
+        id - (vocab_size + 1),
+      )))
+    }
+  }
+
+  fn category_id(&self, label: &NextTokenCategory) -> usize {
+    Self::static_id(label, self.vocab_size)
+  }
+
+  fn category_from_id(&self, id: usize) -> NextTokenCategory {
+    Self::static_from_id(id, self.vocab_size)
+  }
+
+  pub fn get_mut_or_default(&mut self, label: &NextTokenCategory) -> &mut V
+  where
+    V: Default,
+  {
+    self.map.get_mut_or_default(&self.category_id(label))
+  }
+
+  pub fn iter(&self) -> impl Iterator<Item = (NextTokenCategory, &V)> {
+    self
+      .map
+      .iter()
+      .map(|(label_id, value)| (self.category_from_id(label_id), value))
+  }
+}
+
+impl<V: Default + 'static> IntoIterator for SparsePartitionMap<V> {
+  type Item = (NextTokenCategory, V);
+  type IntoIter = Box<dyn Iterator<Item = (NextTokenCategory, V)>>;
+
+  fn into_iter(self) -> Self::IntoIter {
+    let vocab_size = self.vocab_size;
+    Box::new(self.map.into_iter().map(move |(label_id, value)| {
+      let label = SparsePartitionMap::<V>::static_from_id(label_id, vocab_size);
+      (label, value)
+    }))
   }
 }
 
@@ -66,25 +128,26 @@ struct RuleRange {
 }
 
 pub struct IndexedGrammar<T> {
-  rules: Vec<ProductionRule<T, ProductionLabel>>,
+  rules: Vec<IndexedProductionRule>,
   /// A map from `ProductionLabel` -> `RuleRange`
   rule_offset_map: Vec<RuleRange>,
+  vocab: AugmentedVocab<T>,
 }
 
-impl<T: Clone> IndexedGrammar<T> {
+impl<T: Clone + Eq + Hash> IndexedGrammar<T> {
   fn verify_connected(&self) -> LRTableResult {
     let mut rule_set = self.new_production_label_set();
     let mut labels_to_explore = vec![ProductionLabel(0)];
-    rule_set.set(ProductionLabel(0));
+    rule_set.set(&ProductionLabel(0));
 
     while let Some(label) = labels_to_explore.pop() {
-      debug_assert!(rule_set.has(label));
+      debug_assert!(rule_set.has(&label));
       for rule in self.production_rules_for_label(label) {
         for node in rule.rule() {
           if let ProductionNode::Production(label) = node
-            && !rule_set.has(*label)
+            && !rule_set.has(label)
           {
-            rule_set.set(*label);
+            rule_set.set(label);
             labels_to_explore.push(*label);
           }
         }
@@ -109,6 +172,7 @@ impl<T: Clone> IndexedGrammar<T> {
     let mut label_map =
       HashMap::from_iter([(root_production.symbol().clone(), ProductionLabel(0))]);
     let mut label_groups = vec![vec![root_production]];
+    let mut vocab_builder = VocabularyBuilder::new();
 
     for production in productions_iter {
       let label = production.symbol().clone();
@@ -146,21 +210,27 @@ impl<T: Clone> IndexedGrammar<T> {
       .flat_map(|(index, group)| {
         let label = ProductionLabel(index);
         let label_map = &label_map;
-        group.iter().map(move |production| {
-          ProductionRule::new(
-            label,
-            production
-              .rule()
-              .iter()
-              .map(|node| match node {
-                ProductionNode::Production(user_label) => {
-                  ProductionNode::Production(*label_map.get(user_label).unwrap())
-                }
-                ProductionNode::Terminal(terminal) => ProductionNode::Terminal(terminal.clone()),
-              })
-              .collect(),
-          )
-        })
+        let vocab_builder = &mut vocab_builder;
+        group
+          .iter()
+          .map(move |production| {
+            IndexedProductionRule::new(
+              label,
+              production
+                .rule()
+                .iter()
+                .map(|node| match node {
+                  ProductionNode::Production(user_label) => {
+                    ProductionNode::Production(*label_map.get(user_label).unwrap())
+                  }
+                  ProductionNode::Terminal(terminal) => {
+                    ProductionNode::Terminal(vocab_builder.get_id_or_insert(terminal.clone()))
+                  }
+                })
+                .collect(),
+            )
+          })
+          .collect_vec()
       })
       .collect_vec();
 
@@ -177,9 +247,12 @@ impl<T: Clone> IndexedGrammar<T> {
       })
       .collect_vec();
 
+    let vocab = vocab_builder.build();
+
     let indexed_grammar = Self {
       rules,
       rule_offset_map,
+      vocab,
     };
 
     indexed_grammar.verify_connected()?;
@@ -200,6 +273,10 @@ impl<T: Clone> IndexedGrammar<T> {
 }
 
 impl<T> IndexedGrammar<T> {
+  pub fn vocab(&self) -> &AugmentedVocab<T> {
+    &self.vocab
+  }
+
   pub fn root_production_label(&self) -> ProductionLabel {
     ProductionLabel(0)
   }
@@ -216,35 +293,30 @@ impl<T> IndexedGrammar<T> {
     self.rule_offset_map.len()
   }
 
-  pub fn new_sparse_augmented_vocab_map<U>(&self) -> SparseFixedSizeMap<AugmentedVocab<T>, U>
-  where
-    T: Vocabulary,
-  {
-    SparseFixedSizeMap::new(AugmentedVocab::<T>::SIZE)
+  pub fn new_sparse_augmented_vocab_map<U>(&self) -> SparseFixedSizeMap<AugmentedTokenId, U> {
+    SparseFixedSizeMap::new(self.vocab.size())
   }
 
   fn new_production_label_set(&self) -> FixedSizeSet<ProductionLabel> {
     FixedSizeSet::new(self.labels_count())
   }
 
-  pub fn new_production_label_map<U: Default>(&self) -> FixedSizeMap<ProductionLabel, U> {
-    FixedSizeMap::new(self.labels_count())
+  pub fn new_production_label_map<U, F>(&self, constructor: F) -> FixedSizeMap<ProductionLabel, U>
+  where
+    F: FnMut() -> U,
+  {
+    FixedSizeMap::new_with_constructor(self.labels_count(), constructor)
   }
 
   pub fn new_sparse_production_label_map<U>(&self) -> SparseFixedSizeMap<ProductionLabel, U> {
     SparseFixedSizeMap::new(self.labels_count())
   }
 
-  pub fn new_sparse_partition_closure_map<U>(
-    &self,
-  ) -> SparseFixedSizeMap<Option<ProductionNode<T, ProductionLabel>>, U>
-  where
-    T: Vocabulary,
-  {
-    SparseFixedSizeMap::new(T::SIZE + self.labels_count() + 1)
+  pub fn new_sparse_partition_closure_map<U>(&self) -> SparsePartitionMap<U> {
+    SparsePartitionMap::new(self.labels_count(), self.vocab.size())
   }
 
-  pub fn production_rule(&self, id: ProductionRuleId) -> &ProductionRule<T, ProductionLabel> {
+  pub fn production_rule(&self, id: ProductionRuleId) -> &IndexedProductionRule {
     &self.rules[id.0]
   }
 
@@ -263,7 +335,7 @@ impl<T> IndexedGrammar<T> {
   pub fn production_rules_for_label(
     &self,
     label: ProductionLabel,
-  ) -> impl Iterator<Item = &ProductionRule<T, ProductionLabel>> {
+  ) -> impl Iterator<Item = &IndexedProductionRule> {
     self
       .production_rule_ids_for_label(label)
       .map(|id| self.production_rule(id))
@@ -277,14 +349,14 @@ mod tests {
   use crate::{
     error::{BuildGrammarError, LRTableError},
     grammar::{Grammar, ProductionNode, ProductionRule},
-    indexed_grammar::{IndexedGrammar, ProductionLabel},
-    vocabulary::AugmentedVocab,
+    indexed_grammar::{IndexedGrammar, IndexedProductionRule, ProductionLabel},
+    vocabulary::AugmentedVocabToken,
   };
 
   fn production_rules<T>(
     grammar: &IndexedGrammar<T>,
     label: ProductionLabel,
-  ) -> Vec<&ProductionRule<T, ProductionLabel>> {
+  ) -> Vec<&IndexedProductionRule> {
     grammar.production_rules_for_label(label).collect()
   }
 
@@ -295,11 +367,12 @@ mod tests {
     let (indexed_grammar, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     assert_eq!(indexed_grammar.labels_count(), 1);
     let label_a = *label_map.get("A").unwrap();
+    let a_id = indexed_grammar.vocab().token_to_id(&b'a').unwrap();
     expect_that!(
       production_rules(&indexed_grammar, label_a),
       elements_are![&&ProductionRule::new(
         label_a,
-        vec![ProductionNode::Terminal(AugmentedVocab::Token(b'a'))]
+        vec![ProductionNode::Terminal(AugmentedVocabToken::Token(a_id))]
       )]
     );
   }
@@ -372,18 +445,29 @@ mod tests {
     let (indexed_grammar, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     assert_eq!(indexed_grammar.labels_count(), 2);
     let label_a = *label_map.get("A").unwrap();
+    let a_id = indexed_grammar.vocab().token_to_id(&b'a').unwrap();
+    let b_id = indexed_grammar.vocab().token_to_id(&b'b').unwrap();
     expect_that!(
       production_rules(&indexed_grammar, label_a),
       elements_are![
         &&ProductionRule::new(
           label_a,
-          vec![ProductionNode::Terminal(AugmentedVocab::Token(b'a'))]
+          vec![ProductionNode::Terminal(AugmentedVocabToken::Token(a_id))]
         ),
         &&ProductionRule::new(
           label_a,
-          vec![ProductionNode::Terminal(AugmentedVocab::Token(b'b'))]
+          vec![ProductionNode::Terminal(AugmentedVocabToken::Token(b_id))]
         )
       ]
     );
+  }
+
+  #[gtest]
+  fn test_vocab_set_single_token() {
+    let grammar = Grammar::from_grammar_str("A -> a").unwrap();
+    let indexed_grammar = IndexedGrammar::build(&grammar).unwrap();
+
+    let vocab = indexed_grammar.vocab();
+    expect_eq!(vocab.size(), 3);
   }
 }

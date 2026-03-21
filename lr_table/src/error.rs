@@ -35,6 +35,7 @@ pub(crate) use grammar_error;
 #[derive(Clone)]
 pub enum LRTableError {
   BuildGrammar(BuildGrammarError),
+  UnrecognizedToken { token: String },
   LabelAlreadyExists { label_id: usize },
   Generic(String),
 }
@@ -59,6 +60,7 @@ impl Display for LRTableError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
       Self::BuildGrammar(error) => write!(f, "Build grammar error: {error}"),
+      Self::UnrecognizedToken { token } => write!(f, "Unrecognized token \"{token}\""),
       Self::LabelAlreadyExists { label_id } => write!(f, "Label {label_id} already exists"),
       Self::Generic(message) => write!(f, "Error: {}", message),
     }

@@ -1,6 +1,6 @@
 use crate::iter_ones::IterOnes;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct BitSet {
   bits: Vec<u64>,
   len: usize,
@@ -8,7 +8,6 @@ pub struct BitSet {
 
 impl BitSet {
   pub fn new(len: usize) -> Self {
-    debug_assert_ne!(len, 0);
     Self {
       bits: vec![0; len.div_ceil(u64::BITS as usize)],
       len,

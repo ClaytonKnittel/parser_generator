@@ -3,9 +3,9 @@ use std::{borrow::Borrow, fmt::Debug, hash::Hash};
 use crate::{
   error::LRTableResult,
   grammar::{Grammar, ProductionNode},
-  indexed_grammar::{IndexedGrammar, ProductionLabel},
+  indexed_grammar::{IndexedGrammar, IndexedProductionNode},
   lr_table::{Action, LRTable, StateId},
-  vocabulary::{AugmentedVocab, Vocabulary},
+  vocabulary::AugmentedVocabToken,
 };
 
 pub struct Parser<T> {
@@ -13,7 +13,7 @@ pub struct Parser<T> {
   lr_table: LRTable<T>,
 }
 
-impl<T: Vocabulary> Parser<T> {
+impl<T: Clone + Eq + Hash> Parser<T> {
   pub fn new<L: Clone + Eq + Hash>(grammar: &Grammar<T, L>) -> LRTableResult<Self> {
     let grammar = IndexedGrammar::build(grammar)?;
     let lr_table = LRTable::build(&grammar)?;
@@ -22,21 +22,25 @@ impl<T: Vocabulary> Parser<T> {
 
   pub fn parse_stream<U: Borrow<T>>(&self, stream: impl IntoIterator<Item = U>) -> bool
   where
-    T: Debug,
+    T: Debug + ToString,
   {
     let mut states = vec![StateId::default()];
-    let mut nodes = Vec::<ProductionNode<T, ProductionLabel>>::new();
+    let mut nodes = Vec::<IndexedProductionNode>::new();
     let mut stream = stream.into_iter().peekable();
 
     while let Some(&state) = states.last() {
-      let token = match stream.peek().map(|token| *token.borrow()) {
+      let token = match stream.peek().map(|token| token.borrow().clone()) {
         Some(token) => token.into(),
-        None => AugmentedVocab::EndOfStream,
+        None => AugmentedVocabToken::EndOfStream,
       };
 
       println!("Stack: {:?}", states);
       println!("nodes: {:?}", nodes);
       println!("Token {:?}", token);
+
+      let Ok(token) = self.grammar.vocab().augmented_token_to_id(&token) else {
+        return false;
+      };
 
       let Some(action) = self.lr_table.get_action(state, token) else {
         println!("No action found");

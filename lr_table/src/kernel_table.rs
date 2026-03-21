@@ -5,12 +5,12 @@ use std::{
 
 use crate::{kernel::Kernel, lr_table::StateId};
 
-pub struct KernelTable<T> {
-  table: HashMap<Rc<Kernel<T>>, StateId>,
-  states: Vec<Rc<Kernel<T>>>,
+pub struct KernelTable {
+  table: HashMap<Rc<Kernel>, StateId>,
+  states: Vec<Rc<Kernel>>,
 }
 
-impl<T> KernelTable<T> {
+impl KernelTable {
   pub fn new() -> Self {
     Self {
       table: HashMap::new(),
@@ -18,11 +18,11 @@ impl<T> KernelTable<T> {
     }
   }
 
-  pub fn get_state(&self, state_id: StateId) -> Option<&Kernel<T>> {
+  pub fn get_state(&self, state_id: StateId) -> Option<&Kernel> {
     self.states.get(state_id.id()).map(|state| state.as_ref())
   }
 
-  pub fn get_or_insert(&mut self, kernel: Kernel<T>) -> StateId {
+  pub fn get_or_insert(&mut self, kernel: Kernel) -> StateId {
     let table_size = self.table.len();
     let kernel = Rc::new(kernel);
     match self.table.entry(kernel.clone()) {

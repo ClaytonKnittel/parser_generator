@@ -2,20 +2,19 @@ use crate::{
   fixed_map::FixedSizeMap,
   grammar::ProductionNode,
   indexed_grammar::{IndexedGrammar, ProductionLabel},
-  vocab_set::VocabSet,
-  vocabulary::{AugmentedVocab, Vocabulary},
+  vocabulary::{AugmentedVocabToken, VocabSet},
 };
 
 /// A map from production labels to the set of possible first tokens.
-pub struct FirstTable<T> {
-  map: FixedSizeMap<ProductionLabel, VocabSet<AugmentedVocab<T>>>,
+pub struct FirstTable {
+  map: FixedSizeMap<ProductionLabel, VocabSet>,
 }
 
-impl<T: Vocabulary> FirstTable<T> {
+impl FirstTable {
   /// Does one round of updates to the next token map. Returns `true` if any
   /// changes were made, or `false` if none were.
-  fn propagate_map(
-    map: &mut FixedSizeMap<ProductionLabel, VocabSet<AugmentedVocab<T>>>,
+  fn propagate_map<T>(
+    map: &mut FixedSizeMap<ProductionLabel, VocabSet>,
     grammar: &IndexedGrammar<T>,
   ) -> bool {
     let mut changed = false;
@@ -25,19 +24,19 @@ impl<T: Vocabulary> FirstTable<T> {
         for node in rule.rule() {
           match node {
             ProductionNode::Production(node_label) => {
-              let mut node_first_set = map.get(*node_label).clone();
-              let has_epsilon = node_first_set.get(&AugmentedVocab::Epsilon);
-              node_first_set.clear(&AugmentedVocab::Epsilon);
-              changed = map.get_mut(label).merge(&node_first_set) || changed;
+              let mut node_first_set = map.get(node_label).clone();
+              let has_epsilon = node_first_set.has(AugmentedVocabToken::Epsilon);
+              node_first_set.clear(AugmentedVocabToken::Epsilon);
+              changed = map.get_mut(&label).merge(&node_first_set) || changed;
               if !has_epsilon {
                 continue 'productions_loop;
               }
             }
-            ProductionNode::Terminal(AugmentedVocab::Epsilon) => {}
+            ProductionNode::Terminal(AugmentedVocabToken::Epsilon) => {}
             ProductionNode::Terminal(terminal) => {
-              let first_set = map.get_mut(label);
-              if !first_set.get(terminal) {
-                map.get_mut(label).set(terminal);
+              let first_set = map.get_mut(&label);
+              if !first_set.has(*terminal) {
+                map.get_mut(&label).set(*terminal);
                 changed = true;
               }
               continue 'productions_loop;
@@ -47,22 +46,22 @@ impl<T: Vocabulary> FirstTable<T> {
 
         // If we passed all nodes of this rule, then it's possible this rule
         // evaluates to epsilon.
-        map.get_mut(label).set(&AugmentedVocab::Epsilon);
+        map.get_mut(&label).set(AugmentedVocabToken::Epsilon);
       }
     }
 
     changed
   }
 
-  pub fn build_from_grammar(grammar: &IndexedGrammar<T>) -> Self {
-    let mut map = grammar.new_production_label_map();
+  pub fn build_from_grammar<T>(grammar: &IndexedGrammar<T>) -> Self {
+    let mut map = grammar.new_production_label_map(|| VocabSet::new(grammar.vocab()));
     while Self::propagate_map(&mut map, grammar) {}
 
     Self { map }
   }
 
-  pub fn first_set(&self, label: ProductionLabel) -> &VocabSet<AugmentedVocab<T>> {
-    self.map.get(label)
+  pub fn first_set(&self, label: ProductionLabel) -> &VocabSet {
+    self.map.get(&label)
   }
 }
 
@@ -71,8 +70,10 @@ mod tests {
   use googletest::prelude::*;
 
   use crate::{
-    first_map::FirstTable, grammar::Grammar, indexed_grammar::IndexedGrammar, vocab_set::VocabSet,
-    vocabulary::AugmentedVocab,
+    first_map::FirstTable,
+    grammar::Grammar,
+    indexed_grammar::IndexedGrammar,
+    vocabulary::{AugmentedVocabToken, VocabSet},
   };
 
   #[gtest]
@@ -85,7 +86,7 @@ mod tests {
     let first_table = FirstTable::build_from_grammar(&indexed);
     expect_eq!(
       first_table.first_set(label_a),
-      &VocabSet::from_iter([AugmentedVocab::Token(b'a')])
+      &VocabSet::from_iter([b'a'.into()], indexed.vocab())
     );
   }
 
@@ -106,15 +107,15 @@ mod tests {
     let first_table = FirstTable::build_from_grammar(&indexed);
     expect_eq!(
       first_table.first_set(label_a),
-      &VocabSet::from_iter([AugmentedVocab::Token(b'a')])
+      &VocabSet::from_iter([b'a'.into()], indexed.vocab())
     );
     expect_eq!(
       first_table.first_set(label_b),
-      &VocabSet::from_iter([AugmentedVocab::Token(b'a')])
+      &VocabSet::from_iter([b'a'.into()], indexed.vocab())
     );
     expect_eq!(
       first_table.first_set(label_c),
-      &VocabSet::from_iter([AugmentedVocab::Token(b'a')])
+      &VocabSet::from_iter([b'a'.into()], indexed.vocab())
     );
   }
 
@@ -138,19 +139,19 @@ mod tests {
     let first_table = FirstTable::build_from_grammar(&indexed);
     expect_eq!(
       first_table.first_set(label_a),
-      &VocabSet::from_iter([AugmentedVocab::Token(b'a'), AugmentedVocab::Token(b'b')])
+      &VocabSet::from_iter([b'a'.into(), b'b'.into()], indexed.vocab())
     );
     expect_eq!(
       first_table.first_set(label_b),
-      &VocabSet::from_iter([AugmentedVocab::Token(b'a'), AugmentedVocab::Token(b'b')])
+      &VocabSet::from_iter([b'a'.into(), b'b'.into()], indexed.vocab())
     );
     expect_eq!(
       first_table.first_set(label_c),
-      &VocabSet::from_iter([AugmentedVocab::Token(b'a')])
+      &VocabSet::from_iter([b'a'.into()], indexed.vocab())
     );
     expect_eq!(
       first_table.first_set(label_d),
-      &VocabSet::from_iter([AugmentedVocab::Token(b'b')])
+      &VocabSet::from_iter([b'b'.into()], indexed.vocab())
     );
   }
 
@@ -170,11 +171,11 @@ mod tests {
     let first_table = FirstTable::build_from_grammar(&indexed);
     expect_eq!(
       first_table.first_set(label_a),
-      &VocabSet::from_iter([AugmentedVocab::Token(b'a'), AugmentedVocab::Token(b'b')])
+      &VocabSet::from_iter([b'a'.into(), b'b'.into()], indexed.vocab())
     );
     expect_eq!(
       first_table.first_set(label_b),
-      &VocabSet::from_iter([AugmentedVocab::Token(b'b'), AugmentedVocab::Epsilon])
+      &VocabSet::from_iter([b'b'.into(), AugmentedVocabToken::Epsilon], indexed.vocab())
     );
   }
 
@@ -194,11 +195,11 @@ mod tests {
     let first_table = FirstTable::build_from_grammar(&indexed);
     expect_eq!(
       first_table.first_set(label_a),
-      &VocabSet::from_iter([AugmentedVocab::Token(b'a'), AugmentedVocab::Epsilon])
+      &VocabSet::from_iter([b'a'.into(), AugmentedVocabToken::Epsilon], indexed.vocab())
     );
     expect_eq!(
       first_table.first_set(label_b),
-      &VocabSet::from_iter([AugmentedVocab::Token(b'a'), AugmentedVocab::Epsilon])
+      &VocabSet::from_iter([b'a'.into(), AugmentedVocabToken::Epsilon], indexed.vocab())
     );
   }
 
@@ -221,20 +222,19 @@ mod tests {
     let first_table = FirstTable::build_from_grammar(&indexed);
     expect_eq!(
       first_table.first_set(label_a),
-      &VocabSet::from_iter([
-        AugmentedVocab::Token(b'a'),
-        AugmentedVocab::Token(b'b'),
-        AugmentedVocab::Token(b'c')
-      ])
+      &VocabSet::from_iter([b'a'.into(), b'b'.into(), b'c'.into()], indexed.vocab())
     );
     expect_eq!(
       first_table.first_set(label_b),
-      &VocabSet::from_iter([
-        AugmentedVocab::Token(b'a'),
-        AugmentedVocab::Token(b'b'),
-        AugmentedVocab::Token(b'c'),
-        AugmentedVocab::Epsilon
-      ])
+      &VocabSet::from_iter(
+        [
+          b'a'.into(),
+          b'b'.into(),
+          b'c'.into(),
+          AugmentedVocabToken::Epsilon
+        ],
+        indexed.vocab()
+      )
     );
   }
 }
