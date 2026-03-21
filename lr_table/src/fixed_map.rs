@@ -263,14 +263,60 @@ mod tests {
   #[gtest]
   fn test_sparse_iter_one() {
     let mut sparse = SparseFixedSizeMap::<usize, usize>::new(10);
-    expect_eq!(sparse.get_mut_or_insert_with(&5, || 1000), &mut 1000);
+    expect_eq!(*sparse.get_mut_or_insert_with(&5, || 1000), 1000);
     expect_that!(sparse.iter().collect_vec(), elements_are![&(5, &1000)]);
   }
 
   #[gtest]
   fn test_sparse_into_iter_one() {
     let mut sparse = SparseFixedSizeMap::<usize, usize>::new(10);
-    expect_eq!(sparse.get_mut_or_insert_with(&5, || 1000), &mut 1000);
+    expect_eq!(*sparse.get_mut_or_insert_with(&5, || 1000), 1000);
     expect_that!(sparse.into_iter().collect_vec(), elements_are![&(5, 1000)]);
+  }
+
+  #[gtest]
+  fn test_sparse_iter_full() {
+    let mut sparse = SparseFixedSizeMap::<usize, usize>::new(10);
+    for i in 0..10 {
+      expect_eq!(*sparse.get_mut_or_insert_with(&i, || 1000 + i), 1000 + i);
+    }
+    expect_that!(
+      sparse.iter().collect_vec(),
+      unordered_elements_are![
+        &(0, &1000),
+        &(1, &1001),
+        &(2, &1002),
+        &(3, &1003),
+        &(4, &1004),
+        &(5, &1005),
+        &(6, &1006),
+        &(7, &1007),
+        &(8, &1008),
+        &(9, &1009),
+      ]
+    );
+  }
+
+  #[gtest]
+  fn test_sparse_into_iter_full() {
+    let mut sparse = SparseFixedSizeMap::<usize, usize>::new(10);
+    for i in 0..10 {
+      expect_eq!(*sparse.get_mut_or_insert_with(&i, || 1000 + i), 1000 + i);
+    }
+    expect_that!(
+      sparse.into_iter().collect_vec(),
+      unordered_elements_are![
+        &(0, 1000),
+        &(1, 1001),
+        &(2, 1002),
+        &(3, 1003),
+        &(4, 1004),
+        &(5, 1005),
+        &(6, 1006),
+        &(7, 1007),
+        &(8, 1008),
+        &(9, 1009),
+      ]
+    );
   }
 }

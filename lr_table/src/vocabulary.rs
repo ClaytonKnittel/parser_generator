@@ -78,7 +78,7 @@ pub(crate) struct VocabularyBuilder<T> {
 }
 
 impl<T: Clone + Eq + Hash> VocabularyBuilder<T> {
-  pub fn get_id_or_insert(&mut self, token: AugmentedVocabToken<T>) -> TokenId {
+  pub fn get_id_or_insert(&mut self, token: AugmentedVocabToken<T>) -> AugmentedTokenId {
     match token {
       AugmentedVocabToken::Token(token) => {
         let next_id = TokenId(self.token_map.len());
@@ -90,9 +90,10 @@ impl<T: Clone + Eq + Hash> VocabularyBuilder<T> {
             next_id
           }
         }
+        .into()
       }
-      AugmentedVocabToken::Epsilon => TokenId(AugmentedVocabToken::<TokenId>::Epsilon.id()),
-      AugmentedVocabToken::EndOfStream => TokenId(AugmentedVocabToken::<TokenId>::EndOfStream.id()),
+      AugmentedVocabToken::Epsilon => AugmentedTokenId::Epsilon,
+      AugmentedVocabToken::EndOfStream => AugmentedTokenId::EndOfStream,
     }
   }
 }
@@ -250,7 +251,7 @@ mod tests {
   fn test_single_token_vocab() {
     let mut builder = VocabularyBuilder::new();
     let a_id = builder.get_id_or_insert(b'a'.into());
-    expect_eq!(a_id, TokenId(0));
+    expect_eq!(a_id, TokenId(0).into());
 
     let vocab = builder.build();
     expect_eq!(vocab.size(), 3);
@@ -262,15 +263,15 @@ mod tests {
       vocab.augmented_token_to_id(&AugmentedVocabToken::EndOfStream),
       AugmentedTokenId::EndOfStream
     );
-    expect_eq!(vocab.augmented_token_to_id(&b'a'.into()), a_id.into());
-    expect_eq!(vocab.token_to_id(&b'a'), a_id);
+    expect_eq!(vocab.augmented_token_to_id(&b'a'.into()), a_id);
+    expect_eq!(AugmentedTokenId::from(vocab.token_to_id(&b'a')), a_id);
 
     expect_that!(
       vocab.for_each_id().collect_vec(),
       unordered_elements_are![
         &AugmentedVocabToken::Epsilon,
         &AugmentedVocabToken::EndOfStream,
-        &AugmentedVocabToken::Token(a_id)
+        &a_id
       ]
     );
 
@@ -286,9 +287,9 @@ mod tests {
     let a_id = builder.get_id_or_insert(b'a'.into());
     let b_id = builder.get_id_or_insert(b'b'.into());
     let c_id = builder.get_id_or_insert(b'c'.into());
-    expect_eq!(a_id, TokenId(0));
-    expect_eq!(b_id, TokenId(1));
-    expect_eq!(c_id, TokenId(2));
+    expect_eq!(a_id, TokenId(0).into());
+    expect_eq!(b_id, TokenId(1).into());
+    expect_eq!(c_id, TokenId(2).into());
 
     let vocab = builder.build();
     expect_eq!(vocab.size(), 5);
@@ -300,21 +301,21 @@ mod tests {
       vocab.augmented_token_to_id(&AugmentedVocabToken::EndOfStream),
       AugmentedTokenId::EndOfStream
     );
-    expect_eq!(vocab.augmented_token_to_id(&b'a'.into()), a_id.into());
-    expect_eq!(vocab.token_to_id(&b'a'), a_id);
-    expect_eq!(vocab.augmented_token_to_id(&b'b'.into()), b_id.into());
-    expect_eq!(vocab.token_to_id(&b'b'), b_id);
-    expect_eq!(vocab.augmented_token_to_id(&b'c'.into()), c_id.into());
-    expect_eq!(vocab.token_to_id(&b'c'), c_id);
+    expect_eq!(vocab.augmented_token_to_id(&b'a'.into()), a_id);
+    expect_eq!(AugmentedTokenId::from(vocab.token_to_id(&b'a')), a_id);
+    expect_eq!(vocab.augmented_token_to_id(&b'b'.into()), b_id);
+    expect_eq!(AugmentedTokenId::from(vocab.token_to_id(&b'b')), b_id);
+    expect_eq!(vocab.augmented_token_to_id(&b'c'.into()), c_id);
+    expect_eq!(AugmentedTokenId::from(vocab.token_to_id(&b'c')), c_id);
 
     expect_that!(
       vocab.for_each_id().collect_vec(),
       unordered_elements_are![
         &AugmentedVocabToken::Epsilon,
         &AugmentedVocabToken::EndOfStream,
-        &AugmentedVocabToken::Token(a_id),
-        &AugmentedVocabToken::Token(b_id),
-        &AugmentedVocabToken::Token(c_id)
+        &a_id,
+        &b_id,
+        &c_id
       ]
     );
 
@@ -356,5 +357,22 @@ mod tests {
 
     let vocab = builder.build();
     expect_eq!(vocab.size(), 4);
+  }
+
+  #[gtest]
+  fn test_insert_epsilon_and_eof() {
+    let mut builder = VocabularyBuilder::new();
+    let epsilon_id = builder.get_id_or_insert(AugmentedVocabToken::Epsilon);
+    let eof_id = builder.get_id_or_insert(AugmentedVocabToken::EndOfStream);
+
+    expect_eq!(epsilon_id, AugmentedTokenId::Epsilon);
+    expect_eq!(eof_id, AugmentedTokenId::EndOfStream);
+
+    let a_id = builder.get_id_or_insert(b'a'.into());
+    expect_ne!(a_id, epsilon_id);
+    expect_ne!(a_id, eof_id);
+
+    let vocab = builder.build();
+    expect_eq!(vocab.size(), 3);
   }
 }

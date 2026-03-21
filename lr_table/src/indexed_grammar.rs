@@ -247,9 +247,9 @@ impl<T: Clone + Eq + Hash> IndexedGrammar<T> {
                   ProductionNode::Production(user_label) => {
                     ProductionNode::Production(*label_map.get(user_label).unwrap())
                   }
-                  ProductionNode::Terminal(terminal) => ProductionNode::Terminal(
-                    vocab_builder.get_id_or_insert(terminal.clone()).into(),
-                  ),
+                  ProductionNode::Terminal(terminal) => {
+                    ProductionNode::Terminal(vocab_builder.get_id_or_insert(terminal.clone()))
+                  }
                 })
                 .collect(),
             )
@@ -482,5 +482,14 @@ mod tests {
         )
       ]
     );
+  }
+
+  #[gtest]
+  fn test_vocab_set_single_token() {
+    let grammar = Grammar::from_grammar_str("A -> a").unwrap();
+    let indexed_grammar = IndexedGrammar::build(&grammar).unwrap();
+
+    let vocab = indexed_grammar.vocab();
+    expect_eq!(vocab.size(), 3);
   }
 }
