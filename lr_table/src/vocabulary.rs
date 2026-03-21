@@ -6,7 +6,11 @@ use std::{
 
 use itertools::Itertools;
 
-use crate::{bit_set::BitSet, fixed_map::Label};
+use crate::{
+  bit_set::BitSet,
+  error::{LRTableError, LRTableResult},
+  fixed_map::Label,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TokenId(usize);
@@ -135,17 +139,26 @@ impl<T> AugmentedVocab<T> {
   }
 }
 
-impl<T: Eq + Hash> AugmentedVocab<T> {
-  pub fn token_to_id(&self, token: &T) -> TokenId {
-    *self.token_map.get(token).unwrap()
+impl<T: Eq + Hash + ToString> AugmentedVocab<T> {
+  pub(crate) fn token_to_id(&self, token: &T) -> LRTableResult<TokenId> {
+    self
+      .token_map
+      .get(token)
+      .ok_or_else(|| LRTableError::UnrecognizedToken {
+        token: token.to_string(),
+      })
+      .cloned()
   }
 
-  pub fn augmented_token_to_id(&self, token: &AugmentedVocabToken<T>) -> AugmentedTokenId {
-    match token {
-      AugmentedVocabToken::Token(token) => self.token_to_id(token).into(),
+  pub(crate) fn augmented_token_to_id(
+    &self,
+    token: &AugmentedVocabToken<T>,
+  ) -> LRTableResult<AugmentedTokenId> {
+    Ok(match token {
+      AugmentedVocabToken::Token(token) => self.token_to_id(token)?.into(),
       AugmentedVocabToken::Epsilon => AugmentedVocabToken::Epsilon,
       AugmentedVocabToken::EndOfStream => AugmentedVocabToken::EndOfStream,
-    }
+    })
   }
 }
 
@@ -186,13 +199,13 @@ impl VocabSet {
 
 #[cfg(test)]
 impl VocabSet {
-  pub fn from_iter<T: Eq + Hash>(
+  pub fn from_iter<T: Eq + Hash + ToString>(
     iter: impl IntoIterator<Item = AugmentedVocabToken<T>>,
     vocab: &AugmentedVocab<T>,
   ) -> Self {
     let mut s = Self::new(vocab);
     for token in iter.into_iter() {
-      s.set(vocab.augmented_token_to_id(&token));
+      s.set(vocab.augmented_token_to_id(&token).unwrap());
     }
     s
   }
@@ -224,13 +237,13 @@ mod tests {
   fn test_empty_vocab() {
     let vocab = VocabularyBuilder::<u8>::new().build();
     expect_eq!(vocab.size(), 2);
-    expect_eq!(
+    expect_that!(
       vocab.augmented_token_to_id(&AugmentedVocabToken::Epsilon),
-      AugmentedTokenId::Epsilon
+      ok(eq(&AugmentedTokenId::Epsilon))
     );
-    expect_eq!(
+    expect_that!(
       vocab.augmented_token_to_id(&AugmentedVocabToken::EndOfStream),
-      AugmentedTokenId::EndOfStream
+      ok(eq(&AugmentedTokenId::EndOfStream))
     );
 
     expect_that!(
@@ -255,16 +268,19 @@ mod tests {
 
     let vocab = builder.build();
     expect_eq!(vocab.size(), 3);
-    expect_eq!(
+    expect_that!(
       vocab.augmented_token_to_id(&AugmentedVocabToken::Epsilon),
-      AugmentedTokenId::Epsilon
+      ok(eq(&AugmentedTokenId::Epsilon))
     );
-    expect_eq!(
+    expect_that!(
       vocab.augmented_token_to_id(&AugmentedVocabToken::EndOfStream),
-      AugmentedTokenId::EndOfStream
+      ok(eq(&AugmentedTokenId::EndOfStream))
     );
-    expect_eq!(vocab.augmented_token_to_id(&b'a'.into()), a_id);
-    expect_eq!(AugmentedTokenId::from(vocab.token_to_id(&b'a')), a_id);
+    expect_that!(vocab.augmented_token_to_id(&b'a'.into()), ok(eq(&a_id)));
+    expect_that!(
+      vocab.token_to_id(&b'a').map(AugmentedTokenId::from),
+      ok(eq(&a_id))
+    );
 
     expect_that!(
       vocab.for_each_id().collect_vec(),
@@ -293,20 +309,29 @@ mod tests {
 
     let vocab = builder.build();
     expect_eq!(vocab.size(), 5);
-    expect_eq!(
+    expect_that!(
       vocab.augmented_token_to_id(&AugmentedVocabToken::Epsilon),
-      AugmentedTokenId::Epsilon
+      ok(eq(&AugmentedTokenId::Epsilon))
     );
-    expect_eq!(
+    expect_that!(
       vocab.augmented_token_to_id(&AugmentedVocabToken::EndOfStream),
-      AugmentedTokenId::EndOfStream
+      ok(eq(&AugmentedTokenId::EndOfStream))
     );
-    expect_eq!(vocab.augmented_token_to_id(&b'a'.into()), a_id);
-    expect_eq!(AugmentedTokenId::from(vocab.token_to_id(&b'a')), a_id);
-    expect_eq!(vocab.augmented_token_to_id(&b'b'.into()), b_id);
-    expect_eq!(AugmentedTokenId::from(vocab.token_to_id(&b'b')), b_id);
-    expect_eq!(vocab.augmented_token_to_id(&b'c'.into()), c_id);
-    expect_eq!(AugmentedTokenId::from(vocab.token_to_id(&b'c')), c_id);
+    expect_that!(vocab.augmented_token_to_id(&b'a'.into()), ok(eq(&a_id)));
+    expect_that!(
+      vocab.token_to_id(&b'a').map(AugmentedTokenId::from),
+      ok(eq(&a_id))
+    );
+    expect_that!(vocab.augmented_token_to_id(&b'b'.into()), ok(eq(&b_id)));
+    expect_that!(
+      vocab.token_to_id(&b'b').map(AugmentedTokenId::from),
+      ok(eq(&b_id))
+    );
+    expect_that!(vocab.augmented_token_to_id(&b'c'.into()), ok(eq(&c_id)));
+    expect_that!(
+      vocab.token_to_id(&b'c').map(AugmentedTokenId::from),
+      ok(eq(&c_id))
+    );
 
     expect_that!(
       vocab.for_each_id().collect_vec(),

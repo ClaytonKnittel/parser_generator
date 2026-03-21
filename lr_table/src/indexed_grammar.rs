@@ -389,7 +389,7 @@ mod tests {
     let (indexed_grammar, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     assert_eq!(indexed_grammar.labels_count(), 1);
     let label_a = *label_map.get("A").unwrap();
-    let a_id = indexed_grammar.vocab().token_to_id(&b'a');
+    let a_id = indexed_grammar.vocab().token_to_id(&b'a').unwrap();
     expect_that!(
       production_rules(&indexed_grammar, label_a),
       elements_are![&&ProductionRule::new(
@@ -467,8 +467,8 @@ mod tests {
     let (indexed_grammar, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     assert_eq!(indexed_grammar.labels_count(), 2);
     let label_a = *label_map.get("A").unwrap();
-    let a_id = indexed_grammar.vocab().token_to_id(&b'a');
-    let b_id = indexed_grammar.vocab().token_to_id(&b'b');
+    let a_id = indexed_grammar.vocab().token_to_id(&b'a').unwrap();
+    let b_id = indexed_grammar.vocab().token_to_id(&b'b').unwrap();
     expect_that!(
       production_rules(&indexed_grammar, label_a),
       elements_are![

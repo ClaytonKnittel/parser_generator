@@ -22,7 +22,7 @@ impl<T: Clone + Eq + Hash> Parser<T> {
 
   pub fn parse_stream<U: Borrow<T>>(&self, stream: impl IntoIterator<Item = U>) -> bool
   where
-    T: Debug,
+    T: Debug + ToString,
   {
     let mut states = vec![StateId::default()];
     let mut nodes = Vec::<IndexedProductionNode>::new();
@@ -38,7 +38,9 @@ impl<T: Clone + Eq + Hash> Parser<T> {
       println!("nodes: {:?}", nodes);
       println!("Token {:?}", token);
 
-      let token = self.grammar.vocab().augmented_token_to_id(&token);
+      let Ok(token) = self.grammar.vocab().augmented_token_to_id(&token) else {
+        return false;
+      };
 
       let Some(action) = self.lr_table.get_action(state, token) else {
         println!("No action found");

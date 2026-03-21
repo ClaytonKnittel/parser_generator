@@ -600,8 +600,8 @@ mod tests {
     let label_c = *label_map.get("C").unwrap();
     let c_rules = indexed.production_rule_ids_for_label(label_c).collect_vec();
 
-    let b_id = indexed.vocab().token_to_id(&b'b');
-    let c_id = indexed.vocab().token_to_id(&b'c');
+    let b_id = indexed.vocab().token_to_id(&b'b').unwrap();
+    let c_id = indexed.vocab().token_to_id(&b'c').unwrap();
     expect_that!(
       partition_closure_by_next_node(
         [Position::new_at_pos(
@@ -674,7 +674,7 @@ mod tests {
     let label_b = *label_map.get("B").unwrap();
     let b_rules = indexed.production_rule_ids_for_label(label_b).collect_vec();
 
-    let b_id = indexed.vocab().token_to_id(&b'b');
+    let b_id = indexed.vocab().token_to_id(&b'b').unwrap();
     expect_that!(
       partition_closure_by_next_node(
         [Position::new_top_level(a_rules[0], indexed.vocab())],
