@@ -26,7 +26,7 @@ impl ProductionNode {
   }
 
   pub fn parse(stream: &mut impl SymbolStream) -> ParserGeneratorResult<Self> {
-    let next_token = stream.expect_symbol()?;
+    let next_token = stream.peek_expect_symbol()?;
     match next_token.symbol_type() {
       SymbolT::Op(Operator::BeginProd) => Ok(Self::Production(ProductionRef::parse(stream)?)),
       _ => Ok(Self::Terminal(Terminal::parse(stream)?)),

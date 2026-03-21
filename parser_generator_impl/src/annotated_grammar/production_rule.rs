@@ -7,8 +7,19 @@ use crate::{
   },
   symbol::{Operator, SymbolMeta, SymbolT},
   symbol_stream::SymbolStream,
+  type_symbol::Type,
   ParserGeneratorResult,
 };
+
+fn maybe_parse_return_type(stream: &mut impl SymbolStream) -> ParserGeneratorResult<Option<Type>> {
+  let next_symbol = stream.peek_expect_symbol()?;
+  if let SymbolT::Op(Operator::Colon) = next_symbol.symbol_type() {
+    next_symbol.take();
+    Ok(Some(Type::parse(stream)?))
+  } else {
+    Ok(None)
+  }
+}
 
 struct Constructor {
   group: proc_macro::Group,
@@ -23,6 +34,7 @@ impl Constructor {
 
 pub struct ProductionRule {
   name: ProductionRef,
+  return_type: Option<Type>,
   rule: Vec<ProductionNode>,
   block: Option<Constructor>,
   meta: SymbolMeta,
@@ -42,6 +54,8 @@ impl ProductionRule {
     let name = ProductionRef::parse(stream)?;
     let mut meta = name.meta().clone();
 
+    let return_type = maybe_parse_return_type(stream)?;
+
     expect_symbol_with(
       stream,
       |symbol| symbol.is_op(Operator::Arrow),
@@ -55,7 +69,7 @@ impl ProductionRule {
       match next_symbol.symbol_type() {
         SymbolT::Op(Operator::Semicolon) => {
           let symbol = next_symbol.take();
-          meta.merge(symbol.meta());
+          meta.merge(symbol.meta())?;
           break;
         }
         SymbolT::Group(group) => {
@@ -68,7 +82,7 @@ impl ProductionRule {
             |symbol| symbol.is_op(Operator::Semicolon),
             "Expected `;` to follow rule constructor",
           )?;
-          meta.merge(&semicolon_meta);
+          meta.merge(&semicolon_meta)?;
           break;
         }
         _ => {}
@@ -79,6 +93,7 @@ impl ProductionRule {
 
     Ok(Self {
       name,
+      return_type,
       rule,
       block,
       meta,
