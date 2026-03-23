@@ -34,6 +34,10 @@ impl SymbolMeta {
     &self.span
   }
 
+  pub fn span2(&self) -> proc_macro2::Span {
+    self.span.into()
+  }
+
   pub fn tokens(&self) -> &TokenStream {
     &self.tokens
   }

@@ -2,9 +2,7 @@ use lr_table::grammar::Grammar;
 
 use crate::{
   annotated_grammar::{
-    production_ref::ProductionRefName,
-    production_rule::ProductionRule,
-    terminal::{Terminal, TerminalSymbol},
+    production_ref::ProductionRefName, production_rule::ProductionRule, terminal::TerminalSymbol,
     util::expect_symbol_with,
   },
   error::InterceptResult,
@@ -50,18 +48,20 @@ where
 pub struct GrammarInfo {
   name: Ident,
   terminal_type: Type,
-  production_rules: Vec<ProductionRule>,
+  grammar: Grammar<TerminalSymbol, ProductionRefName>,
 }
 
 impl GrammarInfo {
-  pub fn build_lr_table_grammar(&self) -> Grammar<TerminalSymbol, ProductionRefName> {
-    Grammar::new(
-      self
-        .production_rules
-        .iter()
-        .map(ProductionRule::to_lr_production_rule)
-        .collect(),
-    )
+  pub fn name(&self) -> &Ident {
+    &self.name
+  }
+
+  pub fn terminal_type(&self) -> &Type {
+    &self.terminal_type
+  }
+
+  pub fn lr_table_grammar(&self) -> &Grammar<TerminalSymbol, ProductionRefName> {
+    &self.grammar
   }
 }
 
@@ -84,9 +84,16 @@ pub fn parse_grammar(mut stream: impl SymbolStream) -> ParserGeneratorResult<Gra
     production_rules.extend(ProductionRule::parse(&mut stream)?);
   }
 
+  let grammar = Grammar::new(
+    production_rules
+      .iter()
+      .map(ProductionRule::to_lr_production_rule)
+      .collect(),
+  );
+
   Ok(GrammarInfo {
     name,
     terminal_type,
-    production_rules,
+    grammar,
   })
 }

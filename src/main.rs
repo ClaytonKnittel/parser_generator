@@ -1,7 +1,5 @@
 #![allow(dead_code)]
 
-mod aug_bnf_dyn;
-
 fn main() {
   /*
   parser_generator_impl::grammar_def! {
@@ -42,21 +40,6 @@ fn main() {
   }
   */
 
-  #[derive(Debug)]
-  enum TestDfaStates {
-    S10(char),
-    S6(char),
-    S5(char),
-    S9(char),
-    S2(u32),
-    S4(u32),
-    S3(u32),
-    S0(u32),
-    S8,
-    S7(char),
-    S1(u32),
-    T(u32),
-  }
   struct Test {}
   impl Test {
     /// Parses an input stream according to the grammar, returning the
@@ -68,6 +51,22 @@ fn main() {
     pub fn parse_ref<'a, I: Iterator<Item = &'a char>>(
       mut input_stream: std::iter::Peekable<I>,
     ) -> Option<(u32, std::iter::Peekable<I>)> {
+      #[derive(Debug)]
+      enum TestDfaStates {
+        S10(char),
+        S6(char),
+        S5(char),
+        S9(char),
+        S2(u32),
+        S4(u32),
+        S3(u32),
+        S0(u32),
+        S8,
+        S7(char),
+        S1(u32),
+        T(u32),
+      }
+
       let mut states = vec![TestDfaStates::S8];
       loop {
         let state = states.last().unwrap();
@@ -587,6 +586,22 @@ fn main() {
     pub fn parse<I: Iterator<Item = char>>(
       mut input_stream: std::iter::Peekable<I>,
     ) -> Option<(u32, std::iter::Peekable<I>)> {
+      #[derive(Debug)]
+      enum TestDfaStates {
+        S10(char),
+        S6(char),
+        S5(char),
+        S9(char),
+        S2(u32),
+        S4(u32),
+        S3(u32),
+        S0(u32),
+        S8,
+        S7(char),
+        S1(u32),
+        T(u32),
+      }
+
       let mut states = vec![TestDfaStates::S8];
       loop {
         let state = states.last().unwrap();

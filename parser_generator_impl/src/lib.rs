@@ -25,12 +25,12 @@ use crate::{
 fn build_grammar(tokens: TokenStream) -> ParserGeneratorResult<TokenStream> {
   let list = tokenize_from_stream(tokens);
   let grammar_info = parse_grammar(SymbolStreamImpl::new(list))?;
-  let grammar = grammar_info.build_lr_table_grammar();
+  let grammar = grammar_info.lr_table_grammar();
   let grammar = IndexedGrammar::build(&grammar)
     .map_err(|err| ParserGeneratorError::from_foreign_error(err, Span::call_site()))?;
   let lr_table = LRTable::build(&grammar)
     .map_err(|err| ParserGeneratorError::from_foreign_error(err, Span::call_site()))?;
-  generate_parser(&grammar, &lr_table).map(TokenStream::from)
+  generate_parser(&grammar, &lr_table, &grammar_info).map(TokenStream::from)
 }
 
 #[proc_macro_error]

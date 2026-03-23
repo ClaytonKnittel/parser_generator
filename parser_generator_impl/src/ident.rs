@@ -10,6 +10,14 @@ pub struct Ident {
 }
 
 impl Ident {
+  pub fn name(&self) -> &str {
+    &self.name
+  }
+
+  pub fn meta(&self) -> &SymbolMeta {
+    &self.meta
+  }
+
   pub fn parse(stream: &mut impl SymbolStream) -> ParserGeneratorResult<Self> {
     let sym = stream.expect_symbol()?;
     match sym.symbol_type() {

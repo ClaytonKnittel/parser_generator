@@ -91,6 +91,7 @@ dependencies = [
 name = "parser_generator_impl"
 version = "0.1.0"
 dependencies = [
+ "itertools",
  "lr_table",
  "proc-macro-error",
  "proc-macro2",

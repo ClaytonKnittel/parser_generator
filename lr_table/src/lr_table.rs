@@ -283,9 +283,7 @@ impl<T> LRTable<T> {
     let index = self.num_production_labels() * state.id() + production_label.id();
     self.goto_table[index]
   }
-}
 
-impl<T> LRTable<T> {
   fn vocab_size(&self) -> usize {
     let num_actions = self.action_table.len();
     debug_assert!(num_actions.is_multiple_of(self.num_states));
@@ -304,6 +302,35 @@ impl<T> LRTable<T> {
 
   fn gotos_iter(&self) -> IntoChunks<impl Iterator<Item = &Option<GotoAction>>> {
     self.goto_table.iter().chunks(self.num_production_labels())
+  }
+
+  pub fn num_states(&self) -> usize {
+    self.num_states
+  }
+
+  pub fn states(&self) -> impl Iterator<Item = StateId> {
+    (0..self.num_states).map(StateId)
+  }
+
+  pub fn state_actions(
+    &self,
+    state: StateId,
+    grammar: &IndexedGrammar<T>,
+  ) -> impl Iterator<Item = (AugmentedVocabToken<T>, &Action)>
+  where
+    T: Clone,
+  {
+    debug_assert_eq!(grammar.vocab().size(), self.vocab_size());
+    let vocab_size = grammar.vocab().size();
+    let state_offset = state.0 * vocab_size;
+    self.action_table[state_offset..state_offset + vocab_size]
+      .iter()
+      .zip(grammar.vocab().for_each_id())
+      .filter_map(|(action, token_id)| {
+        action
+          .as_ref()
+          .map(|action| (grammar.vocab().id_to_token(token_id), action))
+      })
   }
 }
 

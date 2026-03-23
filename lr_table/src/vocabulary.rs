@@ -137,6 +137,17 @@ impl<T> AugmentedVocab<T> {
   pub fn for_each_id(&self) -> impl Iterator<Item = AugmentedTokenId> {
     (0..self.size()).map(AugmentedVocabToken::from_id)
   }
+
+  pub fn id_to_token(&self, id: AugmentedTokenId) -> AugmentedVocabToken<T>
+  where
+    T: Clone,
+  {
+    match id {
+      AugmentedVocabToken::Token(token_id) => self.id_map[token_id.0].clone().into(),
+      AugmentedVocabToken::Epsilon => AugmentedVocabToken::Epsilon,
+      AugmentedVocabToken::EndOfStream => AugmentedVocabToken::EndOfStream,
+    }
+  }
 }
 
 impl<T: Eq + Hash + ToString> AugmentedVocab<T> {
