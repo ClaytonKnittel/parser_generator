@@ -134,8 +134,12 @@ pub struct IndexedGrammar<T> {
   vocab: AugmentedVocab<T>,
 }
 
-impl<T: Clone + Eq + Hash> IndexedGrammar<T> {
-  fn verify_connected<L: Debug>(&self, label_map: &HashMap<L, ProductionLabel>) -> LRTableResult {
+impl<T: Clone + Debug + Eq + Hash> IndexedGrammar<T> {
+  fn verify_connected<L: Debug>(
+    &self,
+    label_map: &HashMap<L, ProductionLabel>,
+    label_map: &HashMap<L, ProductionLabel>,
+  ) -> LRTableResult {
     let mut rule_set = self.new_production_label_set();
     let mut labels_to_explore = vec![ProductionLabel(0)];
     rule_set.set(&ProductionLabel(0));
