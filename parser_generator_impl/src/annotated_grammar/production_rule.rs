@@ -21,7 +21,7 @@ fn maybe_parse_return_type(stream: &mut impl SymbolStream) -> ParserGeneratorRes
   }
 }
 
-struct Constructor {
+pub struct Constructor {
   group: proc_macro::Group,
   meta: SymbolMeta,
 }

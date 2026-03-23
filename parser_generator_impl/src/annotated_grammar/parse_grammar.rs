@@ -1,8 +1,10 @@
-use lr_table::grammar::Grammar;
+use lr_table::grammar::{Grammar, ProductionRuleIndex};
 
 use crate::{
   annotated_grammar::{
-    production_ref::ProductionRefName, production_rule::ProductionRule, terminal::TerminalSymbol,
+    production_ref::ProductionRefName,
+    production_rule::{Constructor, ProductionRule},
+    terminal::TerminalSymbol,
     util::expect_symbol_with,
   },
   error::InterceptResult,
@@ -48,6 +50,7 @@ where
 pub struct GrammarInfo {
   name: Ident,
   terminal_type: Type,
+  production_rule_constructors: Vec<Option<Constructor>>,
   grammar: Grammar<TerminalSymbol, ProductionRefName>,
 }
 
@@ -58,6 +61,10 @@ impl GrammarInfo {
 
   pub fn terminal_type(&self) -> &Type {
     &self.terminal_type
+  }
+
+  pub fn constructor(&self, index: ProductionRuleIndex) -> Option<&Constructor> {
+    self.production_rule_constructors[index.0].as_ref()
   }
 
   pub fn lr_table_grammar(&self) -> &Grammar<TerminalSymbol, ProductionRefName> {
@@ -84,6 +91,8 @@ pub fn parse_grammar(mut stream: impl SymbolStream) -> ParserGeneratorResult<Gra
     production_rules.extend(ProductionRule::parse(&mut stream)?);
   }
 
+  // TODO: build two objects in parallel, this grammar and one with just
+  // metadata / codegen-related stuff.
   let grammar = Grammar::new(
     production_rules
       .iter()
@@ -94,6 +103,7 @@ pub fn parse_grammar(mut stream: impl SymbolStream) -> ParserGeneratorResult<Gra
   Ok(GrammarInfo {
     name,
     terminal_type,
+    production_rules,
     grammar,
   })
 }
