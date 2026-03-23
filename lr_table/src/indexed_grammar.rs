@@ -71,6 +71,10 @@ impl IndexedProductionRule {
     self.rule.rule()
   }
 
+  pub fn original_index(&self) -> ProductionRuleIndex {
+    self.original_index
+  }
+
   #[cfg(debug_assertions)]
   pub fn rules_excluding_epsilon(
     &self,
