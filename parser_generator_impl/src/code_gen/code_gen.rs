@@ -1,4 +1,7 @@
-use lr_table::{indexed_grammar::IndexedGrammar, lr_table::LRTable};
+use lr_table::{
+  indexed_grammar::{IndexedGrammar, ProductionLabel},
+  lr_table::LRTable,
+};
 use quote::quote;
 
 use crate::{
@@ -8,6 +11,17 @@ use crate::{
   code_gen::{states_enum::generate_dfa_states, util::TokenStreamResult},
 };
 
+fn root_production_type(
+  grammar: &IndexedGrammar<TerminalSymbol, ProductionRefName>,
+  grammar_info: &GrammarInfo,
+) -> proc_macro2::TokenStream {
+  let root_label = grammar.orig_production_label(grammar.root_production_label());
+  match grammar_info.label_type(root_label) {
+    Some(root_type) => quote! { #root_type },
+    None => quote! { () },
+  }
+}
+
 pub fn generate_parser(
   grammar: &IndexedGrammar<TerminalSymbol, ProductionRefName>,
   lr_table: &LRTable<TerminalSymbol>,
@@ -15,7 +29,8 @@ pub fn generate_parser(
 ) -> TokenStreamResult {
   let grammar_name = grammar_info.name().make_syn_ident();
   let token_type = grammar_info.terminal_type();
-  let result_type = quote! { () };
+
+  let result_type = root_production_type(grammar, grammar_info);
 
   let dfa_states_enum = generate_dfa_states(grammar, lr_table, grammar_info)?;
 

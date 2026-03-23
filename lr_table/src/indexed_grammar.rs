@@ -13,6 +13,12 @@ use crate::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ProductionLabel(usize);
 
+impl ProductionLabel {
+  fn root() -> Self {
+    Self(0)
+  }
+}
+
 /// Each particular instance of a production rule is given a unique ID densely
 /// packed starting from 0. This is just the index into
 /// `IndexedGrammar::rules`.
@@ -192,7 +198,8 @@ impl<T: Clone + Eq + Hash, L: Clone + Debug + Eq + Hash> IndexedGrammar<T, L> {
     }
 
     let root_production_label = root_production.symbol().clone();
-    let mut label_map = HashMap::from_iter([(root_production_label.clone(), ProductionLabel(0))]);
+    let mut label_map =
+      HashMap::from_iter([(root_production_label.clone(), ProductionLabel::root())]);
     let mut label_groups = vec![LabelGroup {
       orig_label: root_production_label,
       rules: vec![(root_production, root_index)],
@@ -311,8 +318,8 @@ impl<T: Clone + Eq + Hash, L: Clone + Debug + Eq + Hash> IndexedGrammar<T, L> {
 impl<T: Clone + Eq + Hash, L: Debug> IndexedGrammar<T, L> {
   fn verify_connected(&self, label_map: &HashMap<L, ProductionLabel>) -> LRTableResult {
     let mut rule_set = self.new_production_label_set();
-    let mut labels_to_explore = vec![ProductionLabel(0)];
-    rule_set.set(&ProductionLabel(0));
+    let mut labels_to_explore = vec![ProductionLabel::root()];
+    rule_set.set(&ProductionLabel::root());
 
     while let Some(label) = labels_to_explore.pop() {
       debug_assert!(rule_set.has(&label));
@@ -349,7 +356,7 @@ impl<T, L> IndexedGrammar<T, L> {
   }
 
   pub fn root_production_label(&self) -> ProductionLabel {
-    ProductionLabel(0)
+    ProductionLabel::root()
   }
 
   pub fn root_production_rule(&self) -> ProductionRuleId {
