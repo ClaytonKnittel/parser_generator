@@ -133,6 +133,10 @@ mod tests {
     name: GetReq;
     terminal: char;
 
+    <root>: String => <absoluteURI> {
+      $absoluteURI
+    };
+
     // if no {} given, return entire consumed text.
     // a re before text means to treat the text as regex.
     <absoluteURI>: String => ':' <alphas> {

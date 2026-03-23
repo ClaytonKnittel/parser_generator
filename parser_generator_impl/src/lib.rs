@@ -16,6 +16,7 @@ use proc_macro_error::proc_macro_error;
 
 use crate::{
   annotated_grammar::parse_grammar::parse_grammar,
+  code_gen::code_gen::generate_parser,
   error::{ParserGeneratorError, ParserGeneratorResult},
   symbol::tokenize_from_stream,
   symbol_stream::SymbolStreamImpl,
@@ -29,9 +30,7 @@ fn build_grammar(tokens: TokenStream) -> ParserGeneratorResult<TokenStream> {
     .map_err(|err| ParserGeneratorError::from_foreign_error(err, Span::call_site()))?;
   let lr_table = LRTable::build(&grammar)
     .map_err(|err| ParserGeneratorError::from_foreign_error(err, Span::call_site()))?;
-  todo!();
-  // let syn_tree = code_gen::to_match_loop(&grammar, &lr_table).unwrap_or_else(|err| err.raise());
-  // Ok(syn_tree.into())
+  generate_parser(&grammar, &lr_table).map(TokenStream::from)
 }
 
 #[proc_macro_error]
