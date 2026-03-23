@@ -435,7 +435,7 @@ mod tests {
     expect_that!(
       grammar.err(),
       some(pat!(LRTableError::BuildGrammar(pat!(
-        BuildGrammarError::NotConnected(_)
+        BuildGrammarError::NotConnected(all![contains_regex(r"\bD\b"), contains_regex(r"\bE\b")])
       ))))
     );
   }
