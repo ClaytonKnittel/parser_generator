@@ -273,11 +273,12 @@ impl<T: Clone + Eq + Hash, L: Clone + Debug + Eq + Hash> IndexedGrammar<T, L> {
       .scan(0, |total, group| {
         let start_index = *total;
         let end_index = *total + group.rules.len();
+        let original_label = group.orig_label;
         *total = end_index;
         Some(RuleMetadata {
           start_index,
           end_index,
-          original_label: group.orig_label,
+          original_label,
         })
       })
       .collect_vec();
