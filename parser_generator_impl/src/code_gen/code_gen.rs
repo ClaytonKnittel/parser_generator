@@ -3,23 +3,31 @@ use lr_table::{
   lr_state_map::{LRStateMap, LRStateType},
   lr_table::{LRTable, StateId},
 };
-use proc_macro::Span;
+use proc_macro::{Ident, Span};
 use quote::quote;
 
 use crate::{
-  annotated_grammar::parse_grammar::GrammarInfo, type_symbol::Type, ParserGeneratorError,
-  ParserGeneratorResult,
+  annotated_grammar::{
+    parse_grammar::GrammarInfo, production_ref::ProductionRefName, terminal::TerminalSymbol,
+  },
+  code_gen::collect_tokens::CollectTokens,
+  type_symbol::Type,
+  ParserGeneratorError, ParserGeneratorResult,
 };
 
 type TokenStreamResult = ParserGeneratorResult<proc_macro2::TokenStream>;
 
 fn generate_enum_variant(state: StateId, return_type: Option<Type>) -> proc_macro2::TokenStream {
-  todo!();
+  let state_name = syn::Ident::new(&format!("S{}", state.id()), proc_macro2::Span::call_site());
+  match return_type {
+    Some(ty) => quote! { #state_name(#ty), },
+    None => quote! { #state_name, },
+  }
 }
 
-fn generate_dfa_states<T: Clone>(
-  grammar: &IndexedGrammar<T>,
-  lr_table: &LRTable<T>,
+fn generate_dfa_states(
+  grammar: &IndexedGrammar<TerminalSymbol, ProductionRefName>,
+  lr_table: &LRTable<TerminalSymbol>,
   grammar_info: &GrammarInfo,
 ) -> TokenStreamResult {
   let grammar_name = grammar_info.name();
@@ -33,30 +41,33 @@ fn generate_dfa_states<T: Clone>(
   let enums = lr_table
     .states()
     .map(|state| {
-      (
-        state,
-        match state_map.state_type(state) {
-          LRStateType::Reduce(production) => {
-            grammar_info.label_type(label);
-            None
-          }
-          LRStateType::Terminal => Some(grammar_info.terminal_type().clone()),
-          LRStateType::Root => None,
-        },
-      )
+      let state_type = match state_map.state_type(state) {
+        LRStateType::Reduce(production) => {
+          let label = grammar.orig_production_label(production);
+          grammar_info.label_type(label).cloned()
+        }
+        LRStateType::Terminal => Some(grammar_info.terminal_type().clone()),
+        LRStateType::Root => None,
+      };
+      generate_enum_variant(state, state_type)
     })
-    .map(|(state, maybe_type)| generate_enum_variant(state, maybe_type));
+    .collect_tokens();
 
   Ok(quote! {
-    struct #dfa_enum_name {
+    enum #dfa_enum_name {
+      #enums
     }
   })
 }
 
-pub fn generate_parser<T>(
-  grammar: &IndexedGrammar<T>,
-  lr_table: &LRTable<T>,
+pub fn generate_parser(
+  grammar: &IndexedGrammar<TerminalSymbol, ProductionRefName>,
+  lr_table: &LRTable<TerminalSymbol>,
   grammar_info: &GrammarInfo,
 ) -> TokenStreamResult {
-  Ok(quote! {})
+  let dfa_states_enum = generate_dfa_states(grammar, lr_table, grammar_info)?;
+
+  Ok(quote! {
+    #dfa_states_enum
+  })
 }

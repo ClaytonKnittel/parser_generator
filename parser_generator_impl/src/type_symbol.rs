@@ -1,3 +1,5 @@
+use quote::ToTokens;
+
 use crate::{
   error::InterceptResult,
   symbol::{Operator, SymbolMeta, SymbolT},
@@ -42,5 +44,11 @@ impl Type {
 
   pub fn cmp_tokens(&self, other: &Self) -> bool {
     self.meta.tokens().to_string() == other.meta.tokens().to_string()
+  }
+}
+
+impl ToTokens for Type {
+  fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+    tokens.extend(self.meta.tokens2());
   }
 }

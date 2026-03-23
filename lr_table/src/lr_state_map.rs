@@ -27,7 +27,7 @@ enum LRStateTypeBuilder {
 impl LRStateTypeBuilder {
   fn finalize(self) -> LRTableResult<LRStateType> {
     match self {
-      Self::Reduce(maybe_type) => Ok(LRStateType::Reduce(maybe_type)),
+      Self::Reduce(production_label) => Ok(LRStateType::Reduce(production_label)),
       Self::Terminal => Ok(LRStateType::Terminal),
       Self::Root => Ok(LRStateType::Root),
       Self::Unknown => Err(LRTableError::unresolved_states()),
@@ -69,8 +69,8 @@ pub struct LRStateMap<'a> {
 }
 
 impl<'a> LRStateMap<'a> {
-  pub fn build_from_lr_table<T: Clone>(
-    grammar: &IndexedGrammar<T>,
+  pub fn build_from_lr_table<T: Clone, L>(
+    grammar: &IndexedGrammar<T, L>,
     lr_table: &'a LRTable<T>,
   ) -> LRTableResult<Self> {
     let mut types = (0..lr_table.num_states())

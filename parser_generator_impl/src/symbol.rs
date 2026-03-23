@@ -42,6 +42,10 @@ impl SymbolMeta {
     &self.tokens
   }
 
+  pub fn tokens2(&self) -> proc_macro2::TokenStream {
+    self.tokens.clone().into()
+  }
+
   pub fn merge(&mut self, other: &Self) -> ParserGeneratorResult {
     self.span = self
       .span
