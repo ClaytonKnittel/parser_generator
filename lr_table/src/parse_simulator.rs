@@ -8,18 +8,20 @@ use crate::{
   vocabulary::AugmentedVocabToken,
 };
 
-pub struct Parser<T> {
-  grammar: IndexedGrammar<T>,
+pub struct Parser<T, L> {
+  grammar: IndexedGrammar<T, L>,
   lr_table: LRTable<T>,
 }
 
-impl<T: Clone + Debug + Eq + Hash> Parser<T> {
-  pub fn new<L: Clone + Debug + Eq + Hash>(grammar: &Grammar<T, L>) -> LRTableResult<Self> {
+impl<T: Clone + Debug + Eq + Hash, L: Clone + Debug + Eq + Hash> Parser<T, L> {
+  pub fn new(grammar: &Grammar<T, L>) -> LRTableResult<Self> {
     let grammar = IndexedGrammar::build(grammar)?;
     let lr_table = LRTable::build(&grammar)?;
     Ok(Self { grammar, lr_table })
   }
+}
 
+impl<T: Clone + Debug + Eq + Hash, L> Parser<T, L> {
   pub fn parse_stream<U: Borrow<T>>(&self, stream: impl IntoIterator<Item = U>) -> bool
   where
     T: Debug + ToString,

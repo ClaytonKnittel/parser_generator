@@ -13,9 +13,9 @@ pub struct FirstTable {
 impl FirstTable {
   /// Does one round of updates to the next token map. Returns `true` if any
   /// changes were made, or `false` if none were.
-  fn propagate_map<T>(
+  fn propagate_map<T, L>(
     map: &mut FixedSizeMap<ProductionLabel, VocabSet>,
-    grammar: &IndexedGrammar<T>,
+    grammar: &IndexedGrammar<T, L>,
   ) -> bool {
     let mut changed = false;
 
@@ -53,7 +53,7 @@ impl FirstTable {
     changed
   }
 
-  pub fn build_from_grammar<T>(grammar: &IndexedGrammar<T>) -> Self {
+  pub fn build_from_grammar<T, L>(grammar: &IndexedGrammar<T, L>) -> Self {
     let mut map = grammar.new_production_label_map(|| VocabSet::new(grammar.vocab()));
     while Self::propagate_map(&mut map, grammar) {}
 
