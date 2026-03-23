@@ -43,6 +43,10 @@ impl Terminal {
     &self.symbol
   }
 
+  pub fn meta(&self) -> &SymbolMeta {
+    &self.meta
+  }
+
   pub fn parse(stream: &mut impl SymbolStream) -> ParserGeneratorResult<Self> {
     let next_token = stream.expect_symbol()?;
     match next_token.symbol_type() {

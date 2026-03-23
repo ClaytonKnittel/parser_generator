@@ -3,7 +3,7 @@ use crate::{
     production_ref::{ProductionRef, ProductionRefName},
     terminal::{Terminal, TerminalSymbol},
   },
-  symbol::{Operator, SymbolT},
+  symbol::{Operator, SymbolMeta, SymbolT},
   symbol_stream::SymbolStream,
   ParserGeneratorResult,
 };
@@ -14,6 +14,13 @@ pub enum ProductionNode {
 }
 
 impl ProductionNode {
+  pub fn meta(&self) -> &SymbolMeta {
+    match self {
+      Self::Production(production) => production.meta(),
+      Self::Terminal(terminal) => terminal.meta(),
+    }
+  }
+
   pub fn to_lr_node(&self) -> lr_table::grammar::ProductionNode<TerminalSymbol, ProductionRefName> {
     match self {
       ProductionNode::Production(production) => {

@@ -50,45 +50,32 @@ impl ProductionRule {
     )
   }
 
-  pub fn parse(stream: &mut impl SymbolStream) -> ParserGeneratorResult<Self> {
-    let name = ProductionRef::parse(stream)?;
-    let mut meta = name.meta().clone();
+  fn parse_rule(
+    stream: &mut impl SymbolStream,
+    name: ProductionRef,
+    return_type: Option<Type>,
+  ) -> ParserGeneratorResult<Self> {
+    let first_node = ProductionNode::parse(stream)?;
+    let mut meta = first_node.meta().clone();
 
-    let return_type = maybe_parse_return_type(stream)?;
-
-    expect_symbol_with(
-      stream,
-      |symbol| symbol.is_op(Operator::Arrow),
-      "Expected `=>` to follow production name",
-    )?;
-
-    let mut rule = Vec::new();
+    let mut rule = vec![first_node];
     let mut block = None;
     loop {
       let next_symbol = stream.peek_expect_symbol()?;
       match next_symbol.symbol_type() {
-        SymbolT::Op(Operator::Semicolon) => {
-          let symbol = next_symbol.take();
-          meta.merge(symbol.meta())?;
-          break;
-        }
+        SymbolT::Op(Operator::Semicolon | Operator::Pipe) => break,
         SymbolT::Group(group) => {
           let group = group.clone();
           let symbol = next_symbol.take();
           block = Some(Constructor::new(group, symbol.take_meta()));
-
-          let semicolon_meta = expect_symbol_with(
-            stream,
-            |symbol| symbol.is_op(Operator::Semicolon),
-            "Expected `;` to follow rule constructor",
-          )?;
-          meta.merge(&semicolon_meta)?;
           break;
         }
         _ => {}
       }
 
-      rule.push(ProductionNode::parse(stream)?);
+      let node = ProductionNode::parse(stream)?;
+      meta.merge(node.meta())?;
+      rule.push(node);
     }
 
     Ok(Self {
@@ -98,5 +85,35 @@ impl ProductionRule {
       block,
       meta,
     })
+  }
+
+  pub fn parse(stream: &mut impl SymbolStream) -> ParserGeneratorResult<Vec<Self>> {
+    let name = ProductionRef::parse(stream)?;
+
+    let return_type = maybe_parse_return_type(stream)?;
+
+    expect_symbol_with(
+      stream,
+      |symbol| symbol.is_op(Operator::Arrow),
+      "Expected `=>` to follow production name",
+    )?;
+
+    let first_rule = Self::parse_rule(stream, name.clone(), return_type.clone())?;
+
+    let mut rules = vec![first_rule];
+    loop {
+      let next_symbol = stream.expect_symbol()?;
+      match next_symbol.symbol_type() {
+        SymbolT::Op(Operator::Pipe) => {}
+        SymbolT::Op(Operator::Semicolon) => break,
+        _ => {
+          return Err(next_symbol.meta().make_err("Expected either `;` or `|`"));
+        }
+      }
+
+      rules.push(Self::parse_rule(stream, name.clone(), return_type.clone())?);
+    }
+
+    Ok(rules)
   }
 }

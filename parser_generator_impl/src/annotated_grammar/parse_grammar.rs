@@ -81,7 +81,7 @@ pub fn parse_grammar(mut stream: impl SymbolStream) -> ParserGeneratorResult<Gra
 
   let mut production_rules = Vec::new();
   while stream.peek().is_some() {
-    production_rules.push(ProductionRule::parse(&mut stream)?);
+    production_rules.extend(ProductionRule::parse(&mut stream)?);
   }
 
   Ok(GrammarInfo {
