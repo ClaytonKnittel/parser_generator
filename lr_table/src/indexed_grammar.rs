@@ -410,6 +410,12 @@ impl<T, L> IndexedGrammar<T, L> {
       .production_rule_ids_for_label(label)
       .map(|id| self.production_rule(id))
   }
+
+  /// Returns the original production label from the `Grammar` used to build
+  /// this indexed grammar for a particular production label.
+  pub fn orig_production_label(&self, label: ProductionLabel) -> &L {
+    &self.rule_metadata[label.0].original_label
+  }
 }
 
 #[cfg(test)]
@@ -436,7 +442,10 @@ mod tests {
 
     let (indexed_grammar, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     assert_eq!(indexed_grammar.labels_count(), 1);
+
     let label_a = *label_map.get("A").unwrap();
+    expect_eq!(indexed_grammar.orig_production_label(label_a), "A");
+
     let a_id = indexed_grammar.vocab().token_to_id(&b'a').unwrap();
     expect_that!(
       production_rules(&indexed_grammar, label_a),
@@ -516,6 +525,7 @@ mod tests {
     let (indexed_grammar, label_map) = IndexedGrammar::build_with_label_map(&grammar).unwrap();
     assert_eq!(indexed_grammar.labels_count(), 2);
     let label_a = *label_map.get("A").unwrap();
+    expect_eq!(indexed_grammar.orig_production_label(label_a), "A");
     let a_id = indexed_grammar.vocab().token_to_id(&b'a').unwrap();
     let b_id = indexed_grammar.vocab().token_to_id(&b'b').unwrap();
     expect_that!(
