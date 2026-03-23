@@ -137,6 +137,17 @@ impl<T> AugmentedVocab<T> {
   pub fn for_each_id(&self) -> impl Iterator<Item = AugmentedTokenId> {
     (0..self.size()).map(AugmentedVocabToken::from_id)
   }
+
+  pub fn id_to_token(&self, id: AugmentedTokenId) -> AugmentedVocabToken<T>
+  where
+    T: Clone,
+  {
+    match id {
+      AugmentedVocabToken::Token(token_id) => self.id_map[token_id.0].clone().into(),
+      AugmentedVocabToken::Epsilon => AugmentedVocabToken::Epsilon,
+      AugmentedVocabToken::EndOfStream => AugmentedVocabToken::EndOfStream,
+    }
+  }
 }
 
 impl<T: Eq + Hash + ToString> AugmentedVocab<T> {
@@ -246,6 +257,15 @@ mod tests {
       ok(eq(&AugmentedTokenId::EndOfStream))
     );
 
+    expect_eq!(
+      vocab.id_to_token(AugmentedTokenId::Epsilon),
+      AugmentedVocabToken::<u8>::Epsilon
+    );
+    expect_eq!(
+      vocab.id_to_token(AugmentedTokenId::EndOfStream),
+      AugmentedVocabToken::EndOfStream
+    );
+
     expect_that!(
       vocab.for_each_id().collect_vec(),
       unordered_elements_are![
@@ -281,6 +301,7 @@ mod tests {
       vocab.token_to_id(&b'a').map(AugmentedTokenId::from),
       ok(eq(&a_id))
     );
+    expect_eq!(vocab.id_to_token(a_id), b'a'.into());
 
     expect_that!(
       vocab.for_each_id().collect_vec(),
@@ -322,16 +343,19 @@ mod tests {
       vocab.token_to_id(&b'a').map(AugmentedTokenId::from),
       ok(eq(&a_id))
     );
+    expect_eq!(vocab.id_to_token(a_id), b'a'.into());
     expect_that!(vocab.augmented_token_to_id(&b'b'.into()), ok(eq(&b_id)));
     expect_that!(
       vocab.token_to_id(&b'b').map(AugmentedTokenId::from),
       ok(eq(&b_id))
     );
+    expect_eq!(vocab.id_to_token(b_id), b'b'.into());
     expect_that!(vocab.augmented_token_to_id(&b'c'.into()), ok(eq(&c_id)));
     expect_that!(
       vocab.token_to_id(&b'c').map(AugmentedTokenId::from),
       ok(eq(&c_id))
     );
+    expect_eq!(vocab.id_to_token(c_id), b'c'.into());
 
     expect_that!(
       vocab.for_each_id().collect_vec(),

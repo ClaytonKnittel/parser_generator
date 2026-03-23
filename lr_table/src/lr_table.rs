@@ -283,9 +283,7 @@ impl<T> LRTable<T> {
     let index = self.num_production_labels() * state.id() + production_label.id();
     self.goto_table[index]
   }
-}
 
-impl<T> LRTable<T> {
   fn vocab_size(&self) -> usize {
     let num_actions = self.action_table.len();
     debug_assert!(num_actions.is_multiple_of(self.num_states));
@@ -304,6 +302,60 @@ impl<T> LRTable<T> {
 
   fn gotos_iter(&self) -> IntoChunks<impl Iterator<Item = &Option<GotoAction>>> {
     self.goto_table.iter().chunks(self.num_production_labels())
+  }
+
+  pub fn num_states(&self) -> usize {
+    self.num_states
+  }
+
+  pub fn states(&self) -> impl Iterator<Item = StateId> {
+    (0..self.num_states).map(StateId)
+  }
+
+  /// Returns an iterator over all actions for a given state. The iterator
+  /// yields pairs (token, action), where consuming the given token in this
+  /// state should trigger the corresponding action.
+  pub fn state_actions(
+    &self,
+    state: StateId,
+    grammar: &IndexedGrammar<T>,
+  ) -> impl Iterator<Item = (AugmentedVocabToken<T>, &Action)>
+  where
+    T: Clone,
+  {
+    debug_assert_eq!(grammar.vocab().size(), self.vocab_size());
+    let vocab_size = grammar.vocab().size();
+    let state_offset = state.0 * vocab_size;
+    self.action_table[state_offset..state_offset + vocab_size]
+      .iter()
+      .zip(grammar.vocab().for_each_id())
+      .filter_map(|(action, token_id)| {
+        action
+          .as_ref()
+          .map(|action| (grammar.vocab().id_to_token(token_id), action))
+      })
+  }
+
+  /// Returns an iterator over all GOTO actions for a given state. The iterator
+  /// yields pairs (production rule, action). When that particular production
+  /// reduces into this state, this GOTO action should be applied.
+  pub fn goto_actions(
+    &self,
+    state: StateId,
+    grammar: &IndexedGrammar<T>,
+  ) -> impl Iterator<Item = (ProductionLabel, &GotoAction)>
+  where
+    T: Clone,
+  {
+    debug_assert_eq!(self.num_production_labels(), grammar.labels_count());
+    let num_production_labels = grammar.labels_count();
+    let state_offset = state.0 * num_production_labels;
+    self.goto_table[state_offset..state_offset + num_production_labels]
+      .iter()
+      .zip(grammar.all_production_labels())
+      .filter_map(|(action, production_label)| {
+        action.as_ref().map(|action| (production_label, action))
+      })
   }
 }
 
