@@ -92,7 +92,7 @@ struct LRTableEntryBuilder {
 }
 
 impl LRTableEntryBuilder {
-  fn new<T>(grammar: &IndexedGrammar<T>) -> Self {
+  fn new<T, L>(grammar: &IndexedGrammar<T, L>) -> Self {
     Self {
       actions: grammar.new_sparse_augmented_vocab_map(),
       gotos: grammar.new_sparse_production_label_map(),
@@ -101,10 +101,10 @@ impl LRTableEntryBuilder {
 
   /// Builds the LRTableEntry for the state given the partitions of a kernel +
   /// closure, which is the set of actions to be taken from this state.
-  fn try_build_from_partitions<T>(
+  fn try_build_from_partitions<T, L>(
     partitions: SparsePartitionMap<Vec<Position>>,
     kernel_table: &mut KernelTable,
-    grammar: &IndexedGrammar<T>,
+    grammar: &IndexedGrammar<T, L>,
   ) -> LRTableResult<LRTableEntryBuilder> {
     let mut builder = LRTableEntryBuilder::new(grammar);
 
@@ -185,9 +185,9 @@ impl LRTableEntryBuilder {
 
   /// Flattens the entry builder into action/goto vecs which correspond to rows
   /// in the `LRTable` for this state.
-  fn into_vecs<T: Clone>(
+  fn into_vecs<T: Clone, L>(
     self,
-    grammar: &IndexedGrammar<T>,
+    grammar: &IndexedGrammar<T, L>,
   ) -> (
     impl Iterator<Item = Option<Action>>,
     impl Iterator<Item = Option<GotoAction>>,
@@ -214,8 +214,8 @@ pub struct LRTable<T> {
 }
 
 impl<T> LRTable<T> {
-  fn generate_actions(
-    grammar: &IndexedGrammar<T>,
+  fn generate_actions<L>(
+    grammar: &IndexedGrammar<T, L>,
   ) -> impl Iterator<Item = LRTableResult<LRTableEntryBuilder>> {
     let first_set = FirstTable::build_from_grammar(grammar);
     let mut kernel_table = KernelTable::new();
@@ -250,7 +250,7 @@ impl<T> LRTable<T> {
     })
   }
 
-  pub fn build(grammar: &IndexedGrammar<T>) -> LRTableResult<Self>
+  pub fn build<L>(grammar: &IndexedGrammar<T, L>) -> LRTableResult<Self>
   where
     T: Clone,
   {
@@ -315,10 +315,10 @@ impl<T> LRTable<T> {
   /// Returns an iterator over all actions for a given state. The iterator
   /// yields pairs (token, action), where consuming the given token in this
   /// state should trigger the corresponding action.
-  pub fn state_actions(
+  pub fn state_actions<L>(
     &self,
     state: StateId,
-    grammar: &IndexedGrammar<T>,
+    grammar: &IndexedGrammar<T, L>,
   ) -> impl Iterator<Item = (AugmentedVocabToken<T>, &Action)>
   where
     T: Clone,
@@ -339,10 +339,10 @@ impl<T> LRTable<T> {
   /// Returns an iterator over all GOTO actions for a given state. The iterator
   /// yields pairs (production rule, action). When that particular production
   /// reduces into this state, this GOTO action should be applied.
-  pub fn goto_actions(
+  pub fn goto_actions<L>(
     &self,
     state: StateId,
-    grammar: &IndexedGrammar<T>,
+    grammar: &IndexedGrammar<T, L>,
   ) -> impl Iterator<Item = (ProductionLabel, &GotoAction)>
   where
     T: Clone,
