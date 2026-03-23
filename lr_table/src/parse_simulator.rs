@@ -13,7 +13,7 @@ pub struct Parser<T, L> {
   lr_table: LRTable<T>,
 }
 
-impl<T: Clone + Debug + Eq + Hash, L: Clone + Debug + Eq + Hash> Parser<T, L> {
+impl<T: Clone + Eq + Hash, L: Clone + Debug + Eq + Hash> Parser<T, L> {
   pub fn new(grammar: &Grammar<T, L>) -> LRTableResult<Self> {
     let grammar = IndexedGrammar::build(grammar)?;
     let lr_table = LRTable::build(&grammar)?;
@@ -21,7 +21,7 @@ impl<T: Clone + Debug + Eq + Hash, L: Clone + Debug + Eq + Hash> Parser<T, L> {
   }
 }
 
-impl<T: Clone + Debug + Eq + Hash, L> Parser<T, L> {
+impl<T: Clone + Eq + Hash, L> Parser<T, L> {
   pub fn parse_stream<U: Borrow<T>>(&self, stream: impl IntoIterator<Item = U>) -> bool
   where
     T: Debug + ToString,
