@@ -296,7 +296,8 @@ impl<T> IndexedGrammar<T> {
     (0..self.labels_count()).map(ProductionLabel)
   }
 
-  fn labels_count(&self) -> usize {
+  /// The number of unique production labels.
+  pub fn labels_count(&self) -> usize {
     self.rule_offset_map.len()
   }
 

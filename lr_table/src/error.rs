@@ -40,6 +40,8 @@ pub enum LRTableError {
   BuildGrammar(BuildGrammarError),
   UnrecognizedToken { token: String },
   LabelAlreadyExists { label_id: usize },
+  UnresolvedStates,
+  StateResolveConflict,
   Generic(String),
 }
 
@@ -50,6 +52,14 @@ impl LRTableError {
 
   pub fn label_already_exists(label_id: usize) -> Self {
     Self::LabelAlreadyExists { label_id }
+  }
+
+  pub fn unresolved_states() -> Self {
+    Self::UnresolvedStates
+  }
+
+  pub fn state_resolve_conflict() -> Self {
+    Self::StateResolveConflict
   }
 
   pub fn new_generic(message: String) -> Self {
@@ -65,6 +75,11 @@ impl Display for LRTableError {
       Self::BuildGrammar(error) => write!(f, "Build grammar error: {error}"),
       Self::UnrecognizedToken { token } => write!(f, "Unrecognized token \"{token}\""),
       Self::LabelAlreadyExists { label_id } => write!(f, "Label {label_id} already exists"),
+      Self::UnresolvedStates => write!(f, "Unresolved states while building the LR state map"),
+      Self::StateResolveConflict => write!(
+        f,
+        "Conflict resolving states while building the LR state map"
+      ),
       Self::Generic(message) => write!(f, "Error: {}", message),
     }
   }

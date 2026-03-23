@@ -14,3 +14,6 @@ proc-macro-error = { version = "1", default-features = false }
 proc-macro2 = "1.0"
 quote = "1.0"
 syn = { version = "1.0", features = ["full", "extra-traits"] }
+
+[dev-dependencies]
+googletest = "0.14.2"

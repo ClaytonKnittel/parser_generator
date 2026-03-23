@@ -312,6 +312,9 @@ impl<T> LRTable<T> {
     (0..self.num_states).map(StateId)
   }
 
+  /// Returns an iterator over all actions for a given state. The iterator
+  /// yields pairs (token, action), where consuming the given token in this
+  /// state should trigger the corresponding action.
   pub fn state_actions(
     &self,
     state: StateId,
@@ -330,6 +333,28 @@ impl<T> LRTable<T> {
         action
           .as_ref()
           .map(|action| (grammar.vocab().id_to_token(token_id), action))
+      })
+  }
+
+  /// Returns an iterator over all GOTO actions for a given state. The iterator
+  /// yields pairs (production rule, action). When that particular production
+  /// reduces into this state, this GOTO action should be applied.
+  pub fn goto_actions(
+    &self,
+    state: StateId,
+    grammar: &IndexedGrammar<T>,
+  ) -> impl Iterator<Item = (ProductionLabel, &GotoAction)>
+  where
+    T: Clone,
+  {
+    debug_assert_eq!(self.num_production_labels(), grammar.labels_count());
+    let num_production_labels = grammar.labels_count();
+    let state_offset = state.0 * num_production_labels;
+    self.goto_table[state_offset..state_offset + num_production_labels]
+      .iter()
+      .zip(grammar.all_production_labels())
+      .filter_map(|(action, production_label)| {
+        action.as_ref().map(|action| (production_label, action))
       })
   }
 }
