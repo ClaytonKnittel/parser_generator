@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 fn main() {
-  parser_generator_impl::grammar!(
+  parser_generator::grammar!(
     name: Test;
     terminal: char;
 

@@ -13,9 +13,29 @@ pub fn generate_parser(
   lr_table: &LRTable<TerminalSymbol>,
   grammar_info: &GrammarInfo,
 ) -> TokenStreamResult {
+  let grammar_name = grammar_info.name().make_syn_ident();
+  let token_type = grammar_info.terminal_type();
+  let result_type = quote! { () };
+
   let dfa_states_enum = generate_dfa_states(grammar, lr_table, grammar_info)?;
 
   Ok(quote! {
-    #dfa_states_enum
+    struct #grammar_name;
+    impl ::parser_generator::parser::Parser for #grammar_name {
+      type Token = #token_type;
+      type Value = #result_type;
+
+      fn parse<I, B>(
+        input_stream: I
+      ) -> ::parser_generator::error::ParserResult<Self::Value>
+      where
+        I: IntoIterator<Item = B>,
+        B: std::borrow::Borrow<Self::Token>,
+      {
+        #dfa_states_enum
+
+        todo!();
+      }
+    }
   })
 }

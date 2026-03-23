@@ -1,24 +1,7 @@
-pub use parser_generator_impl::grammar;
+pub mod error;
+pub mod parser;
 
-pub fn test_fn() {
-  // let parser = grammar!(
-  //   0
-  //   // if no {} given, return entire consumed text.
-  //   // a re before text means to treat the text as regex.
-  //   absoluteURI = re":[a-zA-Z/]+";
-  //   // an evaluable block may be given for each option of a |
-  //   req = "GET" { Request::GET } | "HEAD" { Request::HEAD };
-  //   // parameter names are by default $<position>.
-  //   uri = absoluteURI {
-  //     $1
-  //   };
-  //   // the root rule is determined via the dependency graph: only one rule may
-  //   // not be referred to by any others, and it is the root.
-  //   header = req uri {
-  //     Req::new($1, $2)
-  //   };
-  // );
-}
+pub use parser_generator_impl::grammar;
 
 #[cfg(test)]
 mod tests {

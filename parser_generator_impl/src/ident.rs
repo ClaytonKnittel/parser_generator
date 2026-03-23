@@ -10,6 +10,10 @@ pub struct Ident {
 }
 
 impl Ident {
+  pub fn make_syn_ident(&self) -> syn::Ident {
+    syn::Ident::new(&self.name, self.meta.span2())
+  }
+
   pub fn name(&self) -> &str {
     &self.name
   }
