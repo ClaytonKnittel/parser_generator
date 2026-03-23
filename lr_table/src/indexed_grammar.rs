@@ -135,7 +135,7 @@ pub struct IndexedGrammar<T> {
 }
 
 impl<T: Clone + Eq + Hash> IndexedGrammar<T> {
-  fn verify_connected(&self) -> LRTableResult {
+  fn verify_connected<L: Debug>(&self, label_map: &HashMap<L, ProductionLabel>) -> LRTableResult {
     let mut rule_set = self.new_production_label_set();
     let mut labels_to_explore = vec![ProductionLabel(0)];
     rule_set.set(&ProductionLabel(0));
@@ -157,11 +157,18 @@ impl<T: Clone + Eq + Hash> IndexedGrammar<T> {
     if rule_set.full() {
       Ok(())
     } else {
-      Err(grammar_error!(NotConnected))
+      let mut disconnected_rules = label_map
+        .iter()
+        .filter(|(_, production_label)| !rule_set.has(*production_label))
+        .map(|(label, _)| format!("{label:?}"));
+      Err(grammar_error!(
+        NotConnected,
+        format!("Rules disconnected: {}", disconnected_rules.join(", "))
+      ))
     }
   }
 
-  fn build_from_grammar<L: Clone + Eq + Hash>(
+  fn build_from_grammar<L: Clone + Debug + Eq + Hash>(
     grammar: &Grammar<T, L>,
   ) -> LRTableResult<(Self, HashMap<L, ProductionLabel>)> {
     let mut productions_iter = grammar.productions().iter();
@@ -255,19 +262,19 @@ impl<T: Clone + Eq + Hash> IndexedGrammar<T> {
       vocab,
     };
 
-    indexed_grammar.verify_connected()?;
+    indexed_grammar.verify_connected(&label_map)?;
 
     Ok((indexed_grammar, label_map))
   }
 
   #[cfg(test)]
-  pub fn build_with_label_map<L: Clone + Eq + Hash>(
+  pub fn build_with_label_map<L: Clone + Debug + Eq + Hash>(
     grammar: &Grammar<T, L>,
   ) -> LRTableResult<(Self, HashMap<L, ProductionLabel>)> {
     Self::build_from_grammar(grammar)
   }
 
-  pub fn build<L: Clone + Eq + Hash>(grammar: &Grammar<T, L>) -> LRTableResult<Self> {
+  pub fn build<L: Clone + Debug + Eq + Hash>(grammar: &Grammar<T, L>) -> LRTableResult<Self> {
     Ok(Self::build_from_grammar(grammar)?.0)
   }
 }
@@ -428,7 +435,7 @@ mod tests {
     expect_that!(
       grammar.err(),
       some(pat!(LRTableError::BuildGrammar(pat!(
-        BuildGrammarError::NotConnected
+        BuildGrammarError::NotConnected(_)
       ))))
     );
   }

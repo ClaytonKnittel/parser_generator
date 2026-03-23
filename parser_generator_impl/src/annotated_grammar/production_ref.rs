@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use crate::{
   annotated_grammar::util::expect_symbol_with,
   symbol::{Operator, SymbolMeta, SymbolT},
@@ -35,15 +37,21 @@ impl ProductionRef {
       SymbolT::Ident(ident) => Ok(ProductionRefName(ident.to_owned())),
       _ => return Err(prod_name_sym.meta().make_err("Expected production name.")),
     }?;
-    meta.merge(prod_name_sym.meta());
+    meta.merge(prod_name_sym.meta())?;
 
     let end_meta = expect_symbol_with(
       stream,
       |sym| sym.is_op(Operator::EndProd),
       format!("Expected production name to end with '>'."),
     )?;
-    meta.merge(&end_meta);
+    meta.merge(&end_meta)?;
 
     Ok(Self { name, meta })
+  }
+}
+
+impl Debug for ProductionRefName {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "<{}>", self.0)
   }
 }
