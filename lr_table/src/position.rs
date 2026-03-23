@@ -84,15 +84,15 @@ impl Position {
     (self.production_id, self.position)
   }
 
-  pub fn at_end_of_rule<T>(&self, grammar: &IndexedGrammar<T>) -> bool {
+  pub fn at_end_of_rule<T, L>(&self, grammar: &IndexedGrammar<T, L>) -> bool {
     self.next_node(grammar).is_none()
   }
 
   /// Returns the next node at this position, or `None` if this position is at
   /// the end of its rule.
-  pub fn next_node<'a, T>(
+  pub fn next_node<'a, T, L>(
     &self,
-    grammar: &'a IndexedGrammar<T>,
+    grammar: &'a IndexedGrammar<T, L>,
   ) -> Option<&'a IndexedProductionNode> {
     let production = grammar.production_rule(self.production_id);
     production.rule()[self.position..]
@@ -102,12 +102,12 @@ impl Position {
 
   /// Advances this position to the next node. This must not be called on
   /// positions that are already at the end of their rule.
-  pub fn advance<T>(&mut self, grammar: &IndexedGrammar<T>) {
+  pub fn advance<T, L>(&mut self, grammar: &IndexedGrammar<T, L>) {
     debug_assert!(!self.at_end_of_rule(grammar));
     self.position += 1;
   }
 
-  pub fn advance_all<'a, T, I>(iter: I, grammar: &IndexedGrammar<T>)
+  pub fn advance_all<'a, T, L, I>(iter: I, grammar: &IndexedGrammar<T, L>)
   where
     T: 'a,
     I: Iterator<Item = &'a mut Self>,
@@ -150,9 +150,9 @@ impl Position {
   /// Returns the production label of the next node of this rule, if that node
   /// is a production label. If the next node is a terminal, or `position` is
   /// already at the end of this rule, returns `None`.
-  pub fn next_production_label<T>(
+  pub fn next_production_label<T, L>(
     &self,
-    grammar: &IndexedGrammar<T>,
+    grammar: &IndexedGrammar<T, L>,
     first_map: &FirstTable,
   ) -> Option<(ProductionLabel, VocabSet)> {
     let production = grammar.production_rule(self.production_id);

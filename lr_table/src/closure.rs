@@ -13,9 +13,9 @@ use crate::{
 /// production labels which are transitively connected to the next nodes of
 /// any rule in the kernel, and the follow sets for those such production
 /// labels.
-fn closure_follow_sets<T>(
+fn closure_follow_sets<T, L>(
   kernel: &Kernel,
-  grammar: &IndexedGrammar<T>,
+  grammar: &IndexedGrammar<T, L>,
   first_map: &FirstTable,
 ) -> SparseFixedSizeMap<ProductionLabel, VocabSet> {
   // A map from `ProductionLabel` to follow set. We only need to track the next
@@ -95,9 +95,9 @@ fn closure_follow_sets<T>(
 /// Given a kernel, computes a partition over the positions of the kernel's
 /// closure grouped by next nodes (either productions or terminals). All
 /// positions at the end of their rules are grouped together under `None`.
-pub fn partition_closure_by_next_node<T>(
+pub fn partition_closure_by_next_node<T, L>(
   kernel: &Kernel,
-  grammar: &IndexedGrammar<T>,
+  grammar: &IndexedGrammar<T, L>,
   first_map: &FirstTable,
 ) -> SparsePartitionMap<Vec<Position>> {
   kernel
@@ -139,9 +139,9 @@ mod tests {
     vocabulary::{AugmentedVocabToken, VocabSet},
   };
 
-  fn closure_follow_sets<T>(
+  fn closure_follow_sets<T, L>(
     position: Position,
-    grammar: &IndexedGrammar<T>,
+    grammar: &IndexedGrammar<T, L>,
   ) -> Vec<(ProductionLabel, VocabSet)> {
     let first_map = FirstTable::build_from_grammar(grammar);
     let kernel = Kernel::new(vec![position]);
@@ -152,9 +152,9 @@ mod tests {
       .collect()
   }
 
-  fn partition_closure_by_next_node<T>(
+  fn partition_closure_by_next_node<T, L>(
     kernel: impl IntoIterator<Item = Position>,
-    grammar: &IndexedGrammar<T>,
+    grammar: &IndexedGrammar<T, L>,
   ) -> Vec<(NextTokenCategory, Vec<Position>)> {
     let first_map = FirstTable::build_from_grammar(grammar);
     let kernel = Kernel::new(kernel.into_iter().collect());
