@@ -37,7 +37,7 @@ fn generate_dfa_states<T: Clone>(
         state,
         match state_map.state_type(state) {
           LRStateType::Reduce(production) => {
-            grammar_info.lr_table_grammar();
+            grammar_info.label_type(label);
             None
           }
           LRStateType::Terminal => Some(grammar_info.terminal_type().clone()),

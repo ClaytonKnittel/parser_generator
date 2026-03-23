@@ -1,5 +1,6 @@
 use crate::{
   annotated_grammar::{
+    label_type_map::LabelTypeMap,
     production_node::ProductionNode,
     production_ref::{ProductionRef, ProductionRefName},
     terminal::TerminalSymbol,
@@ -87,10 +88,14 @@ impl ProductionRule {
     })
   }
 
-  pub fn parse(stream: &mut impl SymbolStream) -> ParserGeneratorResult<Vec<Self>> {
+  pub fn parse(
+    stream: &mut impl SymbolStream,
+    label_map: &mut LabelTypeMap,
+  ) -> ParserGeneratorResult<Vec<Self>> {
     let name = ProductionRef::parse(stream)?;
 
     let return_type = maybe_parse_return_type(stream)?;
+    label_map.add(name.name().clone(), return_type.clone())?;
 
     expect_symbol_with(
       stream,

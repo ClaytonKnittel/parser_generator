@@ -1,11 +1,11 @@
+use std::collections::HashMap;
+
 use lr_table::grammar::{Grammar, ProductionRuleIndex};
 
 use crate::{
   annotated_grammar::{
-    production_ref::ProductionRefName,
-    production_rule::{Constructor, ProductionRule},
-    terminal::TerminalSymbol,
-    util::expect_symbol_with,
+    label_type_map::LabelTypeMap, production_ref::ProductionRefName,
+    production_rule::ProductionRule, terminal::TerminalSymbol, util::expect_symbol_with,
   },
   error::InterceptResult,
   ident::Ident,
@@ -50,7 +50,8 @@ where
 pub struct GrammarInfo {
   name: Ident,
   terminal_type: Type,
-  production_rule_constructors: Vec<Option<Constructor>>,
+  label_types: LabelTypeMap,
+  production_rules: Vec<ProductionRule>,
   grammar: Grammar<TerminalSymbol, ProductionRefName>,
 }
 
@@ -63,8 +64,12 @@ impl GrammarInfo {
     &self.terminal_type
   }
 
-  pub fn constructor(&self, index: ProductionRuleIndex) -> Option<&Constructor> {
-    self.production_rule_constructors[index.0].as_ref()
+  pub fn label_type(&self, label: &ProductionRefName) -> Option<&Type> {
+    self.label_types.get(label)
+  }
+
+  pub fn production_rule(&self, index: ProductionRuleIndex) -> &ProductionRule {
+    &self.production_rules[index.0]
   }
 
   pub fn lr_table_grammar(&self) -> &Grammar<TerminalSymbol, ProductionRefName> {
@@ -86,9 +91,11 @@ pub fn parse_grammar(mut stream: impl SymbolStream) -> ParserGeneratorResult<Gra
   let name = parse_name(&mut stream)?;
   let terminal_type = parse_terminal_symbol_type(&mut stream)?;
 
+  let mut label_types = LabelTypeMap::new();
+
   let mut production_rules = Vec::new();
   while stream.peek().is_some() {
-    production_rules.extend(ProductionRule::parse(&mut stream)?);
+    production_rules.extend(ProductionRule::parse(&mut stream, &mut label_types)?);
   }
 
   // TODO: build two objects in parallel, this grammar and one with just
@@ -103,6 +110,7 @@ pub fn parse_grammar(mut stream: impl SymbolStream) -> ParserGeneratorResult<Gra
   Ok(GrammarInfo {
     name,
     terminal_type,
+    label_types,
     production_rules,
     grammar,
   })

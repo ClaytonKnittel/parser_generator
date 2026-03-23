@@ -39,4 +39,8 @@ impl Type {
 
     Ok(Self { meta })
   }
+
+  pub fn cmp_tokens(&self, other: &Self) -> bool {
+    self.meta.tokens().to_string() == other.meta.tokens().to_string()
+  }
 }
