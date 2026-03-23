@@ -5,7 +5,7 @@ use itertools::Itertools;
 use crate::{
   error::{LRTableResult, grammar_error},
   fixed_map::{FixedSizeMap, FixedSizeSet, Label, SparseFixedSizeMap},
-  grammar::{Grammar, ProductionNode, ProductionRule},
+  grammar::{Grammar, ProductionNode, ProductionRule, ProductionRuleIndex},
   vocabulary::{AugmentedTokenId, AugmentedVocab, AugmentedVocabToken, TokenId, VocabularyBuilder},
 };
 
@@ -45,7 +45,39 @@ impl Label for ProductionRuleId {
 
 pub type IndexedProductionNode = ProductionNode<TokenId, ProductionLabel>;
 
-pub type IndexedProductionRule = ProductionRule<TokenId, ProductionLabel>;
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct IndexedProductionRule {
+  rule: ProductionRule<TokenId, ProductionLabel>,
+  original_index: ProductionRuleIndex,
+}
+
+impl IndexedProductionRule {
+  fn new(
+    symbol: ProductionLabel,
+    rule: Vec<ProductionNode<TokenId, ProductionLabel>>,
+    original_index: ProductionRuleIndex,
+  ) -> Self {
+    Self {
+      rule: ProductionRule::new(symbol, rule),
+      original_index,
+    }
+  }
+
+  pub fn symbol(&self) -> &ProductionLabel {
+    self.rule.symbol()
+  }
+
+  pub fn rule(&self) -> &[ProductionNode<TokenId, ProductionLabel>] {
+    self.rule.rule()
+  }
+
+  #[cfg(debug_assertions)]
+  pub fn rules_excluding_epsilon(
+    &self,
+  ) -> impl Iterator<Item = &ProductionNode<TokenId, ProductionLabel>> {
+    self.rule.rules_excluding_epsilon()
+  }
+}
 
 /// The key for closure partitions. This is either a terminal, a production
 /// label, or `None` (special case for positions at the end of their rules).
@@ -171,17 +203,21 @@ impl<T: Clone + Debug + Eq + Hash> IndexedGrammar<T> {
   fn build_from_grammar<L: Clone + Debug + Eq + Hash>(
     grammar: &Grammar<T, L>,
   ) -> LRTableResult<(Self, HashMap<L, ProductionLabel>)> {
-    let mut productions_iter = grammar.productions().iter();
-    let root_production = productions_iter
+    let mut productions_iter = grammar
+      .productions()
+      .iter()
+      .enumerate()
+      .map(|(i, production)| (production, ProductionRuleIndex(i)));
+    let (root_production, root_index) = productions_iter
       .next()
       .ok_or(grammar_error!(EmptyGrammar))?;
 
     let mut label_map =
       HashMap::from_iter([(root_production.symbol().clone(), ProductionLabel(0))]);
-    let mut label_groups = vec![vec![root_production]];
+    let mut label_groups = vec![vec![(root_production, root_index)]];
     let mut vocab_builder = VocabularyBuilder::new();
 
-    for production in productions_iter {
+    for (production, original_index) in productions_iter {
       let label = production.symbol().clone();
       if label == *root_production.symbol() {
         return Err(grammar_error!(RootProductionRepeated));
@@ -203,9 +239,9 @@ impl<T: Clone + Debug + Eq + Hash> IndexedGrammar<T> {
 
       if label_map.len() != map_len {
         debug_assert_eq!(label.0, label_groups.len());
-        label_groups.push(vec![production]);
+        label_groups.push(vec![(production, original_index)]);
       } else {
-        label_groups[label.0].push(production);
+        label_groups[label.0].push((production, original_index));
       }
 
       debug_assert_eq!(label_groups.len(), label_groups.len());
@@ -220,7 +256,7 @@ impl<T: Clone + Debug + Eq + Hash> IndexedGrammar<T> {
         let vocab_builder = &mut vocab_builder;
         group
           .iter()
-          .map(move |production| {
+          .map(move |(production, original_index)| {
             IndexedProductionRule::new(
               label,
               production
@@ -235,6 +271,7 @@ impl<T: Clone + Debug + Eq + Hash> IndexedGrammar<T> {
                   }
                 })
                 .collect(),
+              *original_index,
             )
           })
           .collect_vec()
@@ -355,7 +392,7 @@ mod tests {
 
   use crate::{
     error::{BuildGrammarError, LRTableError},
-    grammar::{Grammar, ProductionNode, ProductionRule},
+    grammar::{Grammar, ProductionNode, ProductionRuleIndex},
     indexed_grammar::{IndexedGrammar, IndexedProductionRule, ProductionLabel},
     vocabulary::AugmentedVocabToken,
   };
@@ -377,9 +414,10 @@ mod tests {
     let a_id = indexed_grammar.vocab().token_to_id(&b'a').unwrap();
     expect_that!(
       production_rules(&indexed_grammar, label_a),
-      elements_are![&&ProductionRule::new(
+      elements_are![&&IndexedProductionRule::new(
         label_a,
-        vec![ProductionNode::Terminal(AugmentedVocabToken::Token(a_id))]
+        vec![ProductionNode::Terminal(AugmentedVocabToken::Token(a_id))],
+        ProductionRuleIndex(0)
       )]
     );
   }
@@ -457,13 +495,15 @@ mod tests {
     expect_that!(
       production_rules(&indexed_grammar, label_a),
       elements_are![
-        &&ProductionRule::new(
+        &&IndexedProductionRule::new(
           label_a,
-          vec![ProductionNode::Terminal(AugmentedVocabToken::Token(a_id))]
+          vec![ProductionNode::Terminal(AugmentedVocabToken::Token(a_id))],
+          ProductionRuleIndex(1)
         ),
-        &&ProductionRule::new(
+        &&IndexedProductionRule::new(
           label_a,
-          vec![ProductionNode::Terminal(AugmentedVocabToken::Token(b_id))]
+          vec![ProductionNode::Terminal(AugmentedVocabToken::Token(b_id))],
+          ProductionRuleIndex(2)
         )
       ]
     );

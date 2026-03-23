@@ -39,6 +39,9 @@ impl<T, L> ProductionRule<T, L> {
   }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ProductionRuleIndex(pub usize);
+
 pub struct Grammar<T, L> {
   productions: Vec<ProductionRule<T, L>>,
 }
@@ -50,6 +53,10 @@ impl<T, L> Grammar<T, L> {
 
   pub fn productions(&self) -> &[ProductionRule<T, L>] {
     &self.productions
+  }
+
+  pub fn production(&self, index: ProductionRuleIndex) -> &ProductionRule<T, L> {
+    &self.productions[index.0]
   }
 }
 
