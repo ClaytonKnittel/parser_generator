@@ -8,7 +8,7 @@ pub enum BuildGrammarError {
   EmptyGrammar,
   RootProductionRepeated,
   RootProductionReferenced,
-  NotConnected,
+  NotConnected(String),
 }
 
 impl Display for BuildGrammarError {
@@ -19,7 +19,7 @@ impl Display for BuildGrammarError {
       Self::RootProductionReferenced => {
         write!(f, "the root production is referenced by another rule")
       }
-      Self::NotConnected => write!(f, "The grammar is not fully connected"),
+      Self::NotConnected(message) => write!(f, "The grammar is not fully connected: {message}"),
     }
   }
 }
@@ -27,6 +27,9 @@ impl Display for BuildGrammarError {
 macro_rules! grammar_error {
   ($error:ident) => {
     $crate::error::LRTableError::build_grammar($crate::error::BuildGrammarError::$error)
+  };
+  ($error:ident$(, $args:expr)+) => {
+    $crate::error::LRTableError::build_grammar($crate::error::BuildGrammarError::$error($($args.into(),)+))
   };
 }
 
