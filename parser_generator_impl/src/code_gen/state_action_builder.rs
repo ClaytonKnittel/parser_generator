@@ -35,7 +35,7 @@ pub fn state_action_function_name(state_id: StateId) -> syn::Ident {
   )
 }
 
-fn token_matcher(token: AugmentedVocabToken<String>) -> TokenStreamResult {
+fn token_matcher(token: &AugmentedVocabToken<String>) -> TokenStreamResult {
   Ok(match token {
     AugmentedVocabToken::Token(token) => {
       let token = proc_macro2::Literal::from_str(&token).map_err(|err| {
@@ -49,14 +49,20 @@ fn token_matcher(token: AugmentedVocabToken<String>) -> TokenStreamResult {
 }
 
 fn apply_action(
+  token: &AugmentedVocabToken<String>,
   action: &Action,
   state_id: StateId,
   grammar_info: &GrammarInfo,
-) -> proc_macro2::TokenStream {
+) -> TokenStreamResult {
   let enum_name = qualified_enum_variant_name(state_id, grammar_info);
-  match action {
+  Ok(match action {
     Action::Shift { next_state } => {
+      let next_state_name = qualified_enum_variant_name(*next_state, grammar_info);
+      let token = proc_macro2::Literal::from_str(token.token().unwrap()).map_err(|err| {
+        ParserGeneratorError::from_foreign_error(err, proc_macro::Span::call_site())
+      })?;
       quote! {
+        state.push(#next_state_name(#token));
         Ok(::parser_generator::parser_state::ParserControl::Continue)
       }
     }
@@ -71,7 +77,7 @@ fn apply_action(
         Ok(::parser_generator::parser_state::ParserControl::Accept(result))
       }
     }
-  }
+  })
 }
 
 pub fn generate_state_action_function(
@@ -88,8 +94,8 @@ pub fn generate_state_action_function(
   let actions = lr_table
     .state_actions(state_id, grammar)
     .map(|(token, action)| {
-      let matcher = token_matcher(token)?;
-      let apply_action = apply_action(action, state_id, grammar_info);
+      let matcher = token_matcher(&token)?;
+      let apply_action = apply_action(&token, action, state_id, grammar_info)?;
       Ok(quote! {
         #matcher => { #apply_action }
       })

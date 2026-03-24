@@ -25,6 +25,10 @@ impl<T, S, I> ParserState<T, S, I> {
     &self.stream
   }
 
+  pub fn push(&mut self, state: S) {
+    self.stack.push(state);
+  }
+
   pub fn state(&self) -> &S {
     self.stack.last().unwrap()
   }

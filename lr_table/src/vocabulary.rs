@@ -2,6 +2,7 @@ use std::{
   collections::{HashMap, hash_map::Entry},
   fmt::{Debug, Display},
   hash::Hash,
+  hint::unreachable_unchecked,
 };
 
 use itertools::Itertools;
@@ -28,6 +29,15 @@ pub enum AugmentedVocabToken<T> {
   Token(T),
   Epsilon,
   EndOfStream,
+}
+
+impl<T> AugmentedVocabToken<T> {
+  pub fn token(&self) -> Option<&T> {
+    match self {
+      Self::Token(token) => Some(token),
+      Self::Epsilon | Self::EndOfStream => None,
+    }
+  }
 }
 
 impl Label for AugmentedVocabToken<TokenId> {
