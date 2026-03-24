@@ -5,10 +5,11 @@ use googletest::{
 
 #[gtest]
 fn test_large_or() -> googletest::Result<()> {
-  parser_generator_impl::grammar_def! {
+  parser_generator::grammar! {
     name: Test;
     terminal: char;
 
+    <S>: char => <dig> { #dig };
     <dig>: char =>
           'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' |
           'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' |

@@ -226,4 +226,31 @@ mod tests {
     expect_false!(parser.parse_stream(b"apbx"));
     expect_false!(parser.parse_stream(b"xapb"));
   }
+
+  #[gtest]
+  fn test_multiple_ways_to_resolve_same_rule() {
+    let grammar = Grammar::from_grammar_str(
+      r#"S -> A
+         A -> a C
+         A -> B
+         B -> C
+         B -> x b
+         C -> x c"#,
+    )
+    .unwrap();
+    let parser = Parser::new(&grammar).unwrap();
+
+    expect_true!(parser.parse_stream(b"axc"));
+    expect_true!(parser.parse_stream(b"xb"));
+    expect_true!(parser.parse_stream(b"xc"));
+
+    expect_false!(parser.parse_stream(b""));
+    expect_false!(parser.parse_stream(b"axb"));
+    expect_false!(parser.parse_stream(b"a"));
+    expect_false!(parser.parse_stream(b"b"));
+    expect_false!(parser.parse_stream(b"c"));
+    expect_false!(parser.parse_stream(b"ax"));
+    expect_false!(parser.parse_stream(b"ab"));
+    expect_false!(parser.parse_stream(b"ac"));
+  }
 }

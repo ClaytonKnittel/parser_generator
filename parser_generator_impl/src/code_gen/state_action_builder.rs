@@ -55,6 +55,7 @@ fn apply_action(
   token: &AugmentedVocabToken<String>,
   action: &Action,
   state_id: StateId,
+  grammar: &IndexedGrammar<String, ProductionRefName>,
   grammar_info: &GrammarInfo,
 ) -> TokenStreamResult {
   let enum_name = qualified_enum_variant_name(state_id, grammar_info);
@@ -68,6 +69,7 @@ fn apply_action(
       }
     }
     Action::Reduce { rule } => {
+      let rule = grammar.production_rule(*rule);
       quote! {
         Ok(::parser_generator::parser_state::ParserControl::Continue)
       }
@@ -96,7 +98,7 @@ pub fn generate_state_action_function(
     .state_actions(state_id, grammar)
     .map(|(token, action)| {
       let matcher = token_matcher(&token)?;
-      let apply_action = apply_action(&token, action, state_id, grammar_info)?;
+      let apply_action = apply_action(&token, action, state_id, grammar, grammar_info)?;
       Ok(quote! {
         #matcher => { #apply_action }
       })

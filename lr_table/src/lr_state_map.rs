@@ -63,6 +63,8 @@ impl LRStateTypeBuilder {
 /// is the target of a shift action), or the resolution of a production rule
 /// (i.e. it is the target of a GOTO action).
 pub struct LRStateMap<'a> {
+  /// A map from StateId -> the type that should be held in this state. This is
+  /// the return value of any state that can lead to this one.
   types: Vec<LRStateType>,
   /// This lookup table is lifetime-bound to an instance of `LRTable`.
   _phantom: PhantomData<&'a ()>,

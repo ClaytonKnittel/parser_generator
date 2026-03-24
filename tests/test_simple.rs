@@ -2,7 +2,7 @@ use googletest::{expect_eq, expect_that, gtest, prelude::none};
 
 #[gtest]
 fn test_simple() -> googletest::Result<()> {
-  parser_generator_impl::grammar_def! {
+  parser_generator::grammar! {
     name: Test;
     terminal: char;
 
