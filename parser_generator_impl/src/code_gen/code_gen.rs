@@ -1,14 +1,14 @@
-use lr_table::{
-  indexed_grammar::{IndexedGrammar, ProductionLabel},
-  lr_table::LRTable,
-};
+use lr_table::{indexed_grammar::IndexedGrammar, lr_table::LRTable};
 use quote::quote;
 
 use crate::{
   annotated_grammar::{
     parse_grammar::GrammarInfo, production_ref::ProductionRefName, terminal::TerminalSymbol,
   },
-  code_gen::{states_enum::generate_dfa_states, util::TokenStreamResult},
+  code_gen::{
+    collect_tokens::TryCollectTokens, state_action_builder::generate_state_action_function,
+    states_enum::generate_dfa_states, util::TokenStreamResult,
+  },
 };
 
 fn root_production_type(
@@ -34,8 +34,16 @@ pub fn generate_parser(
 
   let dfa_states_enum = generate_dfa_states(grammar, lr_table, grammar_info)?;
 
+  let action_functions = lr_table
+    .states()
+    .map(|state_id| generate_state_action_function(state_id, grammar, lr_table, grammar_info))
+    .try_collect_tokens()?;
+
   Ok(quote! {
     struct #grammar_name;
+    impl #grammar_name {
+      #action_functions
+    }
     impl ::parser_generator::parser::Parser for #grammar_name {
       type Token = #token_type;
       type Value = #result_type;
