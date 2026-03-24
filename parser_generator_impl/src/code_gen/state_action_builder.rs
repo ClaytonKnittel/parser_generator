@@ -1,18 +1,24 @@
+use std::str::FromStr;
+
 use lr_table::{
   indexed_grammar::IndexedGrammar,
-  lr_table::{LRTable, StateId},
+  lr_table::{Action, LRTable, StateId},
+  vocabulary::AugmentedVocabToken,
 };
 use quote::quote;
 
 use crate::{
-  annotated_grammar::{
-    parse_grammar::GrammarInfo, production_ref::ProductionRefName, terminal::TerminalSymbol,
+  annotated_grammar::{parse_grammar::GrammarInfo, production_ref::ProductionRefName},
+  code_gen::{
+    collect_tokens::TryCollectTokens,
+    states_enum::{enum_name, qualified_enum_variant_name},
+    util::TokenStreamResult,
   },
-  code_gen::{states_enum::enum_name, util::TokenStreamResult},
+  ParserGeneratorError,
 };
 
 pub fn root_production_type(
-  grammar: &IndexedGrammar<TerminalSymbol, ProductionRefName>,
+  grammar: &IndexedGrammar<String, ProductionRefName>,
   grammar_info: &GrammarInfo,
 ) -> proc_macro2::TokenStream {
   let root_label = grammar.orig_production_label(grammar.root_production_label());
@@ -29,10 +35,49 @@ pub fn state_action_function_name(state_id: StateId) -> syn::Ident {
   )
 }
 
+fn token_matcher(token: AugmentedVocabToken<String>) -> TokenStreamResult {
+  Ok(match token {
+    AugmentedVocabToken::Token(token) => {
+      let token = proc_macro2::Literal::from_str(&token).map_err(|err| {
+        ParserGeneratorError::from_foreign_error(err, proc_macro::Span::call_site())
+      })?;
+      quote! { Some(&#token) }
+    }
+    AugmentedVocabToken::EndOfStream => quote! { None },
+    AugmentedVocabToken::Epsilon => unreachable!(),
+  })
+}
+
+fn apply_action(
+  action: &Action,
+  state_id: StateId,
+  grammar_info: &GrammarInfo,
+) -> proc_macro2::TokenStream {
+  let enum_name = qualified_enum_variant_name(state_id, grammar_info);
+  match action {
+    Action::Shift { next_state } => {
+      quote! {
+        Ok(::parser_generator::parser_state::ParserControl::Continue)
+      }
+    }
+    Action::Reduce { rule } => {
+      quote! {
+        Ok(::parser_generator::parser_state::ParserControl::Continue)
+      }
+    }
+    Action::Accept => {
+      quote! {
+        let #enum_name(result) = state.accept() else { unsafe { ::std::hint::unreachable_unchecked() } };
+        Ok(::parser_generator::parser_state::ParserControl::Accept(result))
+      }
+    }
+  }
+}
+
 pub fn generate_state_action_function(
   state_id: StateId,
-  grammar: &IndexedGrammar<TerminalSymbol, ProductionRefName>,
-  lr_table: &LRTable<TerminalSymbol>,
+  grammar: &IndexedGrammar<String, ProductionRefName>,
+  lr_table: &LRTable<String>,
   grammar_info: &GrammarInfo,
 ) -> TokenStreamResult {
   let token_type = grammar_info.terminal_type();
@@ -40,13 +85,30 @@ pub fn generate_state_action_function(
   let fn_name = state_action_function_name(state_id);
   let result_type = root_production_type(grammar, grammar_info);
 
+  let actions = lr_table
+    .state_actions(state_id, grammar)
+    .map(|(token, action)| {
+      let matcher = token_matcher(token)?;
+      let apply_action = apply_action(action, state_id, grammar_info);
+      Ok(quote! {
+        #matcher => { #apply_action }
+      })
+    })
+    .try_collect_tokens()?;
+
   Ok(quote! {
     fn #fn_name<I, B: ::std::borrow::Borrow<#token_type>>(
-      stream: &mut ::parser_generator::parser_state::ParserState<B, #enum_name, I>
+      state: &mut ::parser_generator::parser_state::ParserState<B, #enum_name, I>
     ) -> ::parser_generator::error::ParserResult<
       ::parser_generator::parser_state::ParserControl<#result_type>,
-    > {
-      Ok(::parser_generator::parser_state::ParserControl::Continue)
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state.stream().peek_next().map(::std::borrow::Borrow::borrow) {
+        #actions
+        _ => Err(::parser_generator::error::ParserError::new("Failed to parse"))
+      }
     }
   })
 }

@@ -21,7 +21,16 @@ impl<T, S, I> ParserState<T, S, I> {
     }
   }
 
+  pub fn stream(&self) -> &ParserStream<T, I> {
+    &self.stream
+  }
+
   pub fn state(&self) -> &S {
     self.stack.last().unwrap()
+  }
+
+  pub fn accept(&mut self) -> S {
+    debug_assert_eq!(self.stack.len(), 1);
+    self.stack.pop().unwrap()
   }
 }

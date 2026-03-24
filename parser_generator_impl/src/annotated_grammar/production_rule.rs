@@ -44,7 +44,7 @@ pub struct ProductionRule {
 impl ProductionRule {
   pub fn to_lr_production_rule(
     &self,
-  ) -> lr_table::grammar::ProductionRule<TerminalSymbol, ProductionRefName> {
+  ) -> lr_table::grammar::ProductionRule<String, ProductionRefName> {
     lr_table::grammar::ProductionRule::new(
       self.name.name().clone(),
       self.rule.iter().map(ProductionNode::to_lr_node).collect(),

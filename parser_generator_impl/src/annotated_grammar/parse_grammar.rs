@@ -52,7 +52,7 @@ pub struct GrammarInfo {
   terminal_type: Type,
   label_types: LabelTypeMap,
   production_rules: Vec<ProductionRule>,
-  grammar: Grammar<TerminalSymbol, ProductionRefName>,
+  grammar: Grammar<String, ProductionRefName>,
 }
 
 impl GrammarInfo {
@@ -72,7 +72,7 @@ impl GrammarInfo {
     &self.production_rules[index.0]
   }
 
-  pub fn lr_table_grammar(&self) -> &Grammar<TerminalSymbol, ProductionRefName> {
+  pub fn lr_table_grammar(&self) -> &Grammar<String, ProductionRefName> {
     &self.grammar
   }
 }

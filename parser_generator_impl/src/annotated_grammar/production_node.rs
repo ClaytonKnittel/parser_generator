@@ -21,7 +21,7 @@ impl ProductionNode {
     }
   }
 
-  pub fn to_lr_node(&self) -> lr_table::grammar::ProductionNode<TerminalSymbol, ProductionRefName> {
+  pub fn to_lr_node(&self) -> lr_table::grammar::ProductionNode<String, ProductionRefName> {
     match self {
       ProductionNode::Production(production) => {
         lr_table::grammar::ProductionNode::Production(production.name().clone())

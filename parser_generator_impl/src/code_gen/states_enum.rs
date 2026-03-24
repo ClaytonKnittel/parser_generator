@@ -7,9 +7,7 @@ use proc_macro::Span;
 use quote::quote;
 
 use crate::{
-  annotated_grammar::{
-    parse_grammar::GrammarInfo, production_ref::ProductionRefName, terminal::TerminalSymbol,
-  },
+  annotated_grammar::{parse_grammar::GrammarInfo, production_ref::ProductionRefName},
   code_gen::{collect_tokens::CollectTokens, util::TokenStreamResult},
   type_symbol::Type,
   ParserGeneratorError,
@@ -38,7 +36,7 @@ pub fn qualified_enum_variant_name(
 
 fn state_type(
   state: StateId,
-  grammar: &IndexedGrammar<TerminalSymbol, ProductionRefName>,
+  grammar: &IndexedGrammar<String, ProductionRefName>,
   grammar_info: &GrammarInfo,
   state_map: &LRStateMap,
 ) -> Option<Type> {
@@ -63,8 +61,8 @@ pub fn enum_matcher(state: StateId, grammar_info: &GrammarInfo) -> proc_macro2::
 }
 
 pub fn generate_dfa_states(
-  grammar: &IndexedGrammar<TerminalSymbol, ProductionRefName>,
-  lr_table: &LRTable<TerminalSymbol>,
+  grammar: &IndexedGrammar<String, ProductionRefName>,
+  lr_table: &LRTable<String>,
   grammar_info: &GrammarInfo,
 ) -> TokenStreamResult {
   let dfa_enum_name = enum_name(grammar_info);

@@ -2,7 +2,7 @@ use lr_table::lr_table::LRTable;
 use quote::quote;
 
 use crate::{
-  annotated_grammar::{parse_grammar::GrammarInfo, terminal::TerminalSymbol},
+  annotated_grammar::parse_grammar::GrammarInfo,
   code_gen::{
     collect_tokens::CollectTokens,
     state_action_builder::state_action_function_name,
@@ -12,7 +12,7 @@ use crate::{
 };
 
 pub fn generate_parse_loop(
-  lr_table: &LRTable<TerminalSymbol>,
+  lr_table: &LRTable<String>,
   grammar_info: &GrammarInfo,
 ) -> TokenStreamResult {
   let root_state = lr_table.root_state();

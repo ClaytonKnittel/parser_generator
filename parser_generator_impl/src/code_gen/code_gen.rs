@@ -15,8 +15,8 @@ use crate::{
 };
 
 pub fn generate_parser(
-  grammar: &IndexedGrammar<TerminalSymbol, ProductionRefName>,
-  lr_table: &LRTable<TerminalSymbol>,
+  grammar: &IndexedGrammar<String, ProductionRefName>,
+  lr_table: &LRTable<String>,
   grammar_info: &GrammarInfo,
 ) -> TokenStreamResult {
   let grammar_name = grammar_info.name().make_syn_ident();
