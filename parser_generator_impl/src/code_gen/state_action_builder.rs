@@ -14,8 +14,13 @@ use crate::{
     states_enum::{enum_name, qualified_enum_variant_name},
     util::TokenStreamResult,
   },
-  ParserGeneratorError,
+  ParserGeneratorError, ParserGeneratorResult,
 };
+
+fn try_build_token(text: &str) -> ParserGeneratorResult<proc_macro2::Literal> {
+  proc_macro2::Literal::from_str(text)
+    .map_err(|err| ParserGeneratorError::from_foreign_error(err, proc_macro::Span::call_site()))
+}
 
 pub fn root_production_type(
   grammar: &IndexedGrammar<String, ProductionRefName>,
@@ -38,9 +43,7 @@ pub fn state_action_function_name(state_id: StateId) -> syn::Ident {
 fn token_matcher(token: &AugmentedVocabToken<String>) -> TokenStreamResult {
   Ok(match token {
     AugmentedVocabToken::Token(token) => {
-      let token = proc_macro2::Literal::from_str(&token).map_err(|err| {
-        ParserGeneratorError::from_foreign_error(err, proc_macro::Span::call_site())
-      })?;
+      let token = try_build_token(&token)?;
       quote! { Some(&#token) }
     }
     AugmentedVocabToken::EndOfStream => quote! { None },
@@ -58,9 +61,7 @@ fn apply_action(
   Ok(match action {
     Action::Shift { next_state } => {
       let next_state_name = qualified_enum_variant_name(*next_state, grammar_info);
-      let token = proc_macro2::Literal::from_str(token.token().unwrap()).map_err(|err| {
-        ParserGeneratorError::from_foreign_error(err, proc_macro::Span::call_site())
-      })?;
+      let token = try_build_token(token.token().unwrap())?;
       quote! {
         state.push(#next_state_name(#token));
         Ok(::parser_generator::parser_state::ParserControl::Continue)
