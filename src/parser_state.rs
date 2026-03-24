@@ -1,8 +1,8 @@
 use crate::parser_stream::ParserStream;
 
-pub enum ParserControl {
+pub enum ParserControl<T> {
   Continue,
-  Accept,
+  Accept(T),
 }
 
 pub struct ParserState<T, S, I> {

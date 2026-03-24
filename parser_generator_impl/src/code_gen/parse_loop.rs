@@ -1,10 +1,8 @@
-use lr_table::{indexed_grammar::IndexedGrammar, lr_state_map::LRStateMap, lr_table::LRTable};
+use lr_table::lr_table::LRTable;
 use quote::quote;
 
 use crate::{
-  annotated_grammar::{
-    parse_grammar::GrammarInfo, production_ref::ProductionRefName, terminal::TerminalSymbol,
-  },
+  annotated_grammar::{parse_grammar::GrammarInfo, terminal::TerminalSymbol},
   code_gen::{
     collect_tokens::CollectTokens,
     state_action_builder::state_action_function_name,
@@ -38,6 +36,11 @@ pub fn generate_parse_loop(
       let action = match state.state() {
         #state_matchers
       }?;
+
+      match action {
+        ::parser_generator::parser_state::ParserControl::Accept(result) => return Ok(result),
+        ::parser_generator::parser_state::ParserControl::Continue => {}
+      }
     }
   })
 }

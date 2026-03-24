@@ -11,6 +11,17 @@ use crate::{
   code_gen::{states_enum::enum_name, util::TokenStreamResult},
 };
 
+pub fn root_production_type(
+  grammar: &IndexedGrammar<TerminalSymbol, ProductionRefName>,
+  grammar_info: &GrammarInfo,
+) -> proc_macro2::TokenStream {
+  let root_label = grammar.orig_production_label(grammar.root_production_label());
+  match grammar_info.label_type(root_label) {
+    Some(root_type) => quote! { #root_type },
+    None => quote! { () },
+  }
+}
+
 pub fn state_action_function_name(state_id: StateId) -> syn::Ident {
   syn::Ident::new(
     &format!("parse_s{}", state_id.id()),
@@ -27,12 +38,13 @@ pub fn generate_state_action_function(
   let token_type = grammar_info.terminal_type();
   let enum_name = enum_name(grammar_info);
   let fn_name = state_action_function_name(state_id);
+  let result_type = root_production_type(grammar, grammar_info);
 
   Ok(quote! {
     fn #fn_name<I, B: ::std::borrow::Borrow<#token_type>>(
       stream: &mut ::parser_generator::parser_state::ParserState<B, #enum_name, I>
     ) -> ::parser_generator::error::ParserResult<
-      ::parser_generator::parser_state::ParserControl,
+      ::parser_generator::parser_state::ParserControl<#result_type>,
     > {
       Ok(::parser_generator::parser_state::ParserControl::Continue)
     }
