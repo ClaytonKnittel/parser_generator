@@ -274,6 +274,10 @@ impl<T> LRTable<T> {
       )
   }
 
+  pub fn root_state(&self) -> StateId {
+    StateId(0)
+  }
+
   pub fn get_action(&self, state: StateId, token: AugmentedTokenId) -> Option<Action> {
     let index = self.vocab_size() * state.id() + token.id();
     self.action_table[index]

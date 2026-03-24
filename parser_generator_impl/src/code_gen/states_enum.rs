@@ -15,12 +15,25 @@ use crate::{
   ParserGeneratorError,
 };
 
-fn enum_name(grammar_info: &GrammarInfo) -> syn::Ident {
+pub fn enum_name(grammar_info: &GrammarInfo) -> syn::Ident {
   let grammar_name = grammar_info.name();
   syn::Ident::new(
     &format!("{}DfaStates", grammar_name.name()),
     grammar_name.meta().span2(),
   )
+}
+
+pub fn enum_variant_name(state: StateId) -> syn::Ident {
+  syn::Ident::new(&format!("S{}", state.id()), proc_macro2::Span::call_site())
+}
+
+pub fn qualified_enum_variant_name(
+  state: StateId,
+  grammar_info: &GrammarInfo,
+) -> proc_macro2::TokenStream {
+  let enum_name = enum_name(grammar_info);
+  let variant = enum_variant_name(state);
+  quote! { #enum_name::#variant }
 }
 
 fn state_type(
@@ -40,11 +53,13 @@ fn state_type(
 }
 
 fn generate_enum_variant(state: StateId, return_type: Option<Type>) -> proc_macro2::TokenStream {
-  let state_name = syn::Ident::new(&format!("S{}", state.id()), proc_macro2::Span::call_site());
-  match return_type {
-    Some(ty) => quote! { #state_name(#ty), },
-    None => quote! { #state_name, },
-  }
+  let state_name = enum_variant_name(state);
+  quote! { #state_name(#return_type), }
+}
+
+pub fn enum_matcher(state: StateId, grammar_info: &GrammarInfo) -> proc_macro2::TokenStream {
+  let name = qualified_enum_variant_name(state, grammar_info);
+  quote! { #name(..) }
 }
 
 pub fn generate_dfa_states(

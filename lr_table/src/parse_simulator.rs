@@ -4,7 +4,7 @@ use crate::{
   error::LRTableResult,
   grammar::{Grammar, ProductionNode},
   indexed_grammar::{IndexedGrammar, IndexedProductionNode},
-  lr_table::{Action, LRTable, StateId},
+  lr_table::{Action, LRTable},
   vocabulary::AugmentedVocabToken,
 };
 
@@ -26,7 +26,7 @@ impl<T: Clone + Eq + Hash, L> Parser<T, L> {
   where
     T: Debug + ToString,
   {
-    let mut states = vec![StateId::default()];
+    let mut states = vec![self.lr_table.root_state()];
     let mut nodes = Vec::<IndexedProductionNode>::new();
     let mut stream = stream.into_iter().peekable();
 

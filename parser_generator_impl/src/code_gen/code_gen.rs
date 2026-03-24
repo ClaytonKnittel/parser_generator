@@ -1,4 +1,5 @@
-use lr_table::{indexed_grammar::IndexedGrammar, lr_table::LRTable};
+use lr_table::{indexed_grammar::IndexedGrammar, lr_state_map::LRStateMap, lr_table::LRTable};
+use proc_macro::Span;
 use quote::quote;
 
 use crate::{
@@ -6,9 +7,11 @@ use crate::{
     parse_grammar::GrammarInfo, production_ref::ProductionRefName, terminal::TerminalSymbol,
   },
   code_gen::{
-    collect_tokens::TryCollectTokens, state_action_builder::generate_state_action_function,
-    states_enum::generate_dfa_states, util::TokenStreamResult,
+    collect_tokens::TryCollectTokens, parse_loop::generate_parse_loop,
+    state_action_builder::generate_state_action_function, states_enum::generate_dfa_states,
+    util::TokenStreamResult,
   },
+  ParserGeneratorError,
 };
 
 fn root_production_type(
@@ -39,11 +42,10 @@ pub fn generate_parser(
     .map(|state_id| generate_state_action_function(state_id, grammar, lr_table, grammar_info))
     .try_collect_tokens()?;
 
+  let parse_loop = generate_parse_loop(lr_table, grammar_info)?;
+
   Ok(quote! {
     struct #grammar_name;
-    impl #grammar_name {
-      #action_functions
-    }
     impl ::parser_generator::parser::Parser for #grammar_name {
       type Token = #token_type;
       type Value = #result_type;
@@ -53,11 +55,11 @@ pub fn generate_parser(
       ) -> ::parser_generator::error::ParserResult<Self::Value>
       where
         I: IntoIterator<Item = B>,
-        B: std::borrow::Borrow<Self::Token>,
+        B: ::std::borrow::Borrow<#token_type>,
       {
         #dfa_states_enum
-
-        todo!();
+        #action_functions
+        #parse_loop
       }
     }
   })
