@@ -1,5 +1,4 @@
 use cknittel_util::proc_macro_util::collect_tokens::CollectTokens;
-use lr_table::lr_table::LRTable;
 use quote::quote;
 
 use crate::{
@@ -11,10 +10,9 @@ use crate::{
   },
 };
 
-pub fn generate_parse_loop(
-  lr_table: &LRTable<String>,
-  grammar_info: &GrammarInfo,
-) -> TokenStreamResult {
+pub fn generate_parse_loop(grammar_info: &GrammarInfo) -> TokenStreamResult {
+  let lr_table = grammar_info.lr_table();
+
   let root_state = lr_table.root_state();
   let root_enum_state = qualified_enum_variant_name(root_state, grammar_info);
 

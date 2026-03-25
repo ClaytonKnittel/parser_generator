@@ -1,18 +1,22 @@
-use std::collections::HashMap;
-
-use lr_table::grammar::{Grammar, ProductionRuleIndex};
+use lr_table::{
+  grammar::{Grammar, ProductionRuleIndex},
+  indexed_grammar::IndexedGrammar,
+  lr_state_map::LRStateMap,
+  lr_table::LRTable,
+};
+use proc_macro::Span;
 
 use crate::{
   annotated_grammar::{
     label_type_map::LabelTypeMap, production_ref::ProductionRefName,
-    production_rule::ProductionRule, terminal::TerminalSymbol, util::expect_symbol_with,
+    production_rule::ProductionRule, util::expect_symbol_with,
   },
   error::InterceptResult,
   ident::Ident,
   symbol::Operator,
   symbol_stream::SymbolStream,
   type_symbol::Type,
-  ParserGeneratorResult,
+  ParserGeneratorError, ParserGeneratorResult,
 };
 
 /// Parses a line of the form "option_name: value;"
@@ -53,6 +57,8 @@ pub struct GrammarInfo {
   label_types: LabelTypeMap,
   production_rules: Vec<ProductionRule>,
   grammar: Grammar<String, ProductionRefName>,
+  indexed_grammar: IndexedGrammar<String, ProductionRefName>,
+  lr_table: LRTable<String>,
 }
 
 impl GrammarInfo {
@@ -74,6 +80,19 @@ impl GrammarInfo {
 
   pub fn lr_table_grammar(&self) -> &Grammar<String, ProductionRefName> {
     &self.grammar
+  }
+
+  pub fn grammar(&self) -> &IndexedGrammar<String, ProductionRefName> {
+    &self.indexed_grammar
+  }
+
+  pub fn lr_table(&self) -> &LRTable<String> {
+    &self.lr_table
+  }
+
+  pub fn build_lr_state_map(&self) -> ParserGeneratorResult<LRStateMap<'_>> {
+    LRStateMap::build_from_lr_table(self.grammar(), self.lr_table())
+      .map_err(|err| ParserGeneratorError::from_foreign_error(err, Span::call_site()))
   }
 }
 
@@ -107,11 +126,18 @@ pub fn parse_grammar(mut stream: impl SymbolStream) -> ParserGeneratorResult<Gra
       .collect(),
   );
 
+  let indexed_grammar = IndexedGrammar::build(&grammar)
+    .map_err(|err| ParserGeneratorError::from_foreign_error(err, Span::call_site()))?;
+  let lr_table = LRTable::build(&indexed_grammar)
+    .map_err(|err| ParserGeneratorError::from_foreign_error(err, Span::call_site()))?;
+
   Ok(GrammarInfo {
     name,
     terminal_type,
     label_types,
     production_rules,
     grammar,
+    indexed_grammar,
+    lr_table,
   })
 }

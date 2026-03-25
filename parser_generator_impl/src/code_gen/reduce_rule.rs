@@ -4,7 +4,7 @@ use cknittel_util::{iter::JoinWith, proc_macro_util::collect_tokens::CollectToke
 use lr_table::{
   indexed_grammar::{IndexedProductionRule, ProductionLabel},
   lr_state_map::LRStateMap,
-  lr_table::{LRTable, StateId},
+  lr_table::StateId,
 };
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
@@ -115,13 +115,15 @@ fn match_any(
 pub fn apply_goto(
   production_label: ProductionLabel,
   possible_states: HashSet<StateId>,
-  lr_table: &LRTable<String>,
   grammar_info: &GrammarInfo,
 ) -> TokenStream {
   let mut goto_map = HashMap::<StateId, Vec<StateId>>::new();
 
   for state in possible_states {
-    let goto = lr_table.get_goto(state, production_label).unwrap();
+    let goto = grammar_info
+      .lr_table()
+      .get_goto(state, production_label)
+      .unwrap();
     goto_map.entry(goto.state()).or_default().push(state);
   }
 

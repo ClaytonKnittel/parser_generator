@@ -1,17 +1,13 @@
 use cknittel_util::proc_macro_util::collect_tokens::CollectTokens;
 use lr_table::{
-  indexed_grammar::IndexedGrammar,
   lr_state_map::{LRStateMap, LRStateType},
-  lr_table::{LRTable, StateId},
+  lr_table::StateId,
 };
-use proc_macro::Span;
 use quote::quote;
 
 use crate::{
-  annotated_grammar::{parse_grammar::GrammarInfo, production_ref::ProductionRefName},
-  code_gen::util::TokenStreamResult,
+  annotated_grammar::parse_grammar::GrammarInfo, code_gen::util::TokenStreamResult,
   type_symbol::Type,
-  ParserGeneratorError,
 };
 
 pub fn enum_name(grammar_info: &GrammarInfo) -> syn::Ident {
@@ -35,15 +31,10 @@ pub fn qualified_enum_variant_name(
   quote! { #enum_name::#variant }
 }
 
-fn state_type(
-  state: StateId,
-  grammar: &IndexedGrammar<String, ProductionRefName>,
-  grammar_info: &GrammarInfo,
-  state_map: &LRStateMap,
-) -> Option<Type> {
+fn state_type(state: StateId, grammar_info: &GrammarInfo, state_map: &LRStateMap) -> Option<Type> {
   match state_map.state_type(state) {
     LRStateType::Reduce(production) => {
-      let label = grammar.orig_production_label(production);
+      let label = grammar_info.grammar().orig_production_label(production);
       grammar_info.label_type(label).cloned()
     }
     LRStateType::Terminal => Some(grammar_info.terminal_type().clone()),
@@ -62,16 +53,15 @@ pub fn enum_matcher(state: StateId, grammar_info: &GrammarInfo) -> proc_macro2::
 }
 
 pub fn generate_dfa_states(
-  grammar: &IndexedGrammar<String, ProductionRefName>,
-  lr_table: &LRTable<String>,
   grammar_info: &GrammarInfo,
   state_map: &LRStateMap,
 ) -> TokenStreamResult {
   let dfa_enum_name = enum_name(grammar_info);
 
-  let enums = lr_table
+  let enums = grammar_info
+    .lr_table()
     .states()
-    .map(|state| generate_enum_variant(state, state_type(state, grammar, grammar_info, state_map)))
+    .map(|state| generate_enum_variant(state, state_type(state, grammar_info, state_map)))
     .collect_tokens();
 
   Ok(quote! {

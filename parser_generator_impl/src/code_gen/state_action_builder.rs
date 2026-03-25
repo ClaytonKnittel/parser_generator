@@ -2,15 +2,14 @@ use std::str::FromStr;
 
 use cknittel_util::proc_macro_util::collect_tokens::TryCollectTokens;
 use lr_table::{
-  indexed_grammar::IndexedGrammar,
   lr_state_map::LRStateMap,
-  lr_table::{Action, LRTable, StateId},
+  lr_table::{Action, StateId},
   vocabulary::AugmentedVocabToken,
 };
 use quote::quote;
 
 use crate::{
-  annotated_grammar::{parse_grammar::GrammarInfo, production_ref::ProductionRefName},
+  annotated_grammar::parse_grammar::GrammarInfo,
   code_gen::{
     reduce_rule::{apply_goto, bind_production_nodes_to_locals},
     states_enum::{enum_name, qualified_enum_variant_name},
@@ -24,10 +23,9 @@ fn try_build_token(text: &str) -> ParserGeneratorResult<proc_macro2::Literal> {
     .map_err(|err| ParserGeneratorError::from_foreign_error(err, proc_macro::Span::call_site()))
 }
 
-pub fn root_production_type(
-  grammar: &IndexedGrammar<String, ProductionRefName>,
-  grammar_info: &GrammarInfo,
-) -> proc_macro2::TokenStream {
+pub fn root_production_type(grammar_info: &GrammarInfo) -> proc_macro2::TokenStream {
+  let grammar = grammar_info.grammar();
+
   let root_label = grammar.orig_production_label(grammar.root_production_label());
   match grammar_info.label_type(root_label) {
     Some(root_type) => quote! { #root_type },
@@ -57,8 +55,6 @@ fn apply_action(
   token: &AugmentedVocabToken<String>,
   action: &Action,
   state_id: StateId,
-  grammar: &IndexedGrammar<String, ProductionRefName>,
-  lr_table: &LRTable<String>,
   grammar_info: &GrammarInfo,
   state_map: &LRStateMap,
 ) -> TokenStreamResult {
@@ -73,10 +69,10 @@ fn apply_action(
       }
     }
     Action::Reduce { rule } => {
-      let rule = grammar.production_rule(*rule);
+      let rule = grammar_info.grammar().production_rule(*rule);
       let (extract_vars, next_states) =
         bind_production_nodes_to_locals(state_id, rule, grammar_info, state_map);
-      let goto = apply_goto(*rule.symbol(), next_states, lr_table, grammar_info);
+      let goto = apply_goto(*rule.symbol(), next_states, grammar_info);
       quote! {
         #extract_vars
         #goto
@@ -94,29 +90,20 @@ fn apply_action(
 
 pub fn generate_state_action_function(
   state_id: StateId,
-  grammar: &IndexedGrammar<String, ProductionRefName>,
-  lr_table: &LRTable<String>,
   grammar_info: &GrammarInfo,
   state_map: &LRStateMap,
 ) -> TokenStreamResult {
   let token_type = grammar_info.terminal_type();
   let enum_name = enum_name(grammar_info);
   let fn_name = state_action_function_name(state_id);
-  let result_type = root_production_type(grammar, grammar_info);
+  let result_type = root_production_type(grammar_info);
 
-  let actions = lr_table
-    .state_actions(state_id, grammar)
+  let actions = grammar_info
+    .lr_table()
+    .state_actions(state_id, grammar_info.grammar())
     .map(|(token, action)| {
       let matcher = token_matcher(&token)?;
-      let apply_action = apply_action(
-        &token,
-        action,
-        state_id,
-        grammar,
-        lr_table,
-        grammar_info,
-        state_map,
-      )?;
+      let apply_action = apply_action(&token, action, state_id, grammar_info, state_map)?;
       Ok(quote! {
         #matcher => { #apply_action }
       })

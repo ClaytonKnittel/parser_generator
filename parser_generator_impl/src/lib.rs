@@ -10,8 +10,7 @@ mod symbol_stream;
 mod type_symbol;
 mod util;
 
-use lr_table::{indexed_grammar::IndexedGrammar, lr_table::LRTable};
-use proc_macro::{Span, TokenStream};
+use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
 
 use crate::{
@@ -25,12 +24,7 @@ use crate::{
 fn build_grammar(tokens: TokenStream) -> ParserGeneratorResult<TokenStream> {
   let list = tokenize_from_stream(tokens);
   let grammar_info = parse_grammar(SymbolStreamImpl::new(list))?;
-  let grammar = grammar_info.lr_table_grammar();
-  let grammar = IndexedGrammar::build(&grammar)
-    .map_err(|err| ParserGeneratorError::from_foreign_error(err, Span::call_site()))?;
-  let lr_table = LRTable::build(&grammar)
-    .map_err(|err| ParserGeneratorError::from_foreign_error(err, Span::call_site()))?;
-  generate_parser(&grammar, &lr_table, &grammar_info).map(TokenStream::from)
+  generate_parser(&grammar_info).map(TokenStream::from)
 }
 
 #[proc_macro_error]
