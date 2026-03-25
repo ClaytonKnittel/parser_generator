@@ -1,17 +1,1819 @@
 #![allow(dead_code)]
 
-fn main() {
-  parser_generator::grammar!(
-    name: Test;
-    terminal: char;
+use parser_generator::parser::Parser;
 
-    <S>: u32 => <A>;
-    <A>: u32 => <B>;
-    <A>: u32 => 'a' <C> { 1 + #C };
-    <B>: u32 => 'x' 'b' { 2 };
-    <B>: u32 => <C>;
-    <C>: u32 => 'x' 'c' { 3 };
-  );
+struct Test;
+impl ::parser_generator::parser::Parser for Test {
+  type Token = char;
+  type Value = char;
+  fn parse<I, B>(input_stream: I) -> ::parser_generator::error::ParserResult<Self::Value>
+  where
+    I: IntoIterator<Item = B>,
+    B: ::std::borrow::Borrow<char>,
+  {
+    enum TestDfaStates {
+      S0(),
+      S1(char),
+      S2(char),
+      S3(char),
+      S4(char),
+      S5(char),
+      S6(char),
+      S7(char),
+      S8(char),
+      S9(char),
+      S10(char),
+      S11(char),
+      S12(char),
+      S13(char),
+      S14(char),
+      S15(char),
+      S16(char),
+      S17(char),
+      S18(char),
+      S19(char),
+      S20(char),
+      S21(char),
+      S22(char),
+      S23(char),
+      S24(char),
+      S25(char),
+      S26(char),
+      S27(char),
+      S28(char),
+      S29(char),
+      S30(char),
+      S31(char),
+      S32(char),
+      S33(char),
+      S34(char),
+      S35(char),
+      S36(char),
+      S37(char),
+      S38(char),
+      S39(char),
+      S40(char),
+      S41(char),
+      S42(char),
+      S43(char),
+      S44(char),
+      S45(char),
+      S46(char),
+      S47(char),
+      S48(char),
+      S49(char),
+      S50(char),
+      S51(char),
+      S52(char),
+      S53(char),
+    }
+    fn parse_s0<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        Some(&'a') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S2('a'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'b') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S3('b'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'c') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S4('c'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'d') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S5('d'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'e') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S6('e'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'f') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S7('f'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'g') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S8('g'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'h') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S9('h'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'i') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S10('i'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'j') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S11('j'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'k') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S12('k'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'l') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S13('l'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'m') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S14('m'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'n') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S15('n'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'o') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S16('o'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'p') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S17('p'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'q') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S18('q'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'r') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S19('r'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'s') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S20('s'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'t') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S21('t'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'u') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S22('u'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'v') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S23('v'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'w') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S24('w'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'x') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S25('x'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'y') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S26('y'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'z') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S27('z'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'A') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S28('A'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'B') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S29('B'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'C') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S30('C'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'D') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S31('D'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'E') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S32('E'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'F') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S33('F'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'G') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S34('G'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'H') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S35('H'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'I') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S36('I'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'J') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S37('J'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'K') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S38('K'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'L') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S39('L'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'M') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S40('M'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'N') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S41('N'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'O') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S42('O'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'P') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S43('P'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'Q') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S44('Q'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'R') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S45('R'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'S') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S46('S'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'T') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S47('T'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'U') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S48('U'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'V') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S49('V'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'W') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S50('W'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'X') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S51('X'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'Y') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S52('Y'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        Some(&'Z') => {
+          state.stream_mut().advance();
+          state.push(TestDfaStates::S53('Z'));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s1<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let TestDfaStates::S1(result) = state.accept() else {
+            unsafe { ::std::hint::unreachable_unchecked() }
+          };
+          Ok(::parser_generator::parser_state::ParserControl::Accept(
+            result,
+          ))
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s2<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S2(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s3<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S3(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s4<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S4(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s5<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S5(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s6<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S6(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s7<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S7(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s8<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S8(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s9<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S9(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s10<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S10(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s11<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S11(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s12<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S12(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s13<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S13(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s14<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S14(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s15<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S15(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s16<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S16(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s17<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S17(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s18<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S18(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s19<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S19(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s20<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S20(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s21<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S21(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s22<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S22(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s23<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S23(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s24<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S24(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s25<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S25(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s26<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S26(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s27<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S27(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s28<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S28(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s29<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S29(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s30<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S30(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s31<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S31(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s32<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S32(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s33<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S33(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s34<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S34(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s35<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S35(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s36<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S36(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s37<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S37(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s38<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S38(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s39<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S39(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s40<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S40(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s41<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S41(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s42<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S42(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s43<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S43(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s44<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S44(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s45<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S45(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s46<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S46(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s47<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S47(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s48<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S48(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s49<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S49(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s50<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S50(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s51<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S51(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s52<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S52(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    fn parse_s53<I, B: ::std::borrow::Borrow<char>>(
+      state: &mut ::parser_generator::parser_state::ParserState<B, TestDfaStates, I>,
+    ) -> ::parser_generator::error::ParserResult<
+      ::parser_generator::parser_state::ParserControl<char>,
+    >
+    where
+      I: Iterator<Item = B>,
+    {
+      match state
+        .stream()
+        .peek_next()
+        .map(::std::borrow::Borrow::borrow)
+      {
+        None => {
+          let __v0 = match state.pop_state() {
+            TestDfaStates::S53(v) => v,
+            _ => unsafe { ::std::hint::unreachable_unchecked() },
+          };
+          state.push(TestDfaStates::S1({ __v0 }));
+          Ok(::parser_generator::parser_state::ParserControl::Continue)
+        }
+        _ => Err(::parser_generator::error::ParserError::new(
+          "Failed to parse",
+        )),
+      }
+    }
+    let mut state = ::parser_generator::parser_state::ParserState::new(
+      input_stream.into_iter(),
+      TestDfaStates::S0(),
+    );
+    loop {
+      let action = match state.state() {
+        TestDfaStates::S0(..) => parse_s0(&mut state),
+        TestDfaStates::S1(..) => parse_s1(&mut state),
+        TestDfaStates::S2(..) => parse_s2(&mut state),
+        TestDfaStates::S3(..) => parse_s3(&mut state),
+        TestDfaStates::S4(..) => parse_s4(&mut state),
+        TestDfaStates::S5(..) => parse_s5(&mut state),
+        TestDfaStates::S6(..) => parse_s6(&mut state),
+        TestDfaStates::S7(..) => parse_s7(&mut state),
+        TestDfaStates::S8(..) => parse_s8(&mut state),
+        TestDfaStates::S9(..) => parse_s9(&mut state),
+        TestDfaStates::S10(..) => parse_s10(&mut state),
+        TestDfaStates::S11(..) => parse_s11(&mut state),
+        TestDfaStates::S12(..) => parse_s12(&mut state),
+        TestDfaStates::S13(..) => parse_s13(&mut state),
+        TestDfaStates::S14(..) => parse_s14(&mut state),
+        TestDfaStates::S15(..) => parse_s15(&mut state),
+        TestDfaStates::S16(..) => parse_s16(&mut state),
+        TestDfaStates::S17(..) => parse_s17(&mut state),
+        TestDfaStates::S18(..) => parse_s18(&mut state),
+        TestDfaStates::S19(..) => parse_s19(&mut state),
+        TestDfaStates::S20(..) => parse_s20(&mut state),
+        TestDfaStates::S21(..) => parse_s21(&mut state),
+        TestDfaStates::S22(..) => parse_s22(&mut state),
+        TestDfaStates::S23(..) => parse_s23(&mut state),
+        TestDfaStates::S24(..) => parse_s24(&mut state),
+        TestDfaStates::S25(..) => parse_s25(&mut state),
+        TestDfaStates::S26(..) => parse_s26(&mut state),
+        TestDfaStates::S27(..) => parse_s27(&mut state),
+        TestDfaStates::S28(..) => parse_s28(&mut state),
+        TestDfaStates::S29(..) => parse_s29(&mut state),
+        TestDfaStates::S30(..) => parse_s30(&mut state),
+        TestDfaStates::S31(..) => parse_s31(&mut state),
+        TestDfaStates::S32(..) => parse_s32(&mut state),
+        TestDfaStates::S33(..) => parse_s33(&mut state),
+        TestDfaStates::S34(..) => parse_s34(&mut state),
+        TestDfaStates::S35(..) => parse_s35(&mut state),
+        TestDfaStates::S36(..) => parse_s36(&mut state),
+        TestDfaStates::S37(..) => parse_s37(&mut state),
+        TestDfaStates::S38(..) => parse_s38(&mut state),
+        TestDfaStates::S39(..) => parse_s39(&mut state),
+        TestDfaStates::S40(..) => parse_s40(&mut state),
+        TestDfaStates::S41(..) => parse_s41(&mut state),
+        TestDfaStates::S42(..) => parse_s42(&mut state),
+        TestDfaStates::S43(..) => parse_s43(&mut state),
+        TestDfaStates::S44(..) => parse_s44(&mut state),
+        TestDfaStates::S45(..) => parse_s45(&mut state),
+        TestDfaStates::S46(..) => parse_s46(&mut state),
+        TestDfaStates::S47(..) => parse_s47(&mut state),
+        TestDfaStates::S48(..) => parse_s48(&mut state),
+        TestDfaStates::S49(..) => parse_s49(&mut state),
+        TestDfaStates::S50(..) => parse_s50(&mut state),
+        TestDfaStates::S51(..) => parse_s51(&mut state),
+        TestDfaStates::S52(..) => parse_s52(&mut state),
+        TestDfaStates::S53(..) => parse_s53(&mut state),
+      }?;
+      match action {
+        ::parser_generator::parser_state::ParserControl::Accept(result) => {
+          return Ok(result);
+        }
+        ::parser_generator::parser_state::ParserControl::Continue => {}
+      }
+    }
+  }
+}
+
+fn main() {
+  let res = Test::parse(['a']);
+  match res {
+    Ok(res) => println!("{res}"),
+    Err(err) => eprintln!("{err}"),
+  }
+
+  // parser_generator::grammar!(
+  //   name: Test;
+  //   terminal: char;
+
+  //   <S>: char => <dig> { #dig };
+  //   <dig>: char =>
+  //         'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' |
+  //         'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' |
+  //         'u' | 'v' | 'w' | 'x' | 'y' | 'z' |
+  //         'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' |
+  //         'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' |
+  //         'U' | 'V' | 'W' | 'X' | 'Y' | 'Z';
+  // );
 
   /*
   parser_generator_impl::grammar_def! {

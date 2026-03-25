@@ -62,6 +62,7 @@ fn apply_action(
       let next_state_name = qualified_enum_variant_name(*next_state, grammar_info);
       let token = try_build_token(token.token().unwrap())?;
       quote! {
+        state.stream_mut().advance();
         state.push(#next_state_name(#token));
         Ok(::parser_generator::parser_state::ParserControl::Continue)
       }

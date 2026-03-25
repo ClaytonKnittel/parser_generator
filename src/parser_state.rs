@@ -25,6 +25,10 @@ impl<T, S, I> ParserState<T, S, I> {
     &self.stream
   }
 
+  pub fn stream_mut(&mut self) -> &mut ParserStream<T, I> {
+    &mut self.stream
+  }
+
   pub fn push(&mut self, state: S) {
     self.stack.push(state);
   }
@@ -38,7 +42,9 @@ impl<T, S, I> ParserState<T, S, I> {
   }
 
   pub fn accept(&mut self) -> S {
-    debug_assert_eq!(self.stack.len(), 1);
+    // In the accept state, the stack always consists of
+    // [initial_state, accepted_state(accept_val)]
+    debug_assert_eq!(self.stack.len(), 2);
     self.stack.pop().unwrap()
   }
 }

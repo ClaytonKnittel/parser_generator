@@ -1,7 +1,5 @@
-use googletest::{
-  expect_that, gtest,
-  prelude::{anything, none, some},
-};
+use googletest::prelude::*;
+use parser_generator::parser::Parser;
 
 #[gtest]
 fn test_large_or() -> googletest::Result<()> {
@@ -20,12 +18,9 @@ fn test_large_or() -> googletest::Result<()> {
   };
 
   for letter in ('a'..='z').chain('A'..='Z') {
-    expect_that!(
-      Test::parse([letter].into_iter().peekable()),
-      some(anything())
-    );
+    expect_that!(Test::parse([letter]), ok(anything()));
   }
-  expect_that!(Test::parse(".".chars().into_iter().peekable()), none());
+  expect_that!(Test::parse(".".chars()), err(anything()));
 
   Ok(())
 }
