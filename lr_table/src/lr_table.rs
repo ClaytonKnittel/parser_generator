@@ -19,7 +19,7 @@ use crate::{
   vocabulary::{AugmentedTokenId, AugmentedVocabToken},
 };
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct StateId(usize);
 
 impl StateId {

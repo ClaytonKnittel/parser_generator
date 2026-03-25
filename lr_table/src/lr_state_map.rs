@@ -1,5 +1,9 @@
-use std::marker::PhantomData;
+use std::{
+  collections::{HashMap, hash_map::Entry},
+  marker::PhantomData,
+};
 
+use cknittel_util::iter::CollectResult;
 use itertools::Itertools;
 
 use crate::{
@@ -8,6 +12,20 @@ use crate::{
   lr_table::{Action, LRTable, StateId},
 };
 
+fn insert_state_and_type(
+  state: StateId,
+  ty: LRStateType,
+  map: &mut HashMap<StateId, LRStateType>,
+) -> LRTableResult {
+  match map.entry(state) {
+    Entry::Occupied(entry) => entry.get().verify_compatible(ty),
+    Entry::Vacant(entry) => {
+      entry.insert(ty);
+      Ok(())
+    }
+  }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum LRStateType {
   Reduce(ProductionLabel),
@@ -15,27 +33,9 @@ pub enum LRStateType {
   Root,
 }
 
-#[derive(Default)]
-enum LRStateTypeBuilder {
-  Reduce(ProductionLabel),
-  Terminal,
-  Root,
-  #[default]
-  Unknown,
-}
-
-impl LRStateTypeBuilder {
-  fn finalize(self) -> LRTableResult<LRStateType> {
-    match self {
-      Self::Reduce(production_label) => Ok(LRStateType::Reduce(production_label)),
-      Self::Terminal => Ok(LRStateType::Terminal),
-      Self::Root => Ok(LRStateType::Root),
-      Self::Unknown => Err(LRTableError::unresolved_states()),
-    }
-  }
-
-  fn set(&mut self, value: LRStateType) -> LRTableResult {
-    match (&self, value) {
+impl LRStateType {
+  fn verify_compatible(&self, other: LRStateType) -> LRTableResult {
+    match (&self, other) {
       (Self::Reduce(state1), LRStateType::Reduce(state2)) => {
         if *state1 != state2 {
           return Err(LRTableError::state_resolve_conflict());
@@ -43,9 +43,6 @@ impl LRStateTypeBuilder {
       }
       (Self::Terminal, LRStateType::Terminal) => {}
       (Self::Root, LRStateType::Root) => {}
-      (Self::Unknown, LRStateType::Reduce(maybe_type)) => *self = Self::Reduce(maybe_type),
-      (Self::Unknown, LRStateType::Terminal) => *self = Self::Terminal,
-      (Self::Unknown, LRStateType::Root) => *self = Self::Root,
       _ => {
         return Err(LRTableError::state_resolve_conflict());
       }
@@ -55,17 +52,43 @@ impl LRStateTypeBuilder {
   }
 }
 
-/// A map from states to the type of action that will immediately precede them
-/// in parsing. This map is useful when determining the type that should be
-/// held in each state's enum variant.
+struct LRStateInfo {
+  /// A list of states that may precede this state in parsing.
+  prev_states: Vec<StateId>,
+  /// The return type of states that may precede this state.
+  prev_state_return_type: LRStateType,
+}
+
+impl LRStateInfo {
+  fn build_from_state_map(map: HashMap<StateId, LRStateType>) -> LRTableResult<Self> {
+    let mut iter = map.into_iter();
+    let (state1, return_type) = iter.next().ok_or_else(LRTableError::unresolved_states)?;
+    let mut prev_states = vec![state1];
+
+    for (state, state_return_type) in iter {
+      return_type.verify_compatible(state_return_type)?;
+      prev_states.push(state);
+    }
+
+    Ok(Self {
+      prev_states,
+      prev_state_return_type: return_type,
+    })
+  }
+}
+
+/// A map from states to the set of states that may immediately precede them
+/// in parsing.
+///
+/// This map is also useful when determining the type that should be held in
+/// each state's enum variant.
 ///
 /// Each state may be preceded by either the consumption of a terminal (i.e. it
 /// is the target of a shift action), or the resolution of a production rule
 /// (i.e. it is the target of a GOTO action).
 pub struct LRStateMap<'a> {
-  /// A map from StateId -> the type that should be held in this state. This is
-  /// the return value of any state that can lead to this one.
-  types: Vec<LRStateType>,
+  /// A map from StateId -> state info.
+  state_map: Vec<LRStateInfo>,
   /// This lookup table is lifetime-bound to an instance of `LRTable`.
   _phantom: PhantomData<&'a ()>,
 }
@@ -75,39 +98,48 @@ impl<'a> LRStateMap<'a> {
     grammar: &IndexedGrammar<T, L>,
     lr_table: &'a LRTable<T>,
   ) -> LRTableResult<Self> {
-    let mut types = (0..lr_table.num_states())
-      .map(|_| LRStateTypeBuilder::default())
+    let mut state_map = (0..lr_table.num_states())
+      .map(|_| HashMap::<StateId, LRStateType>::new())
       .collect_vec();
 
     // Set the root production rule's type to `Root`.
-    types[0].set(LRStateType::Root)?;
+    state_map[0].insert(lr_table.root_state(), LRStateType::Root);
 
     for state in lr_table.states() {
       for (_, action) in lr_table.state_actions(state, grammar) {
         if let Action::Shift { next_state } = action {
-          types[next_state.id()].set(LRStateType::Terminal)?;
+          insert_state_and_type(
+            state,
+            LRStateType::Terminal,
+            &mut state_map[next_state.id()],
+          )?;
         }
         // Reduce / accept actions don't have immediate targets.
       }
 
       for (from_rule, action) in lr_table.goto_actions(state, grammar) {
-        types[action.state().id()].set(LRStateType::Reduce(from_rule))?;
+        insert_state_and_type(
+          state,
+          LRStateType::Reduce(from_rule),
+          &mut state_map[action.state().id()],
+        )?;
       }
     }
 
-    let types = types
+    debug_assert_eq!(state_map.len(), lr_table.num_states());
+    let state_map = state_map
       .into_iter()
-      .map(LRStateTypeBuilder::finalize)
-      .collect::<Result<_, _>>()?;
+      .map(LRStateInfo::build_from_state_map)
+      .collect_result_vec()?;
 
     Ok(Self {
-      types,
+      state_map,
       _phantom: PhantomData,
     })
   }
 
   pub fn state_type(&self, state: StateId) -> LRStateType {
-    self.types[state.id()]
+    self.state_map[state.id()].prev_state_return_type
   }
 }
 

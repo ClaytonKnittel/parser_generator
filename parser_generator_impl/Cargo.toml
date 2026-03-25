@@ -8,7 +8,7 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
-cknittel-util = { git = "https://github.com/ClaytonKnittel/cknittel-util.git", rev = "5e4b44e30a3053016964eb5295d38c5134e3e72a", features = [
+cknittel-util = { git = "https://github.com/ClaytonKnittel/cknittel-util.git", rev = "74390c913416d7085718a1560449ad699c29fff3", features = [
   "macro",
 ] }
 itertools = "0.14.0"
