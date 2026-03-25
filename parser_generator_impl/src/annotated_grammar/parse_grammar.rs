@@ -56,7 +56,6 @@ pub struct GrammarInfo {
   terminal_type: Type,
   label_types: LabelTypeMap,
   production_rules: Vec<ProductionRule>,
-  grammar: Grammar<String, ProductionRefName>,
   indexed_grammar: IndexedGrammar<String, ProductionRefName>,
   lr_table: LRTable<String>,
 }
@@ -76,10 +75,6 @@ impl GrammarInfo {
 
   pub fn production_rule(&self, index: ProductionRuleIndex) -> &ProductionRule {
     &self.production_rules[index.0]
-  }
-
-  pub fn lr_table_grammar(&self) -> &Grammar<String, ProductionRefName> {
-    &self.grammar
   }
 
   pub fn grammar(&self) -> &IndexedGrammar<String, ProductionRefName> {
@@ -136,7 +131,6 @@ pub fn parse_grammar(mut stream: impl SymbolStream) -> ParserGeneratorResult<Gra
     terminal_type,
     label_types,
     production_rules,
-    grammar,
     indexed_grammar,
     lr_table,
   })

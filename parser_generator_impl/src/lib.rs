@@ -1,5 +1,3 @@
-#![feature(proc_macro_span)]
-
 extern crate proc_macro;
 mod annotated_grammar;
 mod code_gen;

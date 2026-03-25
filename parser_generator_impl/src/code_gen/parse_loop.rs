@@ -28,7 +28,7 @@ pub fn generate_parse_loop(grammar_info: &GrammarInfo) -> TokenStreamResult {
   Ok(quote! {
     let mut state = ::parser_generator::parser_state::ParserState::new(
       input_stream.into_iter(),
-      #root_enum_state(),
+      #root_enum_state(()),
     );
     loop {
       let action = match state.state() {

@@ -183,6 +183,12 @@ pub fn build_constructor(
   let rule = grammar_info.production_rule(production_rule);
   match rule.constructor() {
     Some(constructor) => rewrite_provided_constructor(rule.rule(), constructor),
-    None => generate_default_constructor(&rule),
+    None => {
+      if rule.return_type().is_some() {
+        generate_default_constructor(&rule)
+      } else {
+        Ok(quote! { () })
+      }
+    }
   }
 }

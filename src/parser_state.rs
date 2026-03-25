@@ -41,10 +41,8 @@ impl<T, S, I> ParserState<T, S, I> {
     self.stack.pop().unwrap()
   }
 
-  pub fn accept(&mut self) -> S {
-    // In the accept state, the stack always consists of
-    // [initial_state, accepted_state(accept_val)]
-    debug_assert_eq!(self.stack.len(), 2);
-    self.stack.pop().unwrap()
+  pub fn verify_empty_stack(&self) {
+    // The first state is never removed from the stack.
+    debug_assert_eq!(self.stack.len(), 1);
   }
 }

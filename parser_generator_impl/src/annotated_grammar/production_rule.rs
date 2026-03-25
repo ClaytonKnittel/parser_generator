@@ -54,6 +54,10 @@ impl ProductionRule {
     )
   }
 
+  pub fn return_type(&self) -> Option<&Type> {
+    self.return_type.as_ref()
+  }
+
   pub fn rule(&self) -> &[ProductionNode] {
     &self.rule
   }

@@ -44,6 +44,10 @@ fn state_type(state: StateId, grammar_info: &GrammarInfo, state_map: &LRStateMap
 
 fn generate_enum_variant(state: StateId, return_type: Option<Type>) -> proc_macro2::TokenStream {
   let state_name = enum_variant_name(state);
+  let return_type = match return_type {
+    Some(ty) => quote! { #ty },
+    None => quote! { () },
+  };
   quote! { #state_name(#return_type), }
 }
 

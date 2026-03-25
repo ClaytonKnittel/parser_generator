@@ -1,7 +1,9 @@
 use std::str::FromStr;
 
 use cknittel_util::proc_macro_util::collect_tokens::TryCollectTokens;
+use itertools::Itertools;
 use lr_table::{
+  grammar::ProductionRuleIndex,
   lr_state_map::LRStateMap,
   lr_table::{Action, StateId},
   vocabulary::AugmentedVocabToken,
@@ -12,6 +14,7 @@ use quote::quote;
 use crate::{
   annotated_grammar::parse_grammar::GrammarInfo,
   code_gen::{
+    constructor::build_constructor,
     reduce_rule::{apply_goto, bind_production_nodes_to_locals},
     states_enum::{enum_name, qualified_enum_variant_name},
     util::TokenStreamResult,
@@ -56,7 +59,6 @@ fn apply_action(
   grammar_info: &GrammarInfo,
   state_map: &LRStateMap,
 ) -> TokenStreamResult {
-  let enum_name = qualified_enum_variant_name(state_id, grammar_info);
   Ok(match action {
     Action::Shift { next_state } => {
       let next_state_name = qualified_enum_variant_name(*next_state, grammar_info);
@@ -84,9 +86,19 @@ fn apply_action(
       }
     }
     Action::Accept => {
+      let root_rule_id = grammar_info.grammar().root_production_rule();
+      let root_rule = grammar_info.grammar().production_rule(root_rule_id);
+      let (extract_vars, next_states) =
+        bind_production_nodes_to_locals(state_id, root_rule, grammar_info, state_map);
+      debug_assert_eq!(
+        next_states.into_iter().collect_vec(),
+        vec![grammar_info.lr_table().root_state()]
+      );
+      let constructor = build_constructor(ProductionRuleIndex(0), grammar_info)?;
       quote! {
-        let #enum_name(result) = state.accept() else { unsafe { ::std::hint::unreachable_unchecked() } };
-        Ok(::parser_generator::parser_state::ParserControl::Accept(result))
+        #extract_vars
+        state.verify_empty_stack();
+        Ok(::parser_generator::parser_state::ParserControl::Accept(#constructor))
       }
     }
   })
