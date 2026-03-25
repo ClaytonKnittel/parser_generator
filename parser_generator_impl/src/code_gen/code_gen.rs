@@ -1,12 +1,10 @@
+use cknittel_util::proc_macro_util::collect_tokens::TryCollectTokens;
 use lr_table::{indexed_grammar::IndexedGrammar, lr_table::LRTable};
 use quote::quote;
 
 use crate::{
-  annotated_grammar::{
-    parse_grammar::GrammarInfo, production_ref::ProductionRefName, terminal::TerminalSymbol,
-  },
+  annotated_grammar::{parse_grammar::GrammarInfo, production_ref::ProductionRefName},
   code_gen::{
-    collect_tokens::TryCollectTokens,
     parse_loop::generate_parse_loop,
     state_action_builder::{generate_state_action_function, root_production_type},
     states_enum::generate_dfa_states,

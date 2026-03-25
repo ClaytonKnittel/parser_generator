@@ -1,3 +1,4 @@
+use cknittel_util::proc_macro_util::collect_tokens::CollectTokens;
 use lr_table::{
   indexed_grammar::IndexedGrammar,
   lr_state_map::{LRStateMap, LRStateType},
@@ -8,7 +9,7 @@ use quote::quote;
 
 use crate::{
   annotated_grammar::{parse_grammar::GrammarInfo, production_ref::ProductionRefName},
-  code_gen::{collect_tokens::CollectTokens, util::TokenStreamResult},
+  code_gen::util::TokenStreamResult,
   type_symbol::Type,
   ParserGeneratorError,
 };

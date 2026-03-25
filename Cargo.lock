@@ -18,6 +18,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
+name = "cknittel-util"
+version = "0.1.0"
+source = "git+https://github.com/ClaytonKnittel/cknittel-util.git?rev=5e4b44e30a3053016964eb5295d38c5134e3e72a#5e4b44e30a3053016964eb5295d38c5134e3e72a"
+dependencies = [
+ "proc-macro-util",
+]
+
+[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -91,6 +99,7 @@ dependencies = [
 name = "parser_generator_impl"
 version = "0.1.0"
 dependencies = [
+ "cknittel-util",
  "itertools",
  "lr_table",
  "proc-macro-error",
@@ -123,10 +132,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc-macro-util"
+version = "0.1.0"
+source = "git+https://github.com/ClaytonKnittel/cknittel-util.git?rev=5e4b44e30a3053016964eb5295d38c5134e3e72a#5e4b44e30a3053016964eb5295d38c5134e3e72a"
+dependencies = [
+ "proc-macro2",
+]
+
+[[package]]
 name = "proc-macro2"
-version = "1.0.95"
+version = "1.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02b3e5e68a3a1a02aad3ec490a98007cbc13c37cbe84a3cd7b8e406d76e7f778"
+checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
 ]

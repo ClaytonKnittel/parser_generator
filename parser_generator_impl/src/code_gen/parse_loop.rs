@@ -1,10 +1,10 @@
+use cknittel_util::proc_macro_util::collect_tokens::CollectTokens;
 use lr_table::lr_table::LRTable;
 use quote::quote;
 
 use crate::{
   annotated_grammar::parse_grammar::GrammarInfo,
   code_gen::{
-    collect_tokens::CollectTokens,
     state_action_builder::state_action_function_name,
     states_enum::{enum_matcher, qualified_enum_variant_name},
     util::TokenStreamResult,

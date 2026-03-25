@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use cknittel_util::proc_macro_util::collect_tokens::TryCollectTokens;
 use lr_table::{
   indexed_grammar::IndexedGrammar,
   lr_table::{Action, LRTable, StateId},
@@ -10,7 +11,6 @@ use quote::quote;
 use crate::{
   annotated_grammar::{parse_grammar::GrammarInfo, production_ref::ProductionRefName},
   code_gen::{
-    collect_tokens::TryCollectTokens,
     states_enum::{enum_name, qualified_enum_variant_name},
     util::TokenStreamResult,
   },
