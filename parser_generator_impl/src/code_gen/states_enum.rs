@@ -65,14 +65,13 @@ pub fn generate_dfa_states(
   grammar: &IndexedGrammar<String, ProductionRefName>,
   lr_table: &LRTable<String>,
   grammar_info: &GrammarInfo,
+  state_map: &LRStateMap,
 ) -> TokenStreamResult {
   let dfa_enum_name = enum_name(grammar_info);
 
-  let state_map = LRStateMap::build_from_lr_table(grammar, lr_table)
-    .map_err(|err| ParserGeneratorError::from_foreign_error(err, Span::call_site()))?;
   let enums = lr_table
     .states()
-    .map(|state| generate_enum_variant(state, state_type(state, grammar, grammar_info, &state_map)))
+    .map(|state| generate_enum_variant(state, state_type(state, grammar, grammar_info, state_map)))
     .collect_tokens();
 
   Ok(quote! {

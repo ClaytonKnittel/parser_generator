@@ -141,6 +141,12 @@ impl<'a> LRStateMap<'a> {
   pub fn state_type(&self, state: StateId) -> LRStateType {
     self.state_map[state.id()].prev_state_return_type
   }
+
+  /// Given a state, returns an iterator over all states that may immediately
+  /// precede it on the parser stack.
+  pub fn back_edges(&self, state: StateId) -> impl Iterator<Item = StateId> {
+    self.state_map[state.id()].prev_states.iter().cloned()
+  }
 }
 
 #[cfg(test)]

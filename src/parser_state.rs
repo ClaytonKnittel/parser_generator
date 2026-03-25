@@ -33,6 +33,10 @@ impl<T, S, I> ParserState<T, S, I> {
     self.stack.last().unwrap()
   }
 
+  pub fn pop_state(&mut self) -> S {
+    self.stack.pop().unwrap()
+  }
+
   pub fn accept(&mut self) -> S {
     debug_assert_eq!(self.stack.len(), 1);
     self.stack.pop().unwrap()
