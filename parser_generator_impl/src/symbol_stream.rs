@@ -1,6 +1,6 @@
 use std::{iter::Peekable, ops::Deref};
 
-use proc_macro::Span;
+use proc_macro2::Span;
 
 use crate::{
   error::{CloneErr, EraseOk, ParserGeneratorError},

@@ -1,7 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
-use cknittel_util::{iter::JoinWith, proc_macro_util::collect_tokens::CollectTokens};
+use cknittel_util::{
+  iter::JoinWith,
+  proc_macro_util::collect_tokens::{CollectTokens, TryCollectTokens},
+};
 use lr_table::{
+  grammar::ProductionRuleIndex,
   indexed_grammar::{IndexedProductionRule, ProductionLabel},
   lr_state_map::LRStateMap,
   lr_table::StateId,
@@ -11,12 +15,17 @@ use quote::quote;
 
 use crate::{
   annotated_grammar::parse_grammar::GrammarInfo,
-  code_gen::states_enum::{enum_matcher, qualified_enum_variant_name},
+  code_gen::{
+    constructor::build_constructor,
+    states_enum::{enum_matcher, qualified_enum_variant_name},
+    util::TokenStreamResult,
+  },
 };
 
 /// Generates a unique name for a variable, using `node_index`.
-fn bound_variable_name(node_index: usize) -> String {
-  format!("__v{node_index}")
+pub fn bound_variable_ident(node_index: usize) -> syn::Ident {
+  let name = format!("__v{node_index}");
+  syn::Ident::new(&name, Span::call_site())
 }
 
 /// Given a set of state ids, which all must have the same associated data
@@ -52,7 +61,7 @@ fn bind_production_node(
   state_ids: impl IntoIterator<Item = StateId>,
   grammar_info: &GrammarInfo,
 ) -> TokenStream {
-  let var_ident = syn::Ident::new(&bound_variable_name(node_index), Span::call_site());
+  let var_ident = bound_variable_ident(node_index);
   let extract_state = extract_state(state_ids, grammar_info);
   quote! {
     let #var_ident = #extract_state;
@@ -113,10 +122,11 @@ fn match_any(
 }
 
 pub fn apply_goto(
+  rule_applied: ProductionRuleIndex,
   production_label: ProductionLabel,
   possible_states: HashSet<StateId>,
   grammar_info: &GrammarInfo,
-) -> TokenStream {
+) -> TokenStreamResult {
   let mut goto_map = HashMap::<StateId, Vec<StateId>>::new();
 
   for state in possible_states {
@@ -127,28 +137,31 @@ pub fn apply_goto(
     goto_map.entry(goto.state()).or_default().push(state);
   }
 
+  let constructor = build_constructor(rule_applied, grammar_info)?;
+
   if goto_map.len() == 1 {
     let goto_state = goto_map.into_keys().next().unwrap();
     let next_state = qualified_enum_variant_name(goto_state, grammar_info);
-    quote! {
-      state.push(#next_state(todo!()));
-    }
+    Ok(quote! {
+      state.push(#next_state(#constructor));
+    })
   } else {
     let match_arms = goto_map
       .into_iter()
       .map(|(goto_state, from_states)| {
         let match_from = match_any(from_states, grammar_info);
         let next_state = qualified_enum_variant_name(goto_state, grammar_info);
-        quote! {
-          #match_from => state.push(#next_state(todo!())),
-        }
+        Ok(quote! {
+          #match_from => state.push(#next_state(__constructed)),
+        })
       })
-      .collect_tokens();
-    quote! {
+      .try_collect_tokens()?;
+    Ok(quote! {
+      let __constructed = #constructor;
       match state.state() {
         #match_arms
         _ => unsafe { ::std::hint::unreachable_unchecked() }
       }
-    }
+    })
   }
 }

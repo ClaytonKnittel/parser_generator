@@ -1,4 +1,5 @@
 pub mod code_gen;
+mod constructor;
 mod parse_loop;
 mod reduce_rule;
 mod state_action_builder;

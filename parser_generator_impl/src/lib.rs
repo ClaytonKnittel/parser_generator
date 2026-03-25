@@ -10,7 +10,6 @@ mod symbol_stream;
 mod type_symbol;
 mod util;
 
-use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
 
 use crate::{
@@ -21,16 +20,19 @@ use crate::{
   symbol_stream::SymbolStreamImpl,
 };
 
-fn build_grammar(tokens: TokenStream) -> ParserGeneratorResult<TokenStream> {
+fn build_grammar(
+  tokens: proc_macro::TokenStream,
+) -> ParserGeneratorResult<proc_macro::TokenStream> {
+  let tokens = proc_macro2::TokenStream::from(tokens);
   let list = tokenize_from_stream(tokens);
   let grammar_info = parse_grammar(SymbolStreamImpl::new(list))?;
-  generate_parser(&grammar_info).map(TokenStream::from)
+  generate_parser(&grammar_info).map(proc_macro::TokenStream::from)
 }
 
 #[proc_macro_error]
 #[proc_macro]
 /// Constructs an LR(1) parser based on the definition provided.
-pub fn grammar(tokens: TokenStream) -> TokenStream {
+pub fn grammar(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream {
   match build_grammar(tokens) {
     Ok(tokens) => tokens,
     Err(err) => err.abort(),

@@ -3,7 +3,6 @@ use crate::{
     label_type_map::LabelTypeMap,
     production_node::ProductionNode,
     production_ref::{ProductionRef, ProductionRefName},
-    terminal::TerminalSymbol,
     util::expect_symbol_with,
   },
   symbol::{Operator, SymbolMeta, SymbolT},
@@ -23,13 +22,17 @@ fn maybe_parse_return_type(stream: &mut impl SymbolStream) -> ParserGeneratorRes
 }
 
 pub struct Constructor {
-  group: proc_macro::Group,
+  group: proc_macro2::Group,
   meta: SymbolMeta,
 }
 
 impl Constructor {
-  fn new(group: proc_macro::Group, meta: SymbolMeta) -> Self {
+  fn new(group: proc_macro2::Group, meta: SymbolMeta) -> Self {
     Self { group, meta }
+  }
+
+  pub fn body(&self) -> &proc_macro2::Group {
+    &self.group
   }
 }
 
@@ -49,6 +52,18 @@ impl ProductionRule {
       self.name.name().clone(),
       self.rule.iter().map(ProductionNode::to_lr_node).collect(),
     )
+  }
+
+  pub fn rule(&self) -> &[ProductionNode] {
+    &self.rule
+  }
+
+  pub fn constructor(&self) -> Option<&Constructor> {
+    self.block.as_ref()
+  }
+
+  pub fn meta(&self) -> &SymbolMeta {
+    &self.meta
   }
 
   fn parse_rule(

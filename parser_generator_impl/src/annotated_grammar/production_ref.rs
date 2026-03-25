@@ -8,7 +8,7 @@ use crate::{
 };
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct ProductionRefName(String);
+pub struct ProductionRefName(pub String);
 
 #[derive(Clone)]
 pub struct ProductionRef {

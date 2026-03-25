@@ -1,5 +1,4 @@
-use proc_macro::TokenTree::{self, Group, Ident, Literal, Punct};
-use proc_macro::{Delimiter, Spacing, Span, TokenStream};
+use proc_macro2::{Delimiter, Spacing, Span, TokenStream, TokenTree};
 use std::fmt::{Display, Formatter};
 
 use crate::error::{ParserGeneratorError, ParserGeneratorResult};
@@ -113,7 +112,7 @@ pub enum SymbolT {
   // (chars). Ident's may also be terminals, depending on what is being parsed.
   Literal(String),
   // Groups are the blocks of code to execute in successful matches.
-  Group(proc_macro::Group),
+  Group(proc_macro2::Group),
   // Tuples are blocks of code within parenthesis.
   Tuple(TokenStream),
   // Arrays are for array slice types, i.e. &[u64].
@@ -155,7 +154,7 @@ impl Symbol {
     self.meta
   }
 
-  fn from_group(group: proc_macro::Group, tokens: TokenTree) -> ParserGeneratorResult<Self> {
+  fn from_group(group: proc_macro2::Group, tokens: TokenTree) -> ParserGeneratorResult<Self> {
     let meta = SymbolMeta::new(group.span(), tokens);
 
     let sym = match group.delimiter() {
@@ -173,7 +172,7 @@ impl Symbol {
     Ok(Self { sym, meta })
   }
 
-  fn verify_ident_spelling(ident: &proc_macro::Ident) -> ParserGeneratorResult {
+  fn verify_ident_spelling(ident: &proc_macro2::Ident) -> ParserGeneratorResult {
     let ident_str = ident.to_string();
     if string_is_identifier(&ident_str) {
       Ok(())
@@ -182,21 +181,21 @@ impl Symbol {
         format!(
           "Identifier \"{ident_str}\" is not alphanumeric/_ with a non-numeric leading character"
         ),
-        ident.span(),
+        ident.span().into(),
       ))
     }
   }
 
-  fn from_ident(ident: proc_macro::Ident, tokens: TokenTree) -> ParserGeneratorResult<Self> {
+  fn from_ident(ident: proc_macro2::Ident, tokens: TokenTree) -> ParserGeneratorResult<Self> {
     Self::verify_ident_spelling(&ident)?;
     Ok(Self {
       sym: SymbolT::Ident(ident.to_string()),
-      meta: SymbolMeta::new(ident.span(), tokens),
+      meta: SymbolMeta::new(ident.span().into(), tokens),
     })
   }
 
-  fn from_literal(literal: proc_macro::Literal, tokens: TokenTree) -> ParserGeneratorResult<Self> {
-    let meta = SymbolMeta::new(literal.span(), tokens);
+  fn from_literal(literal: proc_macro2::Literal, tokens: TokenTree) -> ParserGeneratorResult<Self> {
+    let meta = SymbolMeta::new(literal.span().into(), tokens);
 
     let literal_str = literal.to_string();
     if literal_str.starts_with('\'') {
@@ -244,10 +243,10 @@ enum PunctBuilder {
 impl PunctBuilder {
   fn consume_next(
     &mut self,
-    punct: proc_macro::Punct,
+    punct: proc_macro2::Punct,
     tokens: TokenTree,
   ) -> ParserGeneratorResult<Option<Symbol>> {
-    let meta = SymbolMeta::new(punct.span(), tokens);
+    let meta = SymbolMeta::new(punct.span().into(), tokens);
 
     Ok(match self {
       Self::Empty => match punct.as_char() {
@@ -315,10 +314,10 @@ struct SymbolBuilder {
 impl SymbolBuilder {
   fn consume_next_token(&mut self, tokens: TokenTree) -> ParserGeneratorResult<Option<Symbol>> {
     Ok(match tokens.clone() {
-      Group(group) => Some(Symbol::from_group(group, tokens)?),
-      Ident(ident) => Some(Symbol::from_ident(ident, tokens)?),
-      Literal(literal) => Some(Symbol::from_literal(literal, tokens)?),
-      Punct(punct) => self.punct_builder.consume_next(punct, tokens)?,
+      TokenTree::Group(group) => Some(Symbol::from_group(group, tokens)?),
+      TokenTree::Ident(ident) => Some(Symbol::from_ident(ident, tokens)?),
+      TokenTree::Literal(literal) => Some(Symbol::from_literal(literal, tokens)?),
+      TokenTree::Punct(punct) => self.punct_builder.consume_next(punct, tokens)?,
     })
   }
 }

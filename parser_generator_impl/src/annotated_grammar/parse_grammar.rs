@@ -4,7 +4,7 @@ use lr_table::{
   lr_state_map::LRStateMap,
   lr_table::LRTable,
 };
-use proc_macro::Span;
+use proc_macro2::Span;
 
 use crate::{
   annotated_grammar::{

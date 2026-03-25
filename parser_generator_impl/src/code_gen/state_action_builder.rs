@@ -6,6 +6,7 @@ use lr_table::{
   lr_table::{Action, StateId},
   vocabulary::AugmentedVocabToken,
 };
+use proc_macro2::Span;
 use quote::quote;
 
 use crate::{
@@ -20,7 +21,7 @@ use crate::{
 
 fn try_build_token(text: &str) -> ParserGeneratorResult<proc_macro2::Literal> {
   proc_macro2::Literal::from_str(text)
-    .map_err(|err| ParserGeneratorError::from_foreign_error(err, proc_macro::Span::call_site()))
+    .map_err(|err| ParserGeneratorError::from_foreign_error(err, Span::call_site()))
 }
 
 pub fn root_production_type(grammar_info: &GrammarInfo) -> proc_macro2::TokenStream {
@@ -34,10 +35,7 @@ pub fn root_production_type(grammar_info: &GrammarInfo) -> proc_macro2::TokenStr
 }
 
 pub fn state_action_function_name(state_id: StateId) -> syn::Ident {
-  syn::Ident::new(
-    &format!("parse_s{}", state_id.id()),
-    proc_macro2::Span::call_site(),
-  )
+  syn::Ident::new(&format!("parse_s{}", state_id.id()), Span::call_site())
 }
 
 fn token_matcher(token: &AugmentedVocabToken<String>) -> TokenStreamResult {
@@ -72,7 +70,12 @@ fn apply_action(
       let rule = grammar_info.grammar().production_rule(*rule);
       let (extract_vars, next_states) =
         bind_production_nodes_to_locals(state_id, rule, grammar_info, state_map);
-      let goto = apply_goto(*rule.symbol(), next_states, grammar_info);
+      let goto = apply_goto(
+        rule.original_index(),
+        *rule.symbol(),
+        next_states,
+        grammar_info,
+      )?;
       quote! {
         #extract_vars
         #goto
