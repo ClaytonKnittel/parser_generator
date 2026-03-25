@@ -1,18 +1,18 @@
-use std::{collections::HashSet, str::FromStr};
+use std::str::FromStr;
 
-use cknittel_util::proc_macro_util::collect_tokens::{CollectTokens, TryCollectTokens};
+use cknittel_util::proc_macro_util::collect_tokens::TryCollectTokens;
 use lr_table::{
-  indexed_grammar::{IndexedGrammar, IndexedProductionRule},
+  indexed_grammar::IndexedGrammar,
   lr_state_map::LRStateMap,
   lr_table::{Action, LRTable, StateId},
   vocabulary::AugmentedVocabToken,
 };
-use proc_macro2::{Span, TokenStream};
 use quote::quote;
 
 use crate::{
   annotated_grammar::{parse_grammar::GrammarInfo, production_ref::ProductionRefName},
   code_gen::{
+    reduce_rule::{apply_goto, bind_production_nodes_to_locals},
     states_enum::{enum_name, qualified_enum_variant_name},
     util::TokenStreamResult,
   },
@@ -53,68 +53,12 @@ fn token_matcher(token: &AugmentedVocabToken<String>) -> TokenStreamResult {
   })
 }
 
-fn extract_state(
-  state_ids: impl IntoIterator<Item = StateId>,
-  grammar_info: &GrammarInfo,
-) -> TokenStream {
-  let match_arms = state_ids
-    .into_iter()
-    .map(|state_id| {
-      let matcher = qualified_enum_variant_name(state_id, grammar_info);
-      quote! {
-        #matcher(v) => v,
-      }
-    })
-    .collect_tokens();
-
-  quote! {
-    match state.pop_state() {
-      #match_arms
-      _ => unsafe { ::std::hint::unreachable_unchecked() }
-    }
-  }
-}
-
-fn bind_production_node(
-  node_index: usize,
-  state_ids: impl IntoIterator<Item = StateId>,
-  grammar_info: &GrammarInfo,
-) -> TokenStream {
-  let var_ident = syn::Ident::new(&format!("__v{node_index}"), Span::call_site());
-  let extract_state = extract_state(state_ids, grammar_info);
-  quote! {
-    let #var_ident = #extract_state;
-  }
-}
-
-fn stack_states_for_rule(
-  state_id: StateId,
-  rule: &IndexedProductionRule,
-  grammar_info: &GrammarInfo,
-  state_map: &LRStateMap,
-) -> TokenStream {
-  let mut states = HashSet::new();
-  states.insert(state_id);
-  let rule_len = rule.rule().len();
-
-  std::iter::once(bind_production_node(rule_len - 1, [state_id], grammar_info))
-    .chain((0..rule_len - 1).rev().map(|node_index| {
-      states = states
-        .iter()
-        .fold(HashSet::new(), |mut next_states, state_id| {
-          next_states.extend(state_map.back_edges(*state_id));
-          next_states
-        });
-      bind_production_node(node_index, states.iter().cloned(), grammar_info)
-    }))
-    .collect_tokens()
-}
-
 fn apply_action(
   token: &AugmentedVocabToken<String>,
   action: &Action,
   state_id: StateId,
   grammar: &IndexedGrammar<String, ProductionRefName>,
+  lr_table: &LRTable<String>,
   grammar_info: &GrammarInfo,
   state_map: &LRStateMap,
 ) -> TokenStreamResult {
@@ -130,9 +74,12 @@ fn apply_action(
     }
     Action::Reduce { rule } => {
       let rule = grammar.production_rule(*rule);
-      let extract_vars = stack_states_for_rule(state_id, rule, grammar_info, state_map);
+      let (extract_vars, next_states) =
+        bind_production_nodes_to_locals(state_id, rule, grammar_info, state_map);
+      let goto = apply_goto(*rule.symbol(), next_states, lr_table, grammar_info);
       quote! {
         #extract_vars
+        #goto
         Ok(::parser_generator::parser_state::ParserControl::Continue)
       }
     }
@@ -161,7 +108,15 @@ pub fn generate_state_action_function(
     .state_actions(state_id, grammar)
     .map(|(token, action)| {
       let matcher = token_matcher(&token)?;
-      let apply_action = apply_action(&token, action, state_id, grammar, grammar_info, state_map)?;
+      let apply_action = apply_action(
+        &token,
+        action,
+        state_id,
+        grammar,
+        lr_table,
+        grammar_info,
+        state_map,
+      )?;
       Ok(quote! {
         #matcher => { #apply_action }
       })
