@@ -37,7 +37,7 @@ fn state_type(state: StateId, grammar_info: &GrammarInfo, state_map: &LRStateMap
       let label = grammar_info.grammar().orig_production_label(production);
       grammar_info.label_type(label).cloned()
     }
-    LRStateType::Terminal => Some(grammar_info.terminal_type().clone()),
+    LRStateType::Terminal => Some(grammar_info.terminal_type().inner_type().clone()),
     LRStateType::Root => None,
   }
 }

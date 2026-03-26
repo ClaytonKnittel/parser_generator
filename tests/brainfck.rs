@@ -19,6 +19,22 @@ enum Instruction {
   CloseBracket,
 }
 
+impl Instruction {
+  fn from_char(c: char) -> Self {
+    match c {
+      '>' => Self::IncTape,
+      '<' => Self::DecTape,
+      '+' => Self::IncByte,
+      '-' => Self::DecByte,
+      '.' => Self::Output,
+      ',' => Self::Input,
+      '[' => Self::OpenBracket,
+      ']' => Self::CloseBracket,
+      _ => panic!("Unrecognized character: \"{c}\""),
+    }
+  }
+}
+
 #[derive(Clone, Copy, Default)]
 struct InstructionPointer(usize);
 
@@ -74,24 +90,24 @@ impl IntoIterator for InstructionList {
 
 grammar! {
   name: BrainFck;
-  terminal: char;
+  enum_terminal: Instruction;
 
   <root>: InstructionList => <instruction_list>;
   <instruction_list>: InstructionList =>
     <instruction> { InstructionList { instructions: vec![#instruction] } } |
     <instruction_list> <instruction> { #instruction_list.with(#instruction) } |
-    <instruction_list> '[' <instruction_list> ']' {
+    <instruction_list> OpenBracket <instruction_list> CloseBracket {
       #0.push(Instruction::OpenBracket);
       #0.extend(#2);
       #0.push(Instruction::CloseBracket);
       #0
     };
-  <instruction>: Instruction => '>' { Instruction::IncTape };
-  <instruction>: Instruction => '<' { Instruction::DecTape };
-  <instruction>: Instruction => '+' { Instruction::IncByte };
-  <instruction>: Instruction => '-' { Instruction::DecByte };
-  <instruction>: Instruction => '.' { Instruction::Output };
-  <instruction>: Instruction => ',' { Instruction::Input };
+  <instruction>: Instruction => IncTape;
+  <instruction>: Instruction => DecTape;
+  <instruction>: Instruction => IncByte;
+  <instruction>: Instruction => DecByte;
+  <instruction>: Instruction => Output;
+  <instruction>: Instruction => Input;
 }
 
 enum BrainFckError {
@@ -246,7 +262,8 @@ fn count_to_ten() {
      +++++++++[<<.+>.>-]\
      +++++++++[<<->>-]\
      <<.-.>."
-      .chars(),
+      .chars()
+      .map(Instruction::from_char),
   )
   .unwrap();
 
@@ -274,7 +291,8 @@ fn add_two() {
     ",>,\
      [<+>-]\
      <------------------------------------------------."
-      .chars(),
+      .chars()
+      .map(Instruction::from_char),
   )
   .unwrap();
 

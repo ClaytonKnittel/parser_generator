@@ -15,7 +15,7 @@ pub fn generate_parser(grammar_info: &GrammarInfo) -> TokenStreamResult {
   let state_map = grammar_info.build_lr_state_map()?;
 
   let grammar_name = grammar_info.name().make_syn_ident();
-  let token_type = grammar_info.terminal_type();
+  let token_type = grammar_info.terminal_type().inner_type();
 
   let result_type = root_production_type(grammar_info);
 

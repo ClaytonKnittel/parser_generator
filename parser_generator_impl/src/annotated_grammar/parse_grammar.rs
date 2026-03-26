@@ -1,10 +1,13 @@
+use std::str::FromStr;
+
 use lr_table::{
   grammar::{Grammar, ProductionRuleIndex},
   indexed_grammar::IndexedGrammar,
   lr_state_map::LRStateMap,
   lr_table::LRTable,
 };
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream};
+use quote::quote;
 
 use crate::{
   annotated_grammar::{
@@ -19,8 +22,8 @@ use crate::{
   ParserGeneratorError, ParserGeneratorResult,
 };
 
-/// Parses a line of the form "option_name: value;"
-fn parse_option<I, T, F>(
+/// Parses a line of the form "option_name: value;" after option_name
+fn parse_option_remainder<I, T, F>(
   stream: &mut I,
   option_name: &str,
   value_parser: F,
@@ -29,11 +32,6 @@ where
   I: SymbolStream,
   F: FnOnce(&mut I) -> ParserGeneratorResult<T>,
 {
-  expect_symbol_with(
-    stream,
-    |sym| sym.is_identifier_with_name(option_name),
-    format!("Expected \"{option_name}\" keyword"),
-  )?;
   expect_symbol_with(
     stream,
     |sym| sym.is_op(Operator::Colon),
@@ -51,9 +49,54 @@ where
   Ok(value)
 }
 
+/// Parses a line of the form "option_name: value;"
+fn parse_option<I, T, F>(
+  stream: &mut I,
+  option_name: &str,
+  value_parser: F,
+) -> ParserGeneratorResult<T>
+where
+  I: SymbolStream,
+  F: FnOnce(&mut I) -> ParserGeneratorResult<T>,
+{
+  expect_symbol_with(
+    stream,
+    |sym| sym.is_identifier_with_name(option_name),
+    format!("Expected \"{option_name}\" keyword"),
+  )?;
+  parse_option_remainder(stream, option_name, value_parser)
+}
+
+pub enum TerminalType {
+  Raw(Type),
+  Enum(Type),
+}
+
+impl TerminalType {
+  pub fn inner_type(&self) -> &Type {
+    match self {
+      Self::Raw(ty) | Self::Enum(ty) => ty,
+    }
+  }
+
+  pub fn try_build_token(&self, text: &str) -> ParserGeneratorResult<TokenStream> {
+    Ok(match self {
+      Self::Raw(_) => {
+        let literal = proc_macro2::Literal::from_str(text)
+          .map_err(|err| ParserGeneratorError::from_foreign_error(err, Span::call_site()))?;
+        quote! { #literal }
+      }
+      Self::Enum(enum_type) => {
+        let ident = proc_macro2::Ident::new(text, Span::call_site());
+        quote! { #enum_type::#ident }
+      }
+    })
+  }
+}
+
 pub struct GrammarInfo {
   name: Ident,
-  terminal_type: Type,
+  terminal_type: TerminalType,
   label_types: LabelTypeMap,
   production_rules: Vec<ProductionRule>,
   indexed_grammar: IndexedGrammar<String, ProductionRefName>,
@@ -65,7 +108,7 @@ impl GrammarInfo {
     &self.name
   }
 
-  pub fn terminal_type(&self) -> &Type {
+  pub fn terminal_type(&self) -> &TerminalType {
     &self.terminal_type
   }
 
@@ -96,9 +139,33 @@ fn parse_name(stream: &mut impl SymbolStream) -> ParserGeneratorResult<Ident> {
     .intercept("\"name: `MyName`;\" specifies the name the generated parser struct will be given")
 }
 
-fn parse_terminal_symbol_type(stream: &mut impl SymbolStream) -> ParserGeneratorResult<Type> {
-  parse_option(stream, "terminal", Type::parse)
+fn parse_terminal_symbol_type(
+  stream: &mut impl SymbolStream,
+) -> ParserGeneratorResult<TerminalType> {
+  let next = stream
+    .expect_symbol()
+    .intercept("Expected \"terminal\" or \"enum_terminal\" option")?;
+
+  if next.symbol_type().is_identifier_with_name("terminal") {
+    parse_option_remainder(stream, "terminal", |stream| {
+      Ok(TerminalType::Raw(Type::parse(stream)?))
+    })
     .intercept("\"terminal: `type`;\" specifies the `type` of tokens that this grammar will parse")
+  } else if next.symbol_type().is_identifier_with_name("enum_terminal") {
+    parse_option_remainder(stream, "enum_terminal", |stream| {
+      Ok(TerminalType::Enum(Type::parse(stream)?))
+    })
+    .intercept(
+      "\"enum_terminal: `enum_type`;\" specifies the `enum_type` of tokens \
+       that this grammar will parse",
+    )
+  } else {
+    Err(
+      next
+        .meta()
+        .make_err("Expected \"terminal\" or \"enum_terminal\" option"),
+    )
+  }
 }
 
 pub fn parse_grammar(mut stream: impl SymbolStream) -> ParserGeneratorResult<GrammarInfo> {

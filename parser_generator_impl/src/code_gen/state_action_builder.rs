@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use cknittel_util::proc_macro_util::collect_tokens::TryCollectTokens;
 use itertools::Itertools;
 use lr_table::{
@@ -19,13 +17,7 @@ use crate::{
     states_enum::{enum_name, qualified_enum_variant_name},
     util::TokenStreamResult,
   },
-  ParserGeneratorError, ParserGeneratorResult,
 };
-
-fn try_build_token(text: &str) -> ParserGeneratorResult<proc_macro2::Literal> {
-  proc_macro2::Literal::from_str(text)
-    .map_err(|err| ParserGeneratorError::from_foreign_error(err, Span::call_site()))
-}
 
 pub fn root_production_type(grammar_info: &GrammarInfo) -> proc_macro2::TokenStream {
   let grammar = grammar_info.grammar();
@@ -41,10 +33,13 @@ pub fn state_action_function_name(state_id: StateId) -> syn::Ident {
   syn::Ident::new(&format!("parse_s{}", state_id.id()), Span::call_site())
 }
 
-fn token_matcher(token: &AugmentedVocabToken<String>) -> TokenStreamResult {
+fn token_matcher(
+  token: &AugmentedVocabToken<String>,
+  grammar_info: &GrammarInfo,
+) -> TokenStreamResult {
   Ok(match token {
     AugmentedVocabToken::Token(token) => {
-      let token = try_build_token(&token)?;
+      let token = grammar_info.terminal_type().try_build_token(&token)?;
       quote! { Some(&#token) }
     }
     AugmentedVocabToken::EndOfStream => quote! { None },
@@ -62,7 +57,9 @@ fn apply_action(
   Ok(match action {
     Action::Shift { next_state } => {
       let next_state_name = qualified_enum_variant_name(*next_state, grammar_info);
-      let token = try_build_token(token.token().unwrap())?;
+      let token = grammar_info
+        .terminal_type()
+        .try_build_token(token.token().unwrap())?;
       quote! {
         state.stream_mut().advance();
         state.push(#next_state_name(#token));
@@ -109,7 +106,7 @@ pub fn generate_state_action_function(
   grammar_info: &GrammarInfo,
   state_map: &LRStateMap,
 ) -> TokenStreamResult {
-  let token_type = grammar_info.terminal_type();
+  let token_type = grammar_info.terminal_type().inner_type();
   let enum_name = enum_name(grammar_info);
   let fn_name = state_action_function_name(state_id);
   let result_type = root_production_type(grammar_info);
@@ -118,7 +115,7 @@ pub fn generate_state_action_function(
     .lr_table()
     .state_actions(state_id, grammar_info.grammar())
     .map(|(token, action)| {
-      let matcher = token_matcher(&token)?;
+      let matcher = token_matcher(&token, grammar_info)?;
       let apply_action = apply_action(&token, action, state_id, grammar_info, state_map)?;
       Ok(quote! {
         #matcher => { #apply_action }
