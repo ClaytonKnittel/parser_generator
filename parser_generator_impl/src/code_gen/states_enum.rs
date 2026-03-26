@@ -14,7 +14,7 @@ pub fn enum_name(grammar_info: &GrammarInfo) -> syn::Ident {
   let grammar_name = grammar_info.name();
   syn::Ident::new(
     &format!("{}DfaStates", grammar_name.name()),
-    grammar_name.meta().span2(),
+    *grammar_name.meta().span(),
   )
 }
 

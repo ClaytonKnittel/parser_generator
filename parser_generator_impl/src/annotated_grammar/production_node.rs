@@ -32,6 +32,13 @@ impl ProductionNode {
     }
   }
 
+  pub fn is_epsilon(&self) -> bool {
+    match self {
+      Self::Terminal(terminal) => terminal.symbol().is_epsilon(),
+      Self::Production(_) => false,
+    }
+  }
+
   pub fn parse(stream: &mut impl SymbolStream) -> ParserGeneratorResult<Self> {
     let next_token = stream.peek_expect_symbol()?;
     match next_token.symbol_type() {

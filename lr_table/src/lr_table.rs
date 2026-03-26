@@ -125,7 +125,14 @@ impl LRTableEntryBuilder {
                 .iter()
                 .all(|token| matches!(token, AugmentedVocabToken::EndOfStream))
             );
-            builder.add_accept(AugmentedVocabToken::EndOfStream)?;
+            // Allow expect because the completed root production is always in
+            // a kernel by itself, meaning we can't possibly conflict with
+            // another rule.
+            #[allow(clippy::expect_used)]
+            builder.add_accept(AugmentedVocabToken::EndOfStream).expect(
+              "Accept action unexpectedly conflicted with another rule \
+               while building LR table entry",
+            );
           } else {
             for follow_token in position.follow_set().iter() {
               builder.add_reduce_action(follow_token, position.rule(), grammar)?;
@@ -150,10 +157,26 @@ impl LRTableEntryBuilder {
 
       match node {
         ProductionNode::Production(label) => {
-          builder.add_goto_action(label, id)?;
+          // Allow expect because `node` is the key to the map we are iterating
+          // over, meaning we can't have duplicate `label`s.
+          #[allow(clippy::expect_used)]
+          builder
+            .add_goto_action(label, id)
+            .expect("Goto action unexpectedly conflicted with another action");
         }
         ProductionNode::Terminal(terminal) => {
-          builder.add_shift_action(terminal, id)?;
+          builder.add_shift_action(terminal, id).map_err(|action| {
+            let lookahead = grammar.vocab().id_to_token(terminal).to_string();
+            match action {
+              Action::Reduce { rule: other_rule } => {
+                LRTableError::shift_reduce_conflict(*other_rule, lookahead)
+              }
+              Action::Shift { .. } => LRTableError::shift_conflict(lookahead),
+              Action::Accept => {
+                LRTableError::shift_reduce_conflict(grammar.root_production_rule(), lookahead)
+              }
+            }
+          })?;
         }
       }
     }
@@ -161,7 +184,11 @@ impl LRTableEntryBuilder {
     Ok(builder)
   }
 
-  fn add_shift_action(&mut self, token: AugmentedTokenId, next_state: StateId) -> LRTableResult {
+  fn add_shift_action(
+    &mut self,
+    token: AugmentedTokenId,
+    next_state: StateId,
+  ) -> Result<(), &Action> {
     self
       .actions
       .try_insert(&token, Action::Shift { next_state })
@@ -176,8 +203,7 @@ impl LRTableEntryBuilder {
     self
       .actions
       .try_insert(&token, Action::Reduce { rule })
-      .map_err(|_| {
-        let existing_action = self.actions.get(&token).unwrap();
+      .map_err(|existing_action| {
         let lookahead = grammar.vocab().id_to_token(token).to_string();
         match existing_action {
           Action::Reduce { rule: other_rule } => {
@@ -191,11 +217,15 @@ impl LRTableEntryBuilder {
       })
   }
 
-  fn add_goto_action(&mut self, label: ProductionLabel, next_state: StateId) -> LRTableResult {
+  fn add_goto_action(
+    &mut self,
+    label: ProductionLabel,
+    next_state: StateId,
+  ) -> Result<(), &GotoAction> {
     self.gotos.try_insert(&label, GotoAction(next_state))
   }
 
-  fn add_accept(&mut self, token: AugmentedTokenId) -> LRTableResult {
+  fn add_accept(&mut self, token: AugmentedTokenId) -> Result<(), &Action> {
     self.actions.try_insert(&token, Action::Accept)
   }
 
@@ -383,6 +413,8 @@ impl<T> LRTable<T> {
 }
 
 impl<T: Label + Display> Display for LRTable<T> {
+  // Allow unwrap in debug printing.
+  #[allow(clippy::unwrap_used)]
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let mut action_print_width = 1;
     let relevant_vocab =

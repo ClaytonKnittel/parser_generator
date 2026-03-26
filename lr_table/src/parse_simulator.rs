@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use std::{borrow::Borrow, fmt::Debug, hash::Hash};
 
 use crate::{

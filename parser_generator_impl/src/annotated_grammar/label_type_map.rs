@@ -36,10 +36,11 @@ impl LabelTypeMap {
         let existing = entry.get().as_ref();
         let label_type = label_type.as_ref();
         if !types_equal(existing, label_type) {
+          #[allow(clippy::expect_used)]
           return Err(
             label_type
               .or(existing)
-              .unwrap()
+              .expect("LabelTypeMap::add: both label_type and existing `None` unexpectedly")
               .meta
               .make_err("Production rules for the same label have different return types"),
           );

@@ -94,7 +94,7 @@ grammar! {
 
   <root>: InstructionList => <instruction_list>;
   <instruction_list>: InstructionList =>
-    <instruction> { InstructionList { instructions: vec![#instruction] } } |
+    ! { InstructionList { instructions: Vec::new() } } |
     <instruction_list> <instruction> { #instruction_list.with(#instruction) } |
     <instruction_list> OpenBracket <instruction_list> CloseBracket {
       #0.push(Instruction::OpenBracket);
