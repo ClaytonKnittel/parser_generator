@@ -51,6 +51,7 @@ impl Terminal {
     let next_token = stream.expect_symbol()?;
     match next_token.symbol_type() {
       SymbolT::Literal(text) => Ok(Self::new_symbol(text.to_owned(), next_token.take_meta())),
+      SymbolT::Ident(ident) => Ok(Self::new_symbol(ident.to_owned(), next_token.take_meta())),
       SymbolT::Op(Operator::Bang) => Ok(Self::new_epsilon(next_token.take_meta())),
       _ => Err(next_token.meta().make_err("Unexpected token")),
     }
