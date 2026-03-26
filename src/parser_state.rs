@@ -34,11 +34,11 @@ impl<T, S, I> ParserState<T, S, I> {
   }
 
   pub fn state(&self) -> &S {
-    self.stack.last().unwrap()
+    unsafe { self.stack.last().unwrap_unchecked() }
   }
 
   pub fn pop_state(&mut self) -> S {
-    self.stack.pop().unwrap()
+    unsafe { self.stack.pop().unwrap_unchecked() }
   }
 
   pub fn verify_empty_stack(&self) {

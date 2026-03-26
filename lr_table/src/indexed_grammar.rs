@@ -82,7 +82,6 @@ impl IndexedProductionRule {
     self.original_index
   }
 
-  #[cfg(debug_assertions)]
   pub fn rules_excluding_epsilon(
     &self,
   ) -> impl Iterator<Item = &ProductionNode<TokenId, ProductionLabel>> {
