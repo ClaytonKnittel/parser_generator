@@ -43,6 +43,9 @@ pub enum LRTableError {
   UnrecognizedToken {
     token: String,
   },
+  UnrecognizedLabel {
+    label: String,
+  },
   LabelAlreadyExists {
     label_id: usize,
   },
@@ -63,6 +66,10 @@ pub enum LRTableError {
 impl LRTableError {
   pub fn build_grammar(error: BuildGrammarError) -> Self {
     Self::BuildGrammar(error)
+  }
+
+  pub fn unrecognized_label(label: String) -> Self {
+    Self::UnrecognizedLabel { label }
   }
 
   pub fn label_already_exists(label_id: usize) -> Self {
@@ -105,6 +112,7 @@ impl Display for LRTableError {
     match self {
       Self::BuildGrammar(error) => write!(f, "Build grammar error: {error}"),
       Self::UnrecognizedToken { token } => write!(f, "Unrecognized token \"{token}\""),
+      Self::UnrecognizedLabel { label } => write!(f, "Unrecognized label \"{label}\""),
       Self::LabelAlreadyExists { label_id } => write!(f, "Label {label_id} already exists"),
       Self::ShiftReduceConflict { rule, lookahead } => {
         write!(

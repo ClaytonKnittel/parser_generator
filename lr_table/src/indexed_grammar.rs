@@ -1,9 +1,10 @@
 use std::{collections::HashMap, fmt::Debug, hash::Hash};
 
+use cknittel_util::iter::CollectResult;
 use itertools::Itertools;
 
 use crate::{
-  error::{LRTableResult, grammar_error},
+  error::{LRTableError, LRTableResult, grammar_error},
   fixed_map::{FixedSizeMap, FixedSizeSet, Label, SparseFixedSizeMap},
   grammar::{Grammar, ProductionNode, ProductionRule, ProductionRuleIndex},
   vocabulary::{AugmentedTokenId, AugmentedVocab, AugmentedVocabToken, TokenId, VocabularyBuilder},
@@ -246,7 +247,7 @@ impl<T: Clone + Eq + Hash, L: Clone + Debug + Eq + Hash> IndexedGrammar<T, L> {
     let rules = label_groups
       .iter()
       .enumerate()
-      .flat_map(|(index, group)| {
+      .map(|(index, group)| {
         let label = ProductionLabel(index);
         let label_map = &label_map;
         let vocab_builder = &mut vocab_builder;
@@ -254,26 +255,31 @@ impl<T: Clone + Eq + Hash, L: Clone + Debug + Eq + Hash> IndexedGrammar<T, L> {
           .rules
           .iter()
           .map(move |(production, original_index)| {
-            IndexedProductionRule::new(
+            Ok(IndexedProductionRule::new(
               label,
               production
                 .rule()
                 .iter()
-                .map(|node| match node {
-                  ProductionNode::Production(user_label) => {
-                    ProductionNode::Production(*label_map.get(user_label).unwrap())
-                  }
-                  ProductionNode::Terminal(terminal) => {
-                    ProductionNode::Terminal(vocab_builder.get_id_or_insert(terminal.clone()))
-                  }
+                .map(|node| {
+                  Ok(match node {
+                    ProductionNode::Production(user_label) => {
+                      ProductionNode::Production(*label_map.get(user_label).ok_or_else(|| {
+                        LRTableError::unrecognized_label(format!("{user_label:?}"))
+                      })?)
+                    }
+                    ProductionNode::Terminal(terminal) => {
+                      ProductionNode::Terminal(vocab_builder.get_id_or_insert(terminal.clone()))
+                    }
+                  })
                 })
-                .collect(),
+                .collect_result_vec()?,
               *original_index,
-            )
+            ))
           })
-          .collect_vec()
+          .collect_result_vec()
       })
-      .collect_vec();
+      .collect_result_vec()?
+      .concat();
 
     let rule_metadata = label_groups
       .into_iter()
