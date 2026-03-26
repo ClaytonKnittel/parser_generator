@@ -45,6 +45,6 @@ impl Type {
 
 impl ToTokens for Type {
   fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-    tokens.extend(self.meta.tokens2());
+    tokens.extend(self.meta.tokens().clone());
   }
 }

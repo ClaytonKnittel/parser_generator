@@ -42,7 +42,7 @@ fn token_matcher(
 ) -> TokenStreamResult {
   Ok(match token {
     AugmentedVocabToken::Token(token) => {
-      let token = grammar_info.terminal_type().try_build_token(&token)?;
+      let token = grammar_info.terminal_type().try_build_token(token)?;
       quote! { Some(&#token) }
     }
     AugmentedVocabToken::EndOfStream => quote! { None },
@@ -93,7 +93,9 @@ impl CollectLikeActions {
         let next_state_name = qualified_enum_variant_name(*next_state, grammar_info);
         let token = grammar_info
           .terminal_type()
-          .try_build_token(token.token().unwrap())?;
+          .try_build_token(token.token().expect(
+            "CollectLikeActions::shift_match_and_yield: shift_map should not contain epsilon/eof",
+          ))?;
         Ok(quote! {
           #matcher => #next_state_name(#token),
         })
@@ -101,7 +103,7 @@ impl CollectLikeActions {
       .try_collect_tokens()
   }
 
-  /// Produces the match arms for tokens which should be reduce acions. These
+  /// Produces the match arms for tokens which should be reduce actions. These
   /// matches will always return.
   ///
   /// All tokens which reduce using the same rule will be combined into a

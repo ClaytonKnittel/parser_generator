@@ -1,7 +1,8 @@
 {
   "rust-analyzer.linkedProjects": [
     "./Cargo.toml",
-    "./lr_table/Cargo.toml"
+    "./lr_table/Cargo.toml",
+    "./parser_generator_impl/Cargo.toml"
   ],
   "[rust]": {
     "editor.defaultFormatter": "rust-lang.rust-analyzer",

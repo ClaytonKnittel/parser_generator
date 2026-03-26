@@ -11,7 +11,7 @@ pub struct Ident {
 
 impl Ident {
   pub fn make_syn_ident(&self) -> syn::Ident {
-    syn::Ident::new(&self.name, self.meta.span2())
+    syn::Ident::new(&self.name, *self.meta.span())
   }
 
   pub fn name(&self) -> &str {

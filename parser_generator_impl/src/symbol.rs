@@ -4,11 +4,11 @@ use std::fmt::{Display, Formatter};
 use crate::error::{ParserGeneratorError, ParserGeneratorResult};
 
 fn is_leading_ident_char(c: char) -> bool {
-  return char::is_alphabetic(c) || c == '_';
+  char::is_alphabetic(c) || c == '_'
 }
 
 fn is_ident_char(c: char) -> bool {
-  return char::is_alphanumeric(c) || c == '_';
+  char::is_alphanumeric(c) || c == '_'
 }
 
 fn string_is_identifier(string: &str) -> bool {
@@ -33,16 +33,8 @@ impl SymbolMeta {
     &self.span
   }
 
-  pub fn span2(&self) -> proc_macro2::Span {
-    self.span.into()
-  }
-
   pub fn tokens(&self) -> &TokenStream {
     &self.tokens
-  }
-
-  pub fn tokens2(&self) -> proc_macro2::TokenStream {
-    self.tokens.clone().into()
   }
 
   pub fn merge(&mut self, other: &Self) -> ParserGeneratorResult {
@@ -56,7 +48,7 @@ impl SymbolMeta {
   }
 
   pub fn make_err(&self, message: impl Into<String>) -> ParserGeneratorError {
-    ParserGeneratorError::new(message, self.span.clone())
+    ParserGeneratorError::new(message, self.span)
   }
 }
 
@@ -181,7 +173,7 @@ impl Symbol {
         format!(
           "Identifier \"{ident_str}\" is not alphanumeric/_ with a non-numeric leading character"
         ),
-        ident.span().into(),
+        ident.span(),
       ))
     }
   }
@@ -190,12 +182,12 @@ impl Symbol {
     Self::verify_ident_spelling(&ident)?;
     Ok(Self {
       sym: SymbolT::Ident(ident.to_string()),
-      meta: SymbolMeta::new(ident.span().into(), tokens),
+      meta: SymbolMeta::new(ident.span(), tokens),
     })
   }
 
   fn from_literal(literal: proc_macro2::Literal, tokens: TokenTree) -> ParserGeneratorResult<Self> {
-    let meta = SymbolMeta::new(literal.span().into(), tokens);
+    let meta = SymbolMeta::new(literal.span(), tokens);
 
     let literal_str = literal.to_string();
     if literal_str.starts_with('\'') {
@@ -234,7 +226,9 @@ impl Display for Symbol {
   }
 }
 
+#[derive(Default)]
 enum PunctBuilder {
+  #[default]
   Empty,
   PrevWasEq(SymbolMeta),
   PrevWasColon(SymbolMeta),
@@ -246,7 +240,7 @@ impl PunctBuilder {
     punct: proc_macro2::Punct,
     tokens: TokenTree,
   ) -> ParserGeneratorResult<Option<Symbol>> {
-    let meta = SymbolMeta::new(punct.span().into(), tokens);
+    let meta = SymbolMeta::new(punct.span(), tokens);
 
     Ok(match self {
       Self::Empty => match punct.as_char() {
@@ -300,12 +294,6 @@ impl PunctBuilder {
   }
 }
 
-impl Default for PunctBuilder {
-  fn default() -> Self {
-    Self::Empty
-  }
-}
-
 #[derive(Default)]
 struct SymbolBuilder {
   punct_builder: PunctBuilder,
@@ -330,6 +318,5 @@ pub fn tokenize_from_stream(
     .scan(SymbolBuilder::default(), |symbol_builder, tokens| {
       Some(symbol_builder.consume_next_token(tokens))
     })
-    .map(Result::transpose)
-    .flatten()
+    .filter_map(Result::transpose)
 }

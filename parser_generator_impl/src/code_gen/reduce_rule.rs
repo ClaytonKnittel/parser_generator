@@ -88,6 +88,10 @@ pub fn bind_production_nodes_to_locals(
   let mut tokens = TokenStream::new();
 
   for node_index in (0..rule_len).rev() {
+    if rule.rule()[node_index].is_epsilon() {
+      continue;
+    }
+
     tokens.extend(bind_production_node(
       node_index,
       states.iter().cloned(),
@@ -133,14 +137,17 @@ pub fn apply_goto(
     let goto = grammar_info
       .lr_table()
       .get_goto(state, production_label)
-      .unwrap();
+      .expect("Missing expected goto action for label");
     goto_map.entry(goto.state()).or_default().push(state);
   }
 
   let constructor = build_constructor(rule_applied, grammar_info)?;
 
   if goto_map.len() == 1 {
-    let goto_state = goto_map.into_keys().next().unwrap();
+    let goto_state = goto_map
+      .into_keys()
+      .next()
+      .expect("Goto map was just verified to be nonempty...");
     let next_state = qualified_enum_variant_name(goto_state, grammar_info);
     Ok(quote! {
       state.push(#next_state(#constructor));

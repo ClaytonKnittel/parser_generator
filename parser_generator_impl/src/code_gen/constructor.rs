@@ -87,7 +87,11 @@ impl SubstitutionMap {
     Ok(index)
   }
 
-  fn literal_to_index(&self, literal: &proc_macro2::Literal) -> ParserGeneratorResult<usize> {
+  fn literal_to_index(
+    &self,
+    literal: &proc_macro2::Literal,
+    rule: &[ProductionNode],
+  ) -> ParserGeneratorResult<usize> {
     let index = literal
       .to_string()
       .parse::<usize>()
@@ -101,6 +105,11 @@ impl SubstitutionMap {
         ),
         literal.span(),
       ));
+    } else if rule[index].is_epsilon() {
+      return Err(ParserGeneratorError::new(
+        format!("Index {} refers to `!` which matches nothing", index),
+        literal.span(),
+      ));
     }
 
     Ok(index)
@@ -109,11 +118,12 @@ impl SubstitutionMap {
   fn substitute_at(
     &self,
     iter: &mut impl Iterator<Item = TokenTree>,
+    rule: &[ProductionNode],
     rule_span: Span,
   ) -> ParserGeneratorResult<impl Into<TokenTree>> {
     let index = match iter.next() {
       Some(TokenTree::Ident(ident)) => self.lookup_label(&ident)?,
-      Some(TokenTree::Literal(literal)) => self.literal_to_index(&literal)?,
+      Some(TokenTree::Literal(literal)) => self.literal_to_index(&literal, rule)?,
       _ => {
         return Err(ParserGeneratorError::new(
           "`#` must be followed by an identifier or index",
@@ -125,7 +135,7 @@ impl SubstitutionMap {
     Ok(bound_variable_ident(index))
   }
 
-  fn substitute_vars(&self, stream: TokenStream) -> TokenStreamResult {
+  fn substitute_vars(&self, stream: TokenStream, rule: &[ProductionNode]) -> TokenStreamResult {
     let mut iter = stream.into_iter();
     let mut res = TokenStream::new();
 
@@ -136,12 +146,12 @@ impl SubstitutionMap {
         TokenTree::Group(group) => {
           res.append(proc_macro2::Group::new(
             group.delimiter(),
-            self.substitute_vars(group.stream())?,
+            self.substitute_vars(group.stream(), rule)?,
           ));
         }
         TokenTree::Punct(punct) => {
           if punct.spacing() == Spacing::Alone && punct.as_char() == '#' {
-            res.append(self.substitute_at(&mut iter, rule_span)?);
+            res.append(self.substitute_at(&mut iter, rule, rule_span)?);
           } else {
             res.append(TokenTree::Punct(punct));
           }
@@ -170,7 +180,7 @@ fn rewrite_provided_constructor(
 
   let body = proc_macro2::Group::new(
     Delimiter::Brace,
-    subsitution_map.substitute_vars(constructor.body().stream())?,
+    subsitution_map.substitute_vars(constructor.body().stream(), rule)?,
   );
 
   Ok(quote! { #body })
@@ -185,7 +195,7 @@ pub fn build_constructor(
     Some(constructor) => rewrite_provided_constructor(rule.rule(), constructor),
     None => {
       if rule.return_type().is_some() {
-        generate_default_constructor(&rule)
+        generate_default_constructor(rule)
       } else {
         Ok(quote! { () })
       }

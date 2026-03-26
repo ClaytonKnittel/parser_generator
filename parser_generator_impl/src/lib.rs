@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+
 extern crate proc_macro;
 mod annotated_grammar;
 mod code_gen;
@@ -12,7 +14,7 @@ use proc_macro_error::proc_macro_error;
 
 use crate::{
   annotated_grammar::parse_grammar::parse_grammar,
-  code_gen::code_gen::generate_parser,
+  code_gen::generate_parser,
   error::{ParserGeneratorError, ParserGeneratorResult},
   symbol::tokenize_from_stream,
   symbol_stream::SymbolStreamImpl,

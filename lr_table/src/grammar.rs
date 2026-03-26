@@ -11,6 +11,12 @@ pub enum ProductionNode<T, L> {
   Production(L),
 }
 
+impl<T, L> ProductionNode<T, L> {
+  pub fn is_epsilon(&self) -> bool {
+    matches!(self, ProductionNode::Terminal(AugmentedVocabToken::Epsilon))
+  }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProductionRule<T, L> {
   symbol: L,
@@ -31,10 +37,7 @@ impl<T, L> ProductionRule<T, L> {
   }
 
   pub fn rules_excluding_epsilon(&self) -> impl Iterator<Item = &ProductionNode<T, L>> {
-    self
-      .rule()
-      .iter()
-      .filter(|node| !matches!(node, ProductionNode::Terminal(AugmentedVocabToken::Epsilon)))
+    self.rule().iter().filter(|node| node.is_epsilon())
   }
 }
 

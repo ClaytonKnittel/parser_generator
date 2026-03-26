@@ -10,6 +10,12 @@ pub enum TerminalSymbol {
   Epsilon,
 }
 
+impl TerminalSymbol {
+  pub fn is_epsilon(&self) -> bool {
+    matches!(self, Self::Epsilon)
+  }
+}
+
 impl From<TerminalSymbol> for lr_table::vocabulary::AugmentedVocabToken<String> {
   fn from(value: TerminalSymbol) -> Self {
     match value {

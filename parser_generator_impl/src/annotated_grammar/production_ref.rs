@@ -29,7 +29,7 @@ impl ProductionRef {
     let mut meta = expect_symbol_with(
       stream,
       |sym| sym.is_op(Operator::BeginProd),
-      format!("Expected production name to begin with '<'."),
+      "Expected production name to begin with '<'.",
     )?;
 
     let prod_name_sym = stream.expect_symbol()?;
@@ -42,7 +42,7 @@ impl ProductionRef {
     let end_meta = expect_symbol_with(
       stream,
       |sym| sym.is_op(Operator::EndProd),
-      format!("Expected production name to end with '>'."),
+      "Expected production name to end with '>'.",
     )?;
     meta.merge(&end_meta)?;
 
