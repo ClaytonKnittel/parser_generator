@@ -30,7 +30,6 @@ impl<T, L> ProductionRule<T, L> {
     &self.rule
   }
 
-  #[cfg(debug_assertions)]
   pub fn rules_excluding_epsilon(&self) -> impl Iterator<Item = &ProductionNode<T, L>> {
     self
       .rule()
