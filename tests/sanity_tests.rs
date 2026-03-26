@@ -25,8 +25,7 @@ fn test_simple_incorrect_input() {
 
 #[gtest]
 fn test_simple_extra_input() {
-  todo!();
-  expect_that!(TestSimple::parse("ab".chars()), ok(()));
+  expect_that!(TestSimple::parse("ab".chars()), err(anything()));
 }
 
 parser_generator_impl::grammar! {
