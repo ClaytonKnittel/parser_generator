@@ -72,26 +72,53 @@ impl IntoIterator for InstructionList {
   }
 }
 
+enum BrainFckOp {
+  IncTape,
+  DecTape,
+  IncByte,
+  DecByte,
+  Output,
+  Input,
+  OpenBracket,
+  CloseBracket,
+}
+
+impl BrainFckOp {
+  fn from_char(c: char) -> Self {
+    match c {
+      '>' => BrainFckOp::IncTape,
+      '<' => BrainFckOp::DecTape,
+      '+' => BrainFckOp::IncByte,
+      '-' => BrainFckOp::DecByte,
+      '.' => BrainFckOp::Output,
+      ',' => BrainFckOp::Input,
+      '[' => BrainFckOp::OpenBracket,
+      ']' => BrainFckOp::CloseBracket,
+      _ => panic!("Unrecognized character: \"{c}\""),
+    }
+  }
+}
+
 grammar! {
   name: BrainFck;
-  terminal: char;
+  enum_terminal: BrainFckOp;
 
   <root>: InstructionList => <instruction_list>;
   <instruction_list>: InstructionList =>
     <instruction> { InstructionList { instructions: vec![#instruction] } } |
     <instruction_list> <instruction> { #instruction_list.with(#instruction) } |
-    <instruction_list> '[' <instruction_list> ']' {
+    <instruction_list> OpenBracket <instruction_list> CloseBracket {
       #0.push(Instruction::OpenBracket);
       #0.extend(#2);
       #0.push(Instruction::CloseBracket);
       #0
     };
-  <instruction>: Instruction => '>' { Instruction::IncTape };
-  <instruction>: Instruction => '<' { Instruction::DecTape };
-  <instruction>: Instruction => '+' { Instruction::IncByte };
-  <instruction>: Instruction => '-' { Instruction::DecByte };
-  <instruction>: Instruction => '.' { Instruction::Output };
-  <instruction>: Instruction => ',' { Instruction::Input };
+  <instruction>: Instruction => IncTape { Instruction::IncTape };
+  <instruction>: Instruction => DecTape { Instruction::DecTape };
+  <instruction>: Instruction => IncByte { Instruction::IncByte };
+  <instruction>: Instruction => DecByte { Instruction::DecByte };
+  <instruction>: Instruction => Output { Instruction::Output };
+  <instruction>: Instruction => Input { Instruction::Input };
 }
 
 enum BrainFckError {
@@ -246,7 +273,8 @@ fn count_to_ten() {
      +++++++++[<<.+>.>-]\
      +++++++++[<<->>-]\
      <<.-.>."
-      .chars(),
+      .chars()
+      .map(BrainFckOp::from_char),
   )
   .unwrap();
 
@@ -274,7 +302,8 @@ fn add_two() {
     ",>,\
      [<+>-]\
      <------------------------------------------------."
-      .chars(),
+      .chars()
+      .map(BrainFckOp::from_char),
   )
   .unwrap();
 
