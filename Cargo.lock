@@ -92,7 +92,9 @@ dependencies = [
 name = "parser_generator"
 version = "0.1.0"
 dependencies = [
+ "cknittel-util",
  "googletest",
+ "itertools",
  "parser_generator_impl",
 ]
 

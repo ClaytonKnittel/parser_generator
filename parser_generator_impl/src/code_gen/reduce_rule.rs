@@ -64,7 +64,7 @@ fn bind_production_node(
   let var_ident = bound_variable_ident(node_index);
   let extract_state = extract_state(state_ids, grammar_info);
   quote! {
-    let #var_ident = #extract_state;
+    let mut #var_ident = #extract_state;
   }
 }
 
