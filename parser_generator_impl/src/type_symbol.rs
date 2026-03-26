@@ -13,10 +13,6 @@ pub struct Type {
 }
 
 impl Type {
-  pub fn as_type(&self) -> syn::Type {
-    syn::Type::Verbatim(self.meta.tokens().clone().into())
-  }
-
   pub fn parse(stream: &mut impl SymbolStream) -> ParserGeneratorResult<Self> {
     // Consume everything up to the next `=>` or `;`. The two contexts that
     // types appear in - terminal type declaration and production rule return

@@ -1,7 +1,7 @@
 use crate::{
   annotated_grammar::{
     production_ref::{ProductionRef, ProductionRefName},
-    terminal::{Terminal, TerminalSymbol},
+    terminal::Terminal,
   },
   symbol::{Operator, SymbolMeta, SymbolT},
   symbol_stream::SymbolStream,

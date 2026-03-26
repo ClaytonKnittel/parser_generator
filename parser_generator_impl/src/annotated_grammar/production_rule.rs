@@ -23,6 +23,7 @@ fn maybe_parse_return_type(stream: &mut impl SymbolStream) -> ParserGeneratorRes
 
 pub struct Constructor {
   group: proc_macro2::Group,
+  #[allow(unused)]
   meta: SymbolMeta,
 }
 
