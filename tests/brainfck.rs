@@ -19,6 +19,22 @@ enum Instruction {
   CloseBracket,
 }
 
+impl Instruction {
+  fn from_char(c: char) -> Self {
+    match c {
+      '>' => Self::IncTape,
+      '<' => Self::DecTape,
+      '+' => Self::IncByte,
+      '-' => Self::DecByte,
+      '.' => Self::Output,
+      ',' => Self::Input,
+      '[' => Self::OpenBracket,
+      ']' => Self::CloseBracket,
+      _ => panic!("Unrecognized character: \"{c}\""),
+    }
+  }
+}
+
 #[derive(Clone, Copy, Default)]
 struct InstructionPointer(usize);
 
@@ -72,36 +88,9 @@ impl IntoIterator for InstructionList {
   }
 }
 
-enum BrainFckOp {
-  IncTape,
-  DecTape,
-  IncByte,
-  DecByte,
-  Output,
-  Input,
-  OpenBracket,
-  CloseBracket,
-}
-
-impl BrainFckOp {
-  fn from_char(c: char) -> Self {
-    match c {
-      '>' => BrainFckOp::IncTape,
-      '<' => BrainFckOp::DecTape,
-      '+' => BrainFckOp::IncByte,
-      '-' => BrainFckOp::DecByte,
-      '.' => BrainFckOp::Output,
-      ',' => BrainFckOp::Input,
-      '[' => BrainFckOp::OpenBracket,
-      ']' => BrainFckOp::CloseBracket,
-      _ => panic!("Unrecognized character: \"{c}\""),
-    }
-  }
-}
-
 grammar! {
   name: BrainFck;
-  enum_terminal: BrainFckOp;
+  enum_terminal: Instruction;
 
   <root>: InstructionList => <instruction_list>;
   <instruction_list>: InstructionList =>
@@ -113,12 +102,12 @@ grammar! {
       #0.push(Instruction::CloseBracket);
       #0
     };
-  <instruction>: Instruction => IncTape { Instruction::IncTape };
-  <instruction>: Instruction => DecTape { Instruction::DecTape };
-  <instruction>: Instruction => IncByte { Instruction::IncByte };
-  <instruction>: Instruction => DecByte { Instruction::DecByte };
-  <instruction>: Instruction => Output { Instruction::Output };
-  <instruction>: Instruction => Input { Instruction::Input };
+  <instruction>: Instruction => IncTape;
+  <instruction>: Instruction => DecTape;
+  <instruction>: Instruction => IncByte;
+  <instruction>: Instruction => DecByte;
+  <instruction>: Instruction => Output;
+  <instruction>: Instruction => Input;
 }
 
 enum BrainFckError {
@@ -274,7 +263,7 @@ fn count_to_ten() {
      +++++++++[<<->>-]\
      <<.-.>."
       .chars()
-      .map(BrainFckOp::from_char),
+      .map(Instruction::from_char),
   )
   .unwrap();
 
@@ -303,7 +292,7 @@ fn add_two() {
      [<+>-]\
      <------------------------------------------------."
       .chars()
-      .map(BrainFckOp::from_char),
+      .map(Instruction::from_char),
   )
   .unwrap();
 
