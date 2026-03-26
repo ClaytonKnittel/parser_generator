@@ -4,7 +4,7 @@ use crate::{
   error::LRTableResult,
   grammar::{Grammar, ProductionNode},
   indexed_grammar::{IndexedGrammar, IndexedProductionNode},
-  lr_table::{Action, LRTable, StateId},
+  lr_table::{Action, LRTable},
   vocabulary::AugmentedVocabToken,
 };
 
@@ -13,7 +13,7 @@ pub struct Parser<T, L> {
   lr_table: LRTable<T>,
 }
 
-impl<T: Clone + Debug + Eq + Hash, L: Clone + Debug + Eq + Hash> Parser<T, L> {
+impl<T: Clone + Eq + Hash + ToString, L: Clone + Debug + Eq + Hash> Parser<T, L> {
   pub fn new(grammar: &Grammar<T, L>) -> LRTableResult<Self> {
     let grammar = IndexedGrammar::build(grammar)?;
     let lr_table = LRTable::build(&grammar)?;
@@ -21,12 +21,12 @@ impl<T: Clone + Debug + Eq + Hash, L: Clone + Debug + Eq + Hash> Parser<T, L> {
   }
 }
 
-impl<T: Clone + Debug + Eq + Hash, L> Parser<T, L> {
+impl<T: Clone + Eq + Hash, L> Parser<T, L> {
   pub fn parse_stream<U: Borrow<T>>(&self, stream: impl IntoIterator<Item = U>) -> bool
   where
     T: Debug + ToString,
   {
-    let mut states = vec![StateId::default()];
+    let mut states = vec![self.lr_table.root_state()];
     let mut nodes = Vec::<IndexedProductionNode>::new();
     let mut stream = stream.into_iter().peekable();
 
@@ -225,5 +225,32 @@ mod tests {
     expect_false!(parser.parse_stream(b"ab"));
     expect_false!(parser.parse_stream(b"apbx"));
     expect_false!(parser.parse_stream(b"xapb"));
+  }
+
+  #[gtest]
+  fn test_multiple_ways_to_resolve_same_rule() {
+    let grammar = Grammar::from_grammar_str(
+      r#"S -> A
+         A -> a C
+         A -> B
+         B -> C
+         B -> x b
+         C -> x c"#,
+    )
+    .unwrap();
+    let parser = Parser::new(&grammar).unwrap();
+
+    expect_true!(parser.parse_stream(b"axc"));
+    expect_true!(parser.parse_stream(b"xb"));
+    expect_true!(parser.parse_stream(b"xc"));
+
+    expect_false!(parser.parse_stream(b""));
+    expect_false!(parser.parse_stream(b"axb"));
+    expect_false!(parser.parse_stream(b"a"));
+    expect_false!(parser.parse_stream(b"b"));
+    expect_false!(parser.parse_stream(b"c"));
+    expect_false!(parser.parse_stream(b"ax"));
+    expect_false!(parser.parse_stream(b"ab"));
+    expect_false!(parser.parse_stream(b"ac"));
   }
 }

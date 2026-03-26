@@ -1,32 +1,38 @@
-#![feature(get_mut_unchecked, proc_macro_span)]
-
 extern crate proc_macro;
+mod annotated_grammar;
 mod code_gen;
-mod lr_table_builder;
-mod production;
+mod error;
+mod ident;
 mod symbol;
+mod symbol_stream;
+mod type_symbol;
 mod util;
 
-use lr_table_builder::LRTable;
-use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
-use production::Grammar;
-// use quote::{quote, quote_spanned};
-use symbol::Symbol;
+
+use crate::{
+  annotated_grammar::parse_grammar::parse_grammar,
+  code_gen::code_gen::generate_parser,
+  error::{ParserGeneratorError, ParserGeneratorResult},
+  symbol::tokenize_from_stream,
+  symbol_stream::SymbolStreamImpl,
+};
+
+fn build_grammar(
+  tokens: proc_macro::TokenStream,
+) -> ParserGeneratorResult<proc_macro::TokenStream> {
+  let tokens = proc_macro2::TokenStream::from(tokens);
+  let list = tokenize_from_stream(tokens);
+  let grammar_info = parse_grammar(SymbolStreamImpl::new(list))?;
+  generate_parser(&grammar_info).map(proc_macro::TokenStream::from)
+}
 
 #[proc_macro_error]
 #[proc_macro]
 /// Constructs an LR(1) parser based on the definition provided.
-pub fn grammar_def(tokens: TokenStream) -> TokenStream {
-  // eprintln!("tokenizing");
-  let list = Symbol::from_stream(tokens);
-  // eprintln!("parsing");
-  let grammar = Grammar::from(list);
-  // eprintln!("gen lr table");
-  let lr_table = LRTable::from_grammar(&grammar).unwrap_or_else(|err| err.raise());
-  // eprintln!("code gen");
-  // eprintln!("{}", lr_table);
-  let syn_tree = code_gen::to_match_loop(&grammar, &lr_table).unwrap_or_else(|err| err.raise());
-  // eprintln!("done");
-  return syn_tree.into();
+pub fn grammar(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream {
+  match build_grammar(tokens) {
+    Ok(tokens) => tokens,
+    Err(err) => err.abort(),
+  }
 }

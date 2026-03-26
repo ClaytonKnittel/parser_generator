@@ -18,6 +18,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
+name = "cknittel-util"
+version = "0.1.0"
+source = "git+https://github.com/ClaytonKnittel/cknittel-util.git?rev=9133f2f8718f3bfaeb82a6521bdc4e1457a45885#9133f2f8718f3bfaeb82a6521bdc4e1457a45885"
+dependencies = [
+ "proc-macro-util",
+]
+
+[[package]]
+name = "either"
+version = "1.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
+
+[[package]]
 name = "googletest"
 version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -41,6 +55,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "lr_table"
+version = "0.1.0"
+dependencies = [
+ "cknittel-util",
+ "googletest",
+ "itertools",
+ "num-traits",
+]
+
+[[package]]
 name = "memchr"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -59,7 +92,9 @@ dependencies = [
 name = "parser_generator"
 version = "0.1.0"
 dependencies = [
+ "cknittel-util",
  "googletest",
+ "itertools",
  "parser_generator_impl",
 ]
 
@@ -67,6 +102,9 @@ dependencies = [
 name = "parser_generator_impl"
 version = "0.1.0"
 dependencies = [
+ "cknittel-util",
+ "itertools",
+ "lr_table",
  "proc-macro-error",
  "proc-macro2",
  "quote",
@@ -97,10 +135,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc-macro-util"
+version = "0.1.0"
+source = "git+https://github.com/ClaytonKnittel/cknittel-util.git?rev=9133f2f8718f3bfaeb82a6521bdc4e1457a45885#9133f2f8718f3bfaeb82a6521bdc4e1457a45885"
+dependencies = [
+ "proc-macro2",
+]
+
+[[package]]
 name = "proc-macro2"
-version = "1.0.95"
+version = "1.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02b3e5e68a3a1a02aad3ec490a98007cbc13c37cbe84a3cd7b8e406d76e7f778"
+checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
 ]

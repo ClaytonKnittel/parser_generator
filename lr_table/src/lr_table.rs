@@ -8,7 +8,7 @@ use itertools::{IntoChunks, Itertools};
 use crate::{
   bit_set::BitSet,
   closure::partition_closure_by_next_node,
-  error::LRTableResult,
+  error::{LRTableError, LRTableResult},
   first_map::FirstTable,
   fixed_map::{Label, SparseFixedSizeMap},
   grammar::ProductionNode,
@@ -19,7 +19,7 @@ use crate::{
   vocabulary::{AugmentedTokenId, AugmentedVocabToken},
 };
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct StateId(usize);
 
 impl StateId {
@@ -101,7 +101,7 @@ impl LRTableEntryBuilder {
 
   /// Builds the LRTableEntry for the state given the partitions of a kernel +
   /// closure, which is the set of actions to be taken from this state.
-  fn try_build_from_partitions<T, L>(
+  fn try_build_from_partitions<T: Clone + ToString, L>(
     partitions: SparsePartitionMap<Vec<Position>>,
     kernel_table: &mut KernelTable,
     grammar: &IndexedGrammar<T, L>,
@@ -128,7 +128,7 @@ impl LRTableEntryBuilder {
             builder.add_accept(AugmentedVocabToken::EndOfStream)?;
           } else {
             for follow_token in position.follow_set().iter() {
-              builder.add_reduce_action(follow_token, position.rule())?;
+              builder.add_reduce_action(follow_token, position.rule(), grammar)?;
             }
           }
         }
@@ -167,12 +167,28 @@ impl LRTableEntryBuilder {
       .try_insert(&token, Action::Shift { next_state })
   }
 
-  fn add_reduce_action(
+  fn add_reduce_action<T: Clone + ToString, L>(
     &mut self,
     token: AugmentedTokenId,
     rule: ProductionRuleId,
+    grammar: &IndexedGrammar<T, L>,
   ) -> LRTableResult {
-    self.actions.try_insert(&token, Action::Reduce { rule })
+    self
+      .actions
+      .try_insert(&token, Action::Reduce { rule })
+      .map_err(|_| {
+        let existing_action = self.actions.get(&token).unwrap();
+        let lookahead = grammar.vocab().id_to_token(token).to_string();
+        match existing_action {
+          Action::Reduce { rule: other_rule } => {
+            LRTableError::reduce_conflict(rule, *other_rule, lookahead)
+          }
+          Action::Shift { .. } => LRTableError::shift_reduce_conflict(rule, lookahead),
+          Action::Accept => {
+            LRTableError::reduce_conflict(rule, grammar.root_production_rule(), lookahead)
+          }
+        }
+      })
   }
 
   fn add_goto_action(&mut self, label: ProductionLabel, next_state: StateId) -> LRTableResult {
@@ -216,7 +232,10 @@ pub struct LRTable<T> {
 impl<T> LRTable<T> {
   fn generate_actions<L>(
     grammar: &IndexedGrammar<T, L>,
-  ) -> impl Iterator<Item = LRTableResult<LRTableEntryBuilder>> {
+  ) -> impl Iterator<Item = LRTableResult<LRTableEntryBuilder>>
+  where
+    T: Clone + ToString,
+  {
     let first_set = FirstTable::build_from_grammar(grammar);
     let mut kernel_table = KernelTable::new();
 
@@ -252,7 +271,7 @@ impl<T> LRTable<T> {
 
   pub fn build<L>(grammar: &IndexedGrammar<T, L>) -> LRTableResult<Self>
   where
-    T: Clone,
+    T: Clone + ToString,
   {
     Self::generate_actions(grammar)
       .map(|entry_builder| entry_builder.map(|entry_builder| entry_builder.into_vecs(grammar)))
@@ -272,6 +291,10 @@ impl<T> LRTable<T> {
           })
         },
       )
+  }
+
+  pub fn root_state(&self) -> StateId {
+    StateId(0)
   }
 
   pub fn get_action(&self, state: StateId, token: AugmentedTokenId) -> Option<Action> {

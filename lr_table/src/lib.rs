@@ -8,6 +8,7 @@ pub mod indexed_grammar;
 mod iter_ones;
 mod kernel;
 mod kernel_table;
+pub mod lr_state_map;
 pub mod lr_table;
 pub mod parse_simulator;
 mod position;

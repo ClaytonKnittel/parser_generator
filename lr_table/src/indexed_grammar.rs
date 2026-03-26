@@ -1,9 +1,10 @@
 use std::{collections::HashMap, fmt::Debug, hash::Hash};
 
+use cknittel_util::iter::CollectResult;
 use itertools::Itertools;
 
 use crate::{
-  error::{LRTableResult, grammar_error},
+  error::{LRTableError, LRTableResult, grammar_error},
   fixed_map::{FixedSizeMap, FixedSizeSet, Label, SparseFixedSizeMap},
   grammar::{Grammar, ProductionNode, ProductionRule, ProductionRuleIndex},
   vocabulary::{AugmentedTokenId, AugmentedVocab, AugmentedVocabToken, TokenId, VocabularyBuilder},
@@ -12,6 +13,12 @@ use crate::{
 /// Each production label is given a unique ID densely packed starting from 0.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ProductionLabel(usize);
+
+impl ProductionLabel {
+  fn root() -> Self {
+    Self(0)
+  }
+}
 
 /// Each particular instance of a production rule is given a unique ID densely
 /// packed starting from 0. This is just the index into
@@ -192,7 +199,8 @@ impl<T: Clone + Eq + Hash, L: Clone + Debug + Eq + Hash> IndexedGrammar<T, L> {
     }
 
     let root_production_label = root_production.symbol().clone();
-    let mut label_map = HashMap::from_iter([(root_production_label.clone(), ProductionLabel(0))]);
+    let mut label_map =
+      HashMap::from_iter([(root_production_label.clone(), ProductionLabel::root())]);
     let mut label_groups = vec![LabelGroup {
       orig_label: root_production_label,
       rules: vec![(root_production, root_index)],
@@ -239,7 +247,7 @@ impl<T: Clone + Eq + Hash, L: Clone + Debug + Eq + Hash> IndexedGrammar<T, L> {
     let rules = label_groups
       .iter()
       .enumerate()
-      .flat_map(|(index, group)| {
+      .map(|(index, group)| {
         let label = ProductionLabel(index);
         let label_map = &label_map;
         let vocab_builder = &mut vocab_builder;
@@ -247,26 +255,31 @@ impl<T: Clone + Eq + Hash, L: Clone + Debug + Eq + Hash> IndexedGrammar<T, L> {
           .rules
           .iter()
           .map(move |(production, original_index)| {
-            IndexedProductionRule::new(
+            Ok(IndexedProductionRule::new(
               label,
               production
                 .rule()
                 .iter()
-                .map(|node| match node {
-                  ProductionNode::Production(user_label) => {
-                    ProductionNode::Production(*label_map.get(user_label).unwrap())
-                  }
-                  ProductionNode::Terminal(terminal) => {
-                    ProductionNode::Terminal(vocab_builder.get_id_or_insert(terminal.clone()))
-                  }
+                .map(|node| {
+                  Ok(match node {
+                    ProductionNode::Production(user_label) => {
+                      ProductionNode::Production(*label_map.get(user_label).ok_or_else(|| {
+                        LRTableError::unrecognized_label(format!("{user_label:?}"))
+                      })?)
+                    }
+                    ProductionNode::Terminal(terminal) => {
+                      ProductionNode::Terminal(vocab_builder.get_id_or_insert(terminal.clone()))
+                    }
+                  })
                 })
-                .collect(),
+                .collect_result_vec()?,
               *original_index,
-            )
+            ))
           })
-          .collect_vec()
+          .collect_result_vec()
       })
-      .collect_vec();
+      .collect_result_vec()?
+      .concat();
 
     let rule_metadata = label_groups
       .into_iter()
@@ -311,8 +324,8 @@ impl<T: Clone + Eq + Hash, L: Clone + Debug + Eq + Hash> IndexedGrammar<T, L> {
 impl<T: Clone + Eq + Hash, L: Debug> IndexedGrammar<T, L> {
   fn verify_connected(&self, label_map: &HashMap<L, ProductionLabel>) -> LRTableResult {
     let mut rule_set = self.new_production_label_set();
-    let mut labels_to_explore = vec![ProductionLabel(0)];
-    rule_set.set(&ProductionLabel(0));
+    let mut labels_to_explore = vec![ProductionLabel::root()];
+    rule_set.set(&ProductionLabel::root());
 
     while let Some(label) = labels_to_explore.pop() {
       debug_assert!(rule_set.has(&label));
@@ -349,7 +362,7 @@ impl<T, L> IndexedGrammar<T, L> {
   }
 
   pub fn root_production_label(&self) -> ProductionLabel {
-    ProductionLabel(0)
+    ProductionLabel::root()
   }
 
   pub fn root_production_rule(&self) -> ProductionRuleId {
@@ -360,6 +373,7 @@ impl<T, L> IndexedGrammar<T, L> {
     (0..self.labels_count()).map(ProductionLabel)
   }
 
+  /// The number of unique production labels.
   pub fn labels_count(&self) -> usize {
     self.rule_metadata.len()
   }

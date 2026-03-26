@@ -8,7 +8,15 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
+cknittel-util = { git = "https://github.com/ClaytonKnittel/cknittel-util.git", rev = "9133f2f8718f3bfaeb82a6521bdc4e1457a45885", features = [
+  "macro",
+] }
+itertools = "0.14.0"
+lr_table = { path = "../lr_table" }
 proc-macro-error = { version = "1", default-features = false }
-proc-macro2 = "1.0"
+proc-macro2 = "1.0.106"
 quote = "1.0"
 syn = { version = "1.0", features = ["full", "extra-traits"] }
+
+[dev-dependencies]
+googletest = "0.14.2"
