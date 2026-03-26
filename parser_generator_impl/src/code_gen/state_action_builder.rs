@@ -1,12 +1,15 @@
-use cknittel_util::proc_macro_util::collect_tokens::TryCollectTokens;
+use std::collections::HashMap;
+
+use cknittel_util::{iter::JoinWith, proc_macro_util::collect_tokens::TryCollectTokens};
 use itertools::Itertools;
 use lr_table::{
   grammar::ProductionRuleIndex,
+  indexed_grammar::ProductionRuleId,
   lr_state_map::LRStateMap,
   lr_table::{Action, StateId},
   vocabulary::AugmentedVocabToken,
 };
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
 
 use crate::{
@@ -47,58 +50,179 @@ fn token_matcher(
   })
 }
 
-fn apply_action(
-  token: &AugmentedVocabToken<String>,
-  action: &Action,
-  state_id: StateId,
-  grammar_info: &GrammarInfo,
-  state_map: &LRStateMap,
-) -> TokenStreamResult {
-  Ok(match action {
-    Action::Shift { next_state } => {
-      let next_state_name = qualified_enum_variant_name(*next_state, grammar_info);
-      let token = grammar_info
-        .terminal_type()
-        .try_build_token(token.token().unwrap())?;
-      quote! {
-        state.stream_mut().advance();
-        state.push(#next_state_name(#token));
-        Ok(::parser_generator::parser_state::ParserControl::Continue)
+#[derive(Default)]
+struct CollectLikeActions {
+  reduce_map: HashMap<ProductionRuleId, Vec<AugmentedVocabToken<String>>>,
+  shift_map: Vec<(AugmentedVocabToken<String>, StateId)>,
+  accept: Option<AugmentedVocabToken<String>>,
+}
+
+impl CollectLikeActions {
+  /// Collects all actions from this state into groups which can be processed
+  /// together, which leads to much smaller assembly code compared to simply
+  /// matching on each token and applying some action.
+  fn build_for_state(state_id: StateId, grammar_info: &GrammarInfo) -> Self {
+    let mut action_map = CollectLikeActions::default();
+
+    for (token, action) in grammar_info
+      .lr_table()
+      .state_actions(state_id, grammar_info.grammar())
+    {
+      match action {
+        Action::Shift { next_state } => action_map.shift_map.push((token, *next_state)),
+        Action::Reduce { rule } => action_map.reduce_map.entry(*rule).or_default().push(token),
+        Action::Accept => {
+          debug_assert!(action_map.accept.is_none());
+          action_map.accept = Some(token);
+        }
       }
     }
-    Action::Reduce { rule } => {
-      let rule = grammar_info.grammar().production_rule(*rule);
-      let (extract_vars, next_states) =
-        bind_production_nodes_to_locals(state_id, rule, grammar_info, state_map);
-      let goto = apply_goto(
-        rule.original_index(),
-        *rule.symbol(),
-        next_states,
-        grammar_info,
-      )?;
-      quote! {
-        #extract_vars
-        #goto
-        Ok(::parser_generator::parser_state::ParserControl::Continue)
-      }
-    }
-    Action::Accept => {
-      let root_rule_id = grammar_info.grammar().root_production_rule();
-      let root_rule = grammar_info.grammar().production_rule(root_rule_id);
-      let (extract_vars, next_states) =
-        bind_production_nodes_to_locals(state_id, root_rule, grammar_info, state_map);
-      debug_assert_eq!(
-        next_states.into_iter().collect_vec(),
-        vec![grammar_info.lr_table().root_state()]
-      );
-      let constructor = build_constructor(ProductionRuleIndex(0), grammar_info)?;
-      quote! {
+
+    action_map
+  }
+
+  /// Produces the match arms for tokens which should be shift actions. These
+  /// matches don't return, instead yielding the next state that should be
+  /// pushed to the stack.
+  fn shift_match_and_yield(&self, grammar_info: &GrammarInfo) -> TokenStreamResult {
+    self
+      .shift_map
+      .iter()
+      .map(|(token, next_state)| {
+        let matcher = token_matcher(token, grammar_info)?;
+        let next_state_name = qualified_enum_variant_name(*next_state, grammar_info);
+        let token = grammar_info
+          .terminal_type()
+          .try_build_token(token.token().unwrap())?;
+        Ok(quote! {
+          #matcher => #next_state_name(#token),
+        })
+      })
+      .try_collect_tokens()
+  }
+
+  /// Produces the match arms for tokens which should be reduce acions. These
+  /// matches will always return.
+  ///
+  /// All tokens which reduce using the same rule will be combined into a
+  /// single match conjoined with `|`.
+  fn reduce_match_and_return(
+    &self,
+    state_id: StateId,
+    grammar_info: &GrammarInfo,
+    state_map: &LRStateMap,
+  ) -> TokenStreamResult {
+    self
+      .reduce_map
+      .iter()
+      .map(|(rule, tokens)| {
+        // Generates a matcher for all tokens in this set, e.g.
+        // `token1 | token2 | ...`
+        let match_any_token = tokens
+          .iter()
+          .map(|token| {
+            let matcher = token_matcher(token, grammar_info)?;
+            Ok(quote! {
+              #matcher
+            })
+          })
+          .join_with(|| Ok(quote! { | }))
+          .try_collect_tokens()?;
+
+        let rule = grammar_info.grammar().production_rule(*rule);
+        let (extract_vars, next_states) =
+          bind_production_nodes_to_locals(state_id, rule, grammar_info, state_map);
+        let goto = apply_goto(
+          rule.original_index(),
+          *rule.symbol(),
+          next_states,
+          grammar_info,
+        )?;
+        Ok(quote! {
+          #match_any_token => {
+            #extract_vars
+            #goto
+            return Ok(::parser_generator::parser_state::ParserControl::Continue);
+          }
+        })
+      })
+      .try_collect_tokens()
+  }
+
+  /// Generates an accept matcher, if one is needed, which constructs the final
+  /// result and returns it immediately.
+  fn accept_match_and_return(
+    &self,
+    state_id: StateId,
+    grammar_info: &GrammarInfo,
+    state_map: &LRStateMap,
+  ) -> TokenStreamResult {
+    let Some(accept_token) = &self.accept else {
+      return Ok(TokenStream::new());
+    };
+
+    let matcher = token_matcher(accept_token, grammar_info)?;
+
+    let root_rule_id = grammar_info.grammar().root_production_rule();
+    let root_rule = grammar_info.grammar().production_rule(root_rule_id);
+    let (extract_vars, next_states) =
+      bind_production_nodes_to_locals(state_id, root_rule, grammar_info, state_map);
+    debug_assert_eq!(
+      next_states.into_iter().collect_vec(),
+      vec![grammar_info.lr_table().root_state()]
+    );
+    let constructor = build_constructor(ProductionRuleIndex(0), grammar_info)?;
+    Ok(quote! {
+      #matcher => {
         #extract_vars
         state.verify_empty_stack();
-        Ok(::parser_generator::parser_state::ParserControl::Accept(#constructor))
+        return Ok(::parser_generator::parser_state::ParserControl::Accept(#constructor));
       }
+    })
+  }
+
+  /// Generates code to match the next token from the stream, apply the right
+  /// action, and return the `ParserResult` for this action.
+  fn generate_actions(
+    &self,
+    state_id: StateId,
+    grammar_info: &GrammarInfo,
+    state_map: &LRStateMap,
+  ) -> TokenStreamResult {
+    let reduce_matches = self.reduce_match_and_return(state_id, grammar_info, state_map)?;
+    let accept_matches = self.accept_match_and_return(state_id, grammar_info, state_map)?;
+    let peek_next = quote! {
+      state.stream().peek_next().map(::std::borrow::Borrow::borrow)
+    };
+    let return_err = quote! {
+      return Err(::parser_generator::error::ParserError::new("Failed to parse"))
+    };
+
+    if self.shift_map.is_empty() {
+      Ok(quote! {
+        match #peek_next {
+          #reduce_matches
+          #accept_matches
+          _ => #return_err,
+        }
+      })
+    } else {
+      let shift_matches = self.shift_match_and_yield(grammar_info)?;
+
+      Ok(quote! {
+        let next_state = match #peek_next {
+          #shift_matches
+          #reduce_matches
+          #accept_matches
+          _ => #return_err,
+        };
+
+        state.stream_mut().advance();
+        state.push(next_state);
+        Ok(::parser_generator::parser_state::ParserControl::Continue)
+      })
     }
-  })
+  }
 }
 
 pub fn generate_state_action_function(
@@ -111,17 +235,8 @@ pub fn generate_state_action_function(
   let fn_name = state_action_function_name(state_id);
   let result_type = root_production_type(grammar_info);
 
-  let actions = grammar_info
-    .lr_table()
-    .state_actions(state_id, grammar_info.grammar())
-    .map(|(token, action)| {
-      let matcher = token_matcher(&token, grammar_info)?;
-      let apply_action = apply_action(&token, action, state_id, grammar_info, state_map)?;
-      Ok(quote! {
-        #matcher => { #apply_action }
-      })
-    })
-    .try_collect_tokens()?;
+  let action_map = CollectLikeActions::build_for_state(state_id, grammar_info);
+  let actions = action_map.generate_actions(state_id, grammar_info, state_map)?;
 
   Ok(quote! {
     fn #fn_name<I, B: ::std::borrow::Borrow<#token_type>>(
@@ -132,10 +247,7 @@ pub fn generate_state_action_function(
     where
       I: Iterator<Item = B>,
     {
-      match state.stream().peek_next().map(::std::borrow::Borrow::borrow) {
-        #actions
-        _ => Err(::parser_generator::error::ParserError::new("Failed to parse"))
-      }
+      #actions
     }
   })
 }
