@@ -58,6 +58,32 @@ struct CollectLikeActions {
 }
 
 impl CollectLikeActions {
+  /// Collects all actions from this state into groups which can be processed
+  /// together, which leads to much smaller assembly code compared to simply
+  /// matching on each token and applying some action.
+  fn build_for_state(state_id: StateId, grammar_info: &GrammarInfo) -> Self {
+    let mut action_map = CollectLikeActions::default();
+
+    for (token, action) in grammar_info
+      .lr_table()
+      .state_actions(state_id, grammar_info.grammar())
+    {
+      match action {
+        Action::Shift { next_state } => action_map.shift_map.push((token, *next_state)),
+        Action::Reduce { rule } => action_map.reduce_map.entry(*rule).or_default().push(token),
+        Action::Accept => {
+          debug_assert!(action_map.accept.is_none());
+          action_map.accept = Some(token);
+        }
+      }
+    }
+
+    action_map
+  }
+
+  /// Produces the match arms for tokens which should be shift actions. These
+  /// matches don't return, instead yielding the next state that should be
+  /// pushed to the stack.
   fn shift_match_and_yield(&self, grammar_info: &GrammarInfo) -> TokenStreamResult {
     self
       .shift_map
@@ -75,6 +101,11 @@ impl CollectLikeActions {
       .try_collect_tokens()
   }
 
+  /// Produces the match arms for tokens which should be reduce acions. These
+  /// matches will always return.
+  ///
+  /// All tokens which reduce using the same rule will be combined into a
+  /// single match conjoined with `|`.
   fn reduce_match_and_return(
     &self,
     state_id: StateId,
@@ -85,6 +116,8 @@ impl CollectLikeActions {
       .reduce_map
       .iter()
       .map(|(rule, tokens)| {
+        // Generates a matcher for all tokens in this set, e.g.
+        // `token1 | token2 | ...`
         let match_any_token = tokens
           .iter()
           .map(|token| {
@@ -116,6 +149,8 @@ impl CollectLikeActions {
       .try_collect_tokens()
   }
 
+  /// Generates an accept matcher, if one is needed, which constructs the final
+  /// result and returns it immediately.
   fn accept_match_and_return(
     &self,
     state_id: StateId,
@@ -146,6 +181,8 @@ impl CollectLikeActions {
     })
   }
 
+  /// Generates code to match the next token from the stream, apply the right
+  /// action, and return the `ParserResult` for this action.
   fn generate_actions(
     &self,
     state_id: StateId,
@@ -154,7 +191,9 @@ impl CollectLikeActions {
   ) -> TokenStreamResult {
     let reduce_matches = self.reduce_match_and_return(state_id, grammar_info, state_map)?;
     let accept_matches = self.accept_match_and_return(state_id, grammar_info, state_map)?;
-    let peek_next = quote! { state.stream().peek_next().map(::std::borrow::Borrow::borrow) };
+    let peek_next = quote! {
+      state.stream().peek_next().map(::std::borrow::Borrow::borrow)
+    };
     let return_err = quote! {
       return Err(::parser_generator::error::ParserError::new("Failed to parse"))
     };
@@ -186,26 +225,6 @@ impl CollectLikeActions {
   }
 }
 
-fn collect_like_actions(state_id: StateId, grammar_info: &GrammarInfo) -> CollectLikeActions {
-  let mut action_map = CollectLikeActions::default();
-
-  for (token, action) in grammar_info
-    .lr_table()
-    .state_actions(state_id, grammar_info.grammar())
-  {
-    match action {
-      Action::Shift { next_state } => action_map.shift_map.push((token, *next_state)),
-      Action::Reduce { rule } => action_map.reduce_map.entry(*rule).or_default().push(token),
-      Action::Accept => {
-        debug_assert!(action_map.accept.is_none());
-        action_map.accept = Some(token);
-      }
-    }
-  }
-
-  action_map
-}
-
 pub fn generate_state_action_function(
   state_id: StateId,
   grammar_info: &GrammarInfo,
@@ -216,7 +235,7 @@ pub fn generate_state_action_function(
   let fn_name = state_action_function_name(state_id);
   let result_type = root_production_type(grammar_info);
 
-  let action_map = collect_like_actions(state_id, grammar_info);
+  let action_map = CollectLikeActions::build_for_state(state_id, grammar_info);
   let actions = action_map.generate_actions(state_id, grammar_info, state_map)?;
 
   Ok(quote! {
