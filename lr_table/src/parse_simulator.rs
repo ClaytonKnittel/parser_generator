@@ -13,7 +13,7 @@ pub struct Parser<T, L> {
   lr_table: LRTable<T>,
 }
 
-impl<T: Clone + Eq + Hash, L: Clone + Debug + Eq + Hash> Parser<T, L> {
+impl<T: Clone + Eq + Hash + ToString, L: Clone + Debug + Eq + Hash> Parser<T, L> {
   pub fn new(grammar: &Grammar<T, L>) -> LRTableResult<Self> {
     let grammar = IndexedGrammar::build(grammar)?;
     let lr_table = LRTable::build(&grammar)?;

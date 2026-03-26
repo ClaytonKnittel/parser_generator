@@ -2,7 +2,6 @@ use std::{
   collections::{HashMap, hash_map::Entry},
   fmt::{Debug, Display},
   hash::Hash,
-  hint::unreachable_unchecked,
 };
 
 use itertools::Itertools;
@@ -66,10 +65,10 @@ impl<T> From<T> for AugmentedVocabToken<T> {
   }
 }
 
-impl<T: Display> Display for AugmentedVocabToken<T> {
+impl<T: ToString> Display for AugmentedVocabToken<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      Self::Token(t) => write!(f, "{t}"),
+      Self::Token(t) => write!(f, "{}", t.to_string()),
       Self::Epsilon => write!(f, "ε"),
       Self::EndOfStream => write!(f, "$"),
     }
