@@ -37,7 +37,7 @@ impl<T, L> ProductionRule<T, L> {
   }
 
   pub fn rules_excluding_epsilon(&self) -> impl Iterator<Item = &ProductionNode<T, L>> {
-    self.rule().iter().filter(|node| node.is_epsilon())
+    self.rule().iter().filter(|node| !node.is_epsilon())
   }
 }
 
