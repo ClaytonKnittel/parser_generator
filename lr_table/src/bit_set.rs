@@ -59,10 +59,11 @@ impl BitSet {
   pub fn full(&self) -> bool {
     if self.len.is_multiple_of(u64::BITS as usize) {
       self.bits.iter().all(|bitv| *bitv == u64::MAX)
-    } else {
-      let (&last, rest) = self.bits.split_last().unwrap();
+    } else if let Some((&last, rest)) = self.bits.split_last() {
       rest.iter().all(|bitv| *bitv == u64::MAX)
         && last == ((1u64 << ((self.len as u32) % u64::BITS)) - 1)
+    } else {
+      unreachable!("BitSet::full()")
     }
   }
 }

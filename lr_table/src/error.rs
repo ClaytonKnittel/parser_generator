@@ -49,6 +49,9 @@ pub enum LRTableError {
   LabelAlreadyExists {
     label_id: usize,
   },
+  ShiftConflict {
+    lookahead: String,
+  },
   ShiftReduceConflict {
     rule: ProductionRuleId,
     lookahead: String,
@@ -74,6 +77,10 @@ impl LRTableError {
 
   pub fn label_already_exists(label_id: usize) -> Self {
     Self::LabelAlreadyExists { label_id }
+  }
+
+  pub fn shift_conflict(lookahead: String) -> Self {
+    Self::ShiftConflict { lookahead }
   }
 
   pub fn shift_reduce_conflict(rule: ProductionRuleId, lookahead: String) -> Self {
@@ -114,6 +121,7 @@ impl Display for LRTableError {
       Self::UnrecognizedToken { token } => write!(f, "Unrecognized token \"{token}\""),
       Self::UnrecognizedLabel { label } => write!(f, "Unrecognized label \"{label}\""),
       Self::LabelAlreadyExists { label_id } => write!(f, "Label {label_id} already exists"),
+      Self::ShiftConflict { lookahead } => write!(f, "Shift conflict for lookahead {lookahead}"),
       Self::ShiftReduceConflict { rule, lookahead } => {
         write!(
           f,

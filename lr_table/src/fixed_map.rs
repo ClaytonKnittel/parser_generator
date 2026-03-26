@@ -2,10 +2,7 @@ use std::{fmt::Debug, marker::PhantomData};
 
 use itertools::Itertools;
 
-use crate::{
-  bit_set::BitSet,
-  error::{LRTableError, LRTableResult},
-};
+use crate::bit_set::BitSet;
 
 pub trait Label: Clone {
   fn id(&self) -> usize;
@@ -180,12 +177,13 @@ impl<L: Label, T> SparseFixedSizeMap<L, T> {
     &mut self.map[index].value
   }
 
-  pub fn try_insert(&mut self, label: &L, value: T) -> LRTableResult {
-    if self.maybe_index(label).is_some() {
-      Err(LRTableError::label_already_exists(label.id()))
-    } else {
-      self.insert(label, value);
-      Ok(())
+  pub fn try_insert(&mut self, label: &L, value: T) -> Result<(), &T> {
+    match self.maybe_index(label) {
+      Some(index) => Err(&self.map[index].value),
+      None => {
+        self.insert(label, value);
+        Ok(())
+      }
     }
   }
 

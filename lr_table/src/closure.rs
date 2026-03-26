@@ -63,6 +63,10 @@ fn closure_follow_sets<T, L>(
     let mut changed = false;
 
     for &label in &production_labels {
+      // Allow unwrap because we are only accessing `production_follow_sets`
+      // with elements of `production_labels`, which was derived from
+      // `production_follow_sets`.
+      #[allow(clippy::unwrap_used)]
       for production_rule in grammar.production_rules_for_label(label) {
         let Some(sub_label) = maybe_first_production_label(production_rule.rule()) else {
           continue;
