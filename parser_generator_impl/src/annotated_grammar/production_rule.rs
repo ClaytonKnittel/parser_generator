@@ -99,6 +99,12 @@ impl ProductionRule {
       rule.push(node);
     }
 
+    if rule.len() > 1 && let Some(epsilon) = rule.iter().find(|node| node.is_epsilon()) {
+      return Err(
+        epsilon.meta().make_err("Epsilon may only appear in a rule by itself")
+      );
+    }
+
     Ok(Self {
       name,
       return_type,
