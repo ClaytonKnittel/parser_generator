@@ -116,7 +116,7 @@ impl CollectLikeActions {
     &self,
     state_id: StateId,
     grammar_info: &GrammarInfo,
-    state_map: &LRStateMap,
+    state_map: &LRStateMap<UserDefinedSymbol>,
   ) -> TokenStreamResult {
     self
       .reduce_map
@@ -161,7 +161,7 @@ impl CollectLikeActions {
     &self,
     state_id: StateId,
     grammar_info: &GrammarInfo,
-    state_map: &LRStateMap,
+    state_map: &LRStateMap<UserDefinedSymbol>,
   ) -> TokenStreamResult {
     let Some(accept_token) = &self.accept else {
       return Ok(TokenStream::new());
@@ -193,7 +193,7 @@ impl CollectLikeActions {
     &self,
     state_id: StateId,
     grammar_info: &GrammarInfo,
-    state_map: &LRStateMap,
+    state_map: &LRStateMap<UserDefinedSymbol>,
   ) -> TokenStreamResult {
     let reduce_matches = self.reduce_match_and_return(state_id, grammar_info, state_map)?;
     let accept_matches = self.accept_match_and_return(state_id, grammar_info, state_map)?;
@@ -234,7 +234,7 @@ impl CollectLikeActions {
 pub fn generate_state_action_function(
   state_id: StateId,
   grammar_info: &GrammarInfo,
-  state_map: &LRStateMap,
+  state_map: &LRStateMap<UserDefinedSymbol>,
 ) -> TokenStreamResult {
   let token_type = grammar_info.terminal_type().inner_type();
   let enum_name = enum_name(grammar_info);

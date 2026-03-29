@@ -83,8 +83,12 @@ impl UserDefinedSymbol {
       .map_err(|err| ParserGeneratorError::from_foreign_error(err, Span::call_site()))
   }
 
+  pub fn as_ident(&self) -> proc_macro2::Ident {
+    proc_macro2::Ident::new(&self.name, Span::call_site())
+  }
+
   pub fn as_pattern(&self, mode: PatternMode) -> ParserGeneratorResult<proc_macro2::TokenStream> {
-    let ident = proc_macro2::Ident::new(&self.name, Span::call_site());
+    let ident = self.as_ident();
     Ok(match &self.paren_group {
       ParenGroup::Pattern(pat) => {
         let g = proc_macro2::Group::new(

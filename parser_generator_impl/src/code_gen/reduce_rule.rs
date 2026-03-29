@@ -7,14 +7,17 @@ use cknittel_util::{
 use lr_table::{
   grammar::ProductionRuleIndex,
   indexed_grammar::{IndexedProductionRule, ProductionLabel},
-  lr_state_map::LRStateMap,
+  lr_state_map::{LRStateMap, LRStateType},
   lr_table::StateId,
 };
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 
 use crate::{
-  annotated_grammar::parse_grammar::GrammarInfo,
+  annotated_grammar::{
+    parse_grammar::GrammarInfo,
+    terminal::{PatternMode, UserDefinedSymbol},
+  },
   code_gen::{
     constructor::build_constructor,
     states_enum::{enum_matcher, qualified_enum_variant_name},
@@ -32,6 +35,7 @@ pub fn bound_variable_ident(node_index: usize) -> syn::Ident {
 /// type, generates code to pop the last value off the stack and resolve to the
 /// associated data, which may have come from any of the given states.
 fn extract_state(
+  state_type: &LRStateType<UserDefinedSymbol>,
   state_ids: impl IntoIterator<Item = StateId>,
   grammar_info: &GrammarInfo,
 ) -> TokenStream {
@@ -39,8 +43,19 @@ fn extract_state(
     .into_iter()
     .map(|state_id| {
       let matcher = qualified_enum_variant_name(state_id, grammar_info);
-      quote! {
-        #matcher(v) => v,
+      if let LRStateType::Terminal(term) = state_type
+        && let Some(token) = term.token()
+        && token.is_wildcard()
+      {
+        let terminal_type = grammar_info.terminal_type().inner_type();
+        let token_pattern = token.as_ident();
+        quote! {
+          #matcher(#terminal_type::#token_pattern(v)) => v,
+        }
+      } else {
+        quote! {
+          #matcher(v) => v,
+        }
       }
     })
     .collect_tokens();
@@ -58,11 +73,12 @@ fn extract_state(
 /// bind it to a variable named `__v{node_index}`.
 fn bind_production_node(
   node_index: usize,
+  state_type: &LRStateType<UserDefinedSymbol>,
   state_ids: impl IntoIterator<Item = StateId>,
   grammar_info: &GrammarInfo,
 ) -> TokenStream {
   let var_ident = bound_variable_ident(node_index);
-  let extract_state = extract_state(state_ids, grammar_info);
+  let extract_state = extract_state(state_type, state_ids, grammar_info);
   quote! {
     let mut #var_ident = #extract_state;
   }
@@ -78,7 +94,7 @@ pub fn bind_production_nodes_to_locals(
   state_id: StateId,
   rule: &IndexedProductionRule,
   grammar_info: &GrammarInfo,
-  state_map: &LRStateMap,
+  state_map: &LRStateMap<UserDefinedSymbol>,
 ) -> (TokenStream, HashSet<StateId>) {
   let rule_len = rule.rule().len();
 
@@ -92,8 +108,15 @@ pub fn bind_production_nodes_to_locals(
       continue;
     }
 
+    let representative_state = *states
+      .iter()
+      .next()
+      .expect("Unexpected empty state set when building rule reduction");
+    let state_type = state_map.state_type(representative_state);
+
     tokens.extend(bind_production_node(
       node_index,
+      state_type,
       states.iter().cloned(),
       grammar_info,
     ));

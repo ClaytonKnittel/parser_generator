@@ -22,22 +22,6 @@ enum Token {
   Literal(Literal),
 }
 
-impl Token {
-  fn into_ident(self) -> Ident {
-    match self {
-      Self::Ident(ident) => ident,
-      _ => panic!("Not an ident!"),
-    }
-  }
-
-  fn into_literal(self) -> Literal {
-    match self {
-      Self::Literal(literal) => literal,
-      _ => panic!("Not a literal!"),
-    }
-  }
-}
-
 #[derive(Clone, Debug)]
 struct MainMethod {
   name: String,
@@ -53,12 +37,10 @@ grammar! {
     <ident> <eq> <literal> {
     MainMethod { name: #ident.0, value: #literal.0 }
   };
-  <ident>: Ident => Ident(..) {
-    #0.into_ident()
-  };
+  <ident>: Ident => Ident(..);
   <eq> => Eq;
   <literal>: Literal => Literal(..) {
-    #0.into_literal()
+    #0
   };
 }
 

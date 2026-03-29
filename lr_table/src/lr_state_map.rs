@@ -10,12 +10,13 @@ use crate::{
   error::{LRTableError, LRTableResult},
   indexed_grammar::{IndexedGrammar, ProductionLabel},
   lr_table::{Action, LRTable, StateId},
+  vocabulary::AugmentedVocabToken,
 };
 
-fn insert_state_and_type(
+fn insert_state_and_type<T: Eq>(
   state: StateId,
-  ty: LRStateType,
-  map: &mut HashMap<StateId, LRStateType>,
+  ty: LRStateType<T>,
+  map: &mut HashMap<StateId, LRStateType<T>>,
 ) -> LRTableResult {
   match map.entry(state) {
     Entry::Occupied(entry) => entry.get().verify_compatible(ty),
@@ -27,21 +28,25 @@ fn insert_state_and_type(
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum LRStateType {
+pub enum LRStateType<T> {
   Reduce(ProductionLabel),
-  Terminal,
+  Terminal(AugmentedVocabToken<T>),
   Root,
 }
 
-impl LRStateType {
-  fn verify_compatible(&self, other: LRStateType) -> LRTableResult {
+impl<T: Eq> LRStateType<T> {
+  fn verify_compatible(&self, other: Self) -> LRTableResult {
     match (&self, other) {
       (Self::Reduce(state1), LRStateType::Reduce(state2)) => {
         if *state1 != state2 {
           return Err(LRTableError::state_resolve_conflict());
         }
       }
-      (Self::Terminal, LRStateType::Terminal) => {}
+      (Self::Terminal(terminal1), LRStateType::Terminal(terminal2)) => {
+        if *terminal1 != terminal2 {
+          return Err(LRTableError::state_resolve_conflict());
+        }
+      }
       (Self::Root, LRStateType::Root) => {}
       _ => {
         return Err(LRTableError::state_resolve_conflict());
@@ -52,15 +57,15 @@ impl LRStateType {
   }
 }
 
-struct LRStateInfo {
+struct LRStateInfo<T> {
   /// A list of states that may precede this state in parsing.
   prev_states: Vec<StateId>,
   /// The return type of states that may precede this state.
-  prev_state_return_type: LRStateType,
+  prev_state_return_type: LRStateType<T>,
 }
 
-impl LRStateInfo {
-  fn build_from_state_map(map: HashMap<StateId, LRStateType>) -> LRTableResult<Self> {
+impl<T: Eq> LRStateInfo<T> {
+  fn build_from_state_map(map: HashMap<StateId, LRStateType<T>>) -> LRTableResult<Self> {
     let mut iter = map.into_iter();
     let (state1, return_type) = iter.next().ok_or_else(LRTableError::unresolved_states)?;
     let mut prev_states = vec![state1];
@@ -86,31 +91,34 @@ impl LRStateInfo {
 /// Each state may be preceded by either the consumption of a terminal (i.e. it
 /// is the target of a shift action), or the resolution of a production rule
 /// (i.e. it is the target of a GOTO action).
-pub struct LRStateMap<'a> {
+pub struct LRStateMap<'a, T> {
   /// A map from StateId -> state info.
-  state_map: Vec<LRStateInfo>,
+  state_map: Vec<LRStateInfo<T>>,
   /// This lookup table is lifetime-bound to an instance of `LRTable`.
   _phantom: PhantomData<&'a ()>,
 }
 
-impl<'a> LRStateMap<'a> {
-  pub fn build_from_lr_table<T: Clone, L>(
+impl<'a, T> LRStateMap<'a, T> {
+  pub fn build_from_lr_table<L>(
     grammar: &IndexedGrammar<T, L>,
     lr_table: &'a LRTable<T>,
-  ) -> LRTableResult<Self> {
+  ) -> LRTableResult<Self>
+  where
+    T: Clone + Eq,
+  {
     let mut state_map = (0..lr_table.num_states())
-      .map(|_| HashMap::<StateId, LRStateType>::new())
+      .map(|_| HashMap::<StateId, LRStateType<T>>::new())
       .collect_vec();
 
     // Set the root production rule's type to `Root`.
     state_map[0].insert(lr_table.root_state(), LRStateType::Root);
 
     for state in lr_table.states() {
-      for (_, action) in lr_table.state_actions(state, grammar) {
+      for (token, action) in lr_table.state_actions(state, grammar) {
         if let Action::Shift { next_state } = action {
           insert_state_and_type(
             state,
-            LRStateType::Terminal,
+            LRStateType::Terminal(token),
             &mut state_map[next_state.id()],
           )?;
         }
@@ -138,8 +146,8 @@ impl<'a> LRStateMap<'a> {
     })
   }
 
-  pub fn state_type(&self, state: StateId) -> LRStateType {
-    self.state_map[state.id()].prev_state_return_type
+  pub fn state_type(&self, state: StateId) -> &LRStateType<T> {
+    &self.state_map[state.id()].prev_state_return_type
   }
 
   /// Given a state, returns an iterator over all states that may immediately
@@ -156,6 +164,7 @@ mod tests {
     indexed_grammar::IndexedGrammar,
     lr_state_map::{LRStateMap, LRStateType},
     lr_table::LRTable,
+    vocabulary::AugmentedVocabToken,
   };
   use googletest::prelude::*;
   use itertools::Itertools;
@@ -185,7 +194,7 @@ mod tests {
     expect_that!(state_table.state_type(states[0]), pat![LRStateType::Root]);
     expect_that!(
       state_table.state_type(states[1]),
-      pat![LRStateType::Terminal]
+      pat![LRStateType::Terminal(&AugmentedVocabToken::Token(b'a'))]
     );
   }
 
@@ -206,7 +215,7 @@ mod tests {
     expect_that!(state_table.state_type(states[0]), pat![LRStateType::Root]);
     expect_that!(
       state_table.state_type(states[1]),
-      pat![LRStateType::Reduce(label_b)]
+      pat![LRStateType::Reduce(&label_b)]
     );
   }
 }
