@@ -38,7 +38,6 @@ impl ProductionRef {
       SymbolT::Ident(ident) => Ok(ProductionRefName(ident.to_owned())),
       _ => return Err(prod_name_sym.meta().make_err("Expected production name.")),
     }?;
-    meta.merge(prod_name_sym.meta()).intercept("callsite 5")?;
 
     let end_meta = expect_symbol_with(
       stream,
