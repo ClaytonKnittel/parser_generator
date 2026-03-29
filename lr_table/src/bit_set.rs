@@ -1,4 +1,4 @@
-use crate::iter_ones::IterOnes;
+use cknittel_util::iter_ones::IterOnes;
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct BitSet {
