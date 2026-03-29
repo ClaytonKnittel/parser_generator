@@ -1,3 +1,4 @@
+#[allow(clippy::module_inception)]
 mod code_gen;
 mod constructor;
 mod parse_loop;
