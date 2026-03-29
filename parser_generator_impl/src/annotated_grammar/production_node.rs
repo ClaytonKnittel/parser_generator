@@ -1,11 +1,11 @@
 use crate::{
+  ParserGeneratorResult,
   annotated_grammar::{
     production_ref::{ProductionRef, ProductionRefName},
-    terminal::Terminal,
+    terminal::{Terminal, UserDefinedSymbol},
   },
   symbol::{Operator, SymbolMeta, SymbolT},
   symbol_stream::SymbolStream,
-  ParserGeneratorResult,
 };
 
 pub enum ProductionNode {
@@ -21,7 +21,9 @@ impl ProductionNode {
     }
   }
 
-  pub fn to_lr_node(&self) -> lr_table::grammar::ProductionNode<String, ProductionRefName> {
+  pub fn to_lr_node(
+    &self,
+  ) -> lr_table::grammar::ProductionNode<UserDefinedSymbol, ProductionRefName> {
     match self {
       ProductionNode::Production(production) => {
         lr_table::grammar::ProductionNode::Production(production.name().clone())

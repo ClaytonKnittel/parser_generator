@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use lr_table::{
   grammar::{Grammar, ProductionRuleIndex},
   indexed_grammar::IndexedGrammar,
@@ -10,16 +8,19 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 
 use crate::{
+  ParserGeneratorError, ParserGeneratorResult,
   annotated_grammar::{
-    label_type_map::LabelTypeMap, production_ref::ProductionRefName,
-    production_rule::ProductionRule, util::expect_symbol_with,
+    label_type_map::LabelTypeMap,
+    production_ref::ProductionRefName,
+    production_rule::ProductionRule,
+    terminal::{PatternMode, UserDefinedSymbol},
+    util::expect_symbol_with,
   },
   error::InterceptResult,
   ident::Ident,
   symbol::Operator,
   symbol_stream::SymbolStream,
   type_symbol::Type,
-  ParserGeneratorError, ParserGeneratorResult,
 };
 
 /// Parses a line of the form "option_name: value;" after option_name
@@ -79,17 +80,33 @@ impl TerminalType {
     }
   }
 
-  pub fn try_build_token(&self, text: &str) -> ParserGeneratorResult<TokenStream> {
+  pub fn try_build_pattern(
+    &self,
+    symbol: &UserDefinedSymbol,
+    mode: PatternMode,
+  ) -> ParserGeneratorResult<TokenStream> {
     Ok(match self {
       Self::Raw(_) => {
-        let literal = proc_macro2::Literal::from_str(text)
-          .map_err(|err| ParserGeneratorError::from_foreign_error(err, Span::call_site()))?;
+        let literal = symbol.as_literal()?;
         quote! { #literal }
       }
       Self::Enum(enum_type) => {
-        let ident = proc_macro2::Ident::new(text, Span::call_site());
-        quote! { #enum_type::#ident }
+        let pattern = symbol.as_pattern(mode)?;
+        quote! { #enum_type::#pattern }
       }
+    })
+  }
+
+  pub fn try_build_matcher(
+    &self,
+    symbol: &UserDefinedSymbol,
+    mode: PatternMode,
+  ) -> ParserGeneratorResult<TokenStream> {
+    let pattern = self.try_build_pattern(symbol, mode)?;
+    Ok(if symbol.is_wildcard() {
+      quote! { Some(#pattern) }
+    } else {
+      quote! { Some(&#pattern) }
     })
   }
 }
@@ -99,8 +116,8 @@ pub struct GrammarInfo {
   terminal_type: TerminalType,
   label_types: LabelTypeMap,
   production_rules: Vec<ProductionRule>,
-  indexed_grammar: IndexedGrammar<String, ProductionRefName>,
-  lr_table: LRTable<String>,
+  indexed_grammar: IndexedGrammar<UserDefinedSymbol, ProductionRefName>,
+  lr_table: LRTable<UserDefinedSymbol>,
 }
 
 impl GrammarInfo {
@@ -120,11 +137,11 @@ impl GrammarInfo {
     &self.production_rules[index.0]
   }
 
-  pub fn grammar(&self) -> &IndexedGrammar<String, ProductionRefName> {
+  pub fn grammar(&self) -> &IndexedGrammar<UserDefinedSymbol, ProductionRefName> {
     &self.indexed_grammar
   }
 
-  pub fn lr_table(&self) -> &LRTable<String> {
+  pub fn lr_table(&self) -> &LRTable<UserDefinedSymbol> {
     &self.lr_table
   }
 

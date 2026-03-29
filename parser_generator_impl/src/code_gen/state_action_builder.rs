@@ -13,7 +13,10 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 
 use crate::{
-  annotated_grammar::parse_grammar::GrammarInfo,
+  annotated_grammar::{
+    parse_grammar::GrammarInfo,
+    terminal::{PatternMode, UserDefinedSymbol},
+  },
   code_gen::{
     constructor::build_constructor,
     reduce_rule::{apply_goto, bind_production_nodes_to_locals},
@@ -37,24 +40,24 @@ pub fn state_action_function_name(state_id: StateId) -> syn::Ident {
 }
 
 fn token_matcher(
-  token: &AugmentedVocabToken<String>,
+  token: &AugmentedVocabToken<UserDefinedSymbol>,
   grammar_info: &GrammarInfo,
+  mode: PatternMode,
 ) -> TokenStreamResult {
-  Ok(match token {
+  match token {
     AugmentedVocabToken::Token(token) => {
-      let token = grammar_info.terminal_type().try_build_token(token)?;
-      quote! { Some(&#token) }
+      grammar_info.terminal_type().try_build_matcher(token, mode)
     }
-    AugmentedVocabToken::EndOfStream => quote! { None },
+    AugmentedVocabToken::EndOfStream => Ok(quote! { None }),
     AugmentedVocabToken::Epsilon => unreachable!(),
-  })
+  }
 }
 
 #[derive(Default)]
 struct CollectLikeActions {
-  reduce_map: HashMap<ProductionRuleId, Vec<AugmentedVocabToken<String>>>,
-  shift_map: Vec<(AugmentedVocabToken<String>, StateId)>,
-  accept: Option<AugmentedVocabToken<String>>,
+  reduce_map: HashMap<ProductionRuleId, Vec<AugmentedVocabToken<UserDefinedSymbol>>>,
+  shift_map: Vec<(AugmentedVocabToken<UserDefinedSymbol>, StateId)>,
+  accept: Option<AugmentedVocabToken<UserDefinedSymbol>>,
 }
 
 impl CollectLikeActions {
@@ -89,13 +92,14 @@ impl CollectLikeActions {
       .shift_map
       .iter()
       .map(|(token, next_state)| {
-        let matcher = token_matcher(token, grammar_info)?;
+        let matcher = token_matcher(token, grammar_info, PatternMode::Named)?;
         let next_state_name = qualified_enum_variant_name(*next_state, grammar_info);
-        let token = grammar_info
-          .terminal_type()
-          .try_build_token(token.token().expect(
+        let token = grammar_info.terminal_type().try_build_pattern(
+          token.token().expect(
             "CollectLikeActions::shift_match_and_yield: shift_map should not contain epsilon/eof",
-          ))?;
+          ),
+          PatternMode::Rhs,
+        )?;
         Ok(quote! {
           #matcher => #next_state_name(#token),
         })
@@ -123,7 +127,7 @@ impl CollectLikeActions {
         let match_any_token = tokens
           .iter()
           .map(|token| {
-            let matcher = token_matcher(token, grammar_info)?;
+            let matcher = token_matcher(token, grammar_info, PatternMode::Unnamed)?;
             Ok(quote! {
               #matcher
             })
@@ -163,7 +167,7 @@ impl CollectLikeActions {
       return Ok(TokenStream::new());
     };
 
-    let matcher = token_matcher(accept_token, grammar_info)?;
+    let matcher = token_matcher(accept_token, grammar_info, PatternMode::Unnamed)?;
 
     let root_rule_id = grammar_info.grammar().root_production_rule();
     let root_rule = grammar_info.grammar().production_rule(root_rule_id);
