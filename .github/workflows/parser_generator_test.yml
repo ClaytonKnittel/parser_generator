@@ -19,10 +19,6 @@ jobs:
         with:
           path: parser_generator
           submodules: recursive
-      - name: Configure nightly compiler
-        working-directory: parser_generator
-        run: |
-          rustup override set nightly
       - name: Initialize and Build
         working-directory: parser_generator
         run: |
@@ -35,3 +31,11 @@ jobs:
         working-directory: parser_generator
         run: |
           cargo test
+      - name: Clippy lint lr_table
+        working-directory: parser_generator/lr_table
+        run: |
+          cargo clippy -- -D warnings
+      - name: Clippy lint
+        working-directory: parser_generator
+        run: |
+          cargo clippy -- -D warnings
