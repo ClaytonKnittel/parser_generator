@@ -15,7 +15,7 @@ itertools = "0.14.0"
 lr_table = { path = "../lr_table" }
 proc-macro-error = { version = "1", default-features = false }
 proc-macro2 = "1.0.106"
-quote = "1.0"
+quote = "1.0.45"
 syn = { version = "2.0.117", features = ["full", "extra-traits"] }
 
 [dev-dependencies]
