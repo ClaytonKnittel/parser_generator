@@ -14,10 +14,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 
 use crate::{
-  annotated_grammar::{
-    parse_grammar::GrammarInfo,
-    terminal::{PatternMode, UserDefinedSymbol},
-  },
+  annotated_grammar::{parse_grammar::GrammarInfo, terminal::UserDefinedSymbol},
   code_gen::{
     constructor::build_constructor,
     states_enum::{enum_matcher, qualified_enum_variant_name},
