@@ -38,10 +38,7 @@ impl SymbolMeta {
   }
 
   pub fn merge(&mut self, other: &Self) -> ParserGeneratorResult {
-    self.span = self
-      .span
-      .join(*other.span())
-      .ok_or_else(|| other.make_err("Failed to join spans of adjacent puncts"))?;
+    self.span = self.span.join(*other.span()).unwrap_or(self.span);
     self.tokens.extend(other.tokens.clone());
 
     Ok(())
@@ -157,7 +154,7 @@ impl Symbol {
         return Err(ParserGeneratorError::new(
           "Group without delimiter",
           group.span_open(),
-        ))
+        ));
       }
     };
 

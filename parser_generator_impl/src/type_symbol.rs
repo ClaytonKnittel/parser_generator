@@ -1,10 +1,10 @@
 use quote::ToTokens;
 
 use crate::{
+  ParserGeneratorResult,
   error::InterceptResult,
   symbol::{Operator, SymbolMeta, SymbolT},
   symbol_stream::SymbolStream,
-  ParserGeneratorResult,
 };
 
 #[derive(Clone)]
