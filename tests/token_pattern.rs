@@ -1,0 +1,98 @@
+use googletest::prelude::*;
+use parser_generator::{grammar, parser::Parser};
+
+#[derive(Clone)]
+enum Keyword {
+  Public,
+  Static,
+  Void,
+}
+
+#[derive(Clone)]
+struct Ident(String);
+
+#[derive(Clone)]
+struct Literal(String);
+
+#[derive(Clone)]
+enum Token {
+  Keyword(Keyword),
+  Ident(Ident),
+  Eq,
+  Literal(Literal),
+}
+
+impl Token {
+  fn into_ident(self) -> Ident {
+    match self {
+      Self::Ident(ident) => ident,
+      _ => panic!("Not an ident!"),
+    }
+  }
+
+  fn into_literal(self) -> Literal {
+    match self {
+      Self::Literal(literal) => literal,
+      _ => panic!("Not a literal!"),
+    }
+  }
+}
+
+#[derive(Clone, Debug)]
+struct MainMethod {
+  name: String,
+  value: String,
+}
+
+grammar! {
+  name: TokenPattern;
+  enum_terminal: Token;
+
+  <root>: MainMethod =>
+    Keyword(Keyword::Public) Keyword(Keyword::Static) Keyword(Keyword::Void)
+    <ident> <eq> <literal> {
+    MainMethod { name: #ident.0, value: #literal.0 }
+  };
+  <ident>: Ident => Ident(..) {
+    #0.into_ident()
+  };
+  <eq> => Eq;
+  <literal>: Literal => Literal(..) {
+    #0.into_literal()
+  };
+}
+
+#[gtest]
+fn test_parse() {
+  let result: MainMethod = TokenPattern::parse([
+    Token::Keyword(Keyword::Public),
+    Token::Keyword(Keyword::Static),
+    Token::Keyword(Keyword::Void),
+    Token::Ident(Ident("main".to_string())),
+    Token::Eq,
+    Token::Literal(Literal("123".to_string())),
+  ])
+  .unwrap();
+
+  expect_that!(
+    result,
+    pat![MainMethod {
+      name: eq("main"),
+      value: eq("123")
+    }]
+  );
+}
+
+#[gtest]
+fn test_parse_fail() {
+  let result = TokenPattern::parse([
+    Token::Keyword(Keyword::Static),
+    Token::Keyword(Keyword::Public),
+    Token::Keyword(Keyword::Void),
+    Token::Ident(Ident("main".to_string())),
+    Token::Eq,
+    Token::Literal(Literal("123".to_string())),
+  ]);
+
+  expect_that!(result, err(anything()));
+}

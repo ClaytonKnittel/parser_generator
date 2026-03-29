@@ -98,12 +98,12 @@ pub enum SymbolT {
   // Identifiers are anything matching [a-zA-Z_]+
   Ident(String),
   // Literals are things that can only be terminals, like single-quote strings
-  // (chars). Ident's may also be terminals, depending on what is being parsed.
+  // (chars).
   Literal(String),
   // Groups are the blocks of code to execute in successful matches.
   Group(proc_macro2::Group),
-  // Tuples are blocks of code within parenthesis.
-  Tuple(TokenStream),
+  // Groups of tokens within parenthesis.
+  Paren(TokenStream),
   // Arrays are for array slice types, i.e. &[u64].
   Array(TokenStream),
 }
@@ -148,7 +148,7 @@ impl Symbol {
 
     let sym = match group.delimiter() {
       Delimiter::Brace => SymbolT::Group(group),
-      Delimiter::Parenthesis => SymbolT::Tuple(group.stream()),
+      Delimiter::Parenthesis => SymbolT::Paren(group.stream()),
       Delimiter::Bracket => SymbolT::Array(group.stream()),
       Delimiter::None => {
         return Err(ParserGeneratorError::new(
@@ -216,7 +216,7 @@ impl Display for Symbol {
       SymbolT::Op(op) => write!(f, "{:?}", op),
       SymbolT::Ident(ident) => write!(f, "<{}>", ident),
       SymbolT::Group(token_stream) => write!(f, "{{{}}}", token_stream),
-      SymbolT::Tuple(token_stream) => write!(f, "({})", token_stream),
+      SymbolT::Paren(token_stream) => write!(f, "({})", token_stream),
       SymbolT::Array(token_stream) => write!(f, "[{}]", token_stream),
       SymbolT::Literal(token_stream) => write!(f, "{:?}", token_stream),
     }

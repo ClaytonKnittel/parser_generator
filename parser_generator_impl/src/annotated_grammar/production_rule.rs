@@ -4,6 +4,7 @@ use crate::{
     label_type_map::LabelTypeMap,
     production_node::ProductionNode,
     production_ref::{ProductionRef, ProductionRefName},
+    terminal::UserDefinedSymbol,
     util::expect_symbol_with,
   },
   symbol::{Operator, SymbolMeta, SymbolT},
@@ -48,7 +49,7 @@ pub struct ProductionRule {
 impl ProductionRule {
   pub fn to_lr_production_rule(
     &self,
-  ) -> lr_table::grammar::ProductionRule<String, ProductionRefName> {
+  ) -> lr_table::grammar::ProductionRule<UserDefinedSymbol, ProductionRefName> {
     lr_table::grammar::ProductionRule::new(
       self.name.name().clone(),
       self.rule.iter().map(ProductionNode::to_lr_node).collect(),
