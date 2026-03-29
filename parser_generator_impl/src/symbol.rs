@@ -41,7 +41,7 @@ impl SymbolMeta {
     self.span = self
       .span
       .join(*other.span())
-      .ok_or_else(|| other.make_err("Failed to join spans"))?;
+      .ok_or_else(|| self.make_err("Failed to join spans"))?;
     self.tokens.extend(other.tokens.clone());
 
     Ok(())
