@@ -1,14 +1,15 @@
 use crate::{
+  ParserGeneratorResult,
   annotated_grammar::{
     label_type_map::LabelTypeMap,
     production_node::ProductionNode,
     production_ref::{ProductionRef, ProductionRefName},
     util::expect_symbol_with,
   },
+  error::InterceptResult,
   symbol::{Operator, SymbolMeta, SymbolT},
   symbol_stream::SymbolStream,
   type_symbol::Type,
-  ParserGeneratorResult,
 };
 
 fn maybe_parse_return_type(stream: &mut impl SymbolStream) -> ParserGeneratorResult<Option<Type>> {
@@ -95,13 +96,17 @@ impl ProductionRule {
       }
 
       let node = ProductionNode::parse(stream)?;
-      meta.merge(node.meta())?;
+      meta.merge(node.meta()).intercept("callsite 4")?;
       rule.push(node);
     }
 
-    if rule.len() > 1 && let Some(epsilon) = rule.iter().find(|node| node.is_epsilon()) {
+    if rule.len() > 1
+      && let Some(epsilon) = rule.iter().find(|node| node.is_epsilon())
+    {
       return Err(
-        epsilon.meta().make_err("Epsilon may only appear in a rule by itself")
+        epsilon
+          .meta()
+          .make_err("Epsilon may only appear in a rule by itself"),
       );
     }
 

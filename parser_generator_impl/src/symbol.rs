@@ -1,7 +1,7 @@
 use proc_macro2::{Delimiter, Spacing, Span, TokenStream, TokenTree};
 use std::fmt::{Display, Formatter};
 
-use crate::error::{ParserGeneratorError, ParserGeneratorResult};
+use crate::error::{InterceptResult, ParserGeneratorError, ParserGeneratorResult};
 
 fn is_leading_ident_char(c: char) -> bool {
   char::is_alphabetic(c) || c == '_'
@@ -41,7 +41,7 @@ impl SymbolMeta {
     self.span = self
       .span
       .join(*other.span())
-      .ok_or_else(|| other.make_err("Failed to join spans of adjacent puncts"))?;
+      .ok_or_else(|| other.make_err("Failed to join spans"))?;
     self.tokens.extend(other.tokens.clone());
 
     Ok(())
@@ -157,7 +157,7 @@ impl Symbol {
         return Err(ParserGeneratorError::new(
           "Group without delimiter",
           group.span_open(),
-        ))
+        ));
       }
     };
 
@@ -270,7 +270,7 @@ impl PunctBuilder {
       },
       Self::PrevWasEq(prev_meta) => match punct.as_char() {
         '>' => {
-          prev_meta.merge(&meta)?;
+          prev_meta.merge(&meta).intercept("callsite 1")?;
           let symbol = Symbol::as_punctuation(Operator::Arrow, prev_meta.clone());
           *self = PunctBuilder::Empty;
           Some(symbol)
@@ -281,7 +281,7 @@ impl PunctBuilder {
       },
       Self::PrevWasColon(other_meta) => match punct.as_char() {
         ':' => {
-          other_meta.merge(&meta)?;
+          other_meta.merge(&meta).intercept("callsite 2")?;
           let symbol = Symbol::as_punctuation(Operator::Scope, other_meta.clone());
           *self = PunctBuilder::Empty;
           Some(symbol)

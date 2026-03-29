@@ -1,10 +1,11 @@
 use std::fmt::Debug;
 
 use crate::{
+  ParserGeneratorResult,
   annotated_grammar::util::expect_symbol_with,
+  error::InterceptResult,
   symbol::{Operator, SymbolMeta, SymbolT},
   symbol_stream::SymbolStream,
-  ParserGeneratorResult,
 };
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -37,14 +38,14 @@ impl ProductionRef {
       SymbolT::Ident(ident) => Ok(ProductionRefName(ident.to_owned())),
       _ => return Err(prod_name_sym.meta().make_err("Expected production name.")),
     }?;
-    meta.merge(prod_name_sym.meta())?;
+    meta.merge(prod_name_sym.meta()).intercept("callsite 5")?;
 
     let end_meta = expect_symbol_with(
       stream,
       |sym| sym.is_op(Operator::EndProd),
       "Expected production name to end with '>'.",
     )?;
-    meta.merge(&end_meta)?;
+    meta.merge(&end_meta).intercept("callsite 6")?;
 
     Ok(Self { name, meta })
   }

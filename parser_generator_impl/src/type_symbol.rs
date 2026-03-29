@@ -1,10 +1,10 @@
 use quote::ToTokens;
 
 use crate::{
+  ParserGeneratorResult,
   error::InterceptResult,
   symbol::{Operator, SymbolMeta, SymbolT},
   symbol_stream::SymbolStream,
-  ParserGeneratorResult,
 };
 
 #[derive(Clone)]
@@ -32,7 +32,7 @@ impl Type {
         break;
       }
 
-      meta.merge(sym.take().meta())?;
+      meta.merge(sym.take().meta()).intercept("callsite 3")?;
     }
 
     Ok(Self { meta })
