@@ -145,7 +145,7 @@ impl GrammarInfo {
     &self.lr_table
   }
 
-  pub fn build_lr_state_map(&self) -> ParserGeneratorResult<LRStateMap<'_>> {
+  pub fn build_lr_state_map(&self) -> ParserGeneratorResult<LRStateMap<'_, UserDefinedSymbol>> {
     LRStateMap::build_from_lr_table(self.grammar(), self.lr_table())
       .map_err(|err| ParserGeneratorError::from_foreign_error(err, Span::call_site()))
   }

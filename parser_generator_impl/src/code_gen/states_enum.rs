@@ -6,7 +6,8 @@ use lr_table::{
 use quote::quote;
 
 use crate::{
-  annotated_grammar::parse_grammar::GrammarInfo, code_gen::util::TokenStreamResult,
+  annotated_grammar::{parse_grammar::GrammarInfo, terminal::UserDefinedSymbol},
+  code_gen::util::TokenStreamResult,
   type_symbol::Type,
 };
 
@@ -31,13 +32,20 @@ pub fn qualified_enum_variant_name(
   quote! { #enum_name::#variant }
 }
 
-fn state_type(state: StateId, grammar_info: &GrammarInfo, state_map: &LRStateMap) -> Option<Type> {
+fn state_type(
+  state: StateId,
+  grammar_info: &GrammarInfo,
+  state_map: &LRStateMap<UserDefinedSymbol>,
+) -> Option<Type> {
   match state_map.state_type(state) {
     LRStateType::Reduce(production) => {
-      let label = grammar_info.grammar().orig_production_label(production);
+      let label = grammar_info.grammar().orig_production_label(*production);
       grammar_info.label_type(label).cloned()
     }
-    LRStateType::Terminal => Some(grammar_info.terminal_type().inner_type().clone()),
+    LRStateType::Terminal(terminal) => {
+      //
+      Some(grammar_info.terminal_type().inner_type().clone())
+    }
     LRStateType::Root => None,
   }
 }
@@ -58,7 +66,7 @@ pub fn enum_matcher(state: StateId, grammar_info: &GrammarInfo) -> proc_macro2::
 
 pub fn generate_dfa_states(
   grammar_info: &GrammarInfo,
-  state_map: &LRStateMap,
+  state_map: &LRStateMap<UserDefinedSymbol>,
 ) -> TokenStreamResult {
   let dfa_enum_name = enum_name(grammar_info);
 
