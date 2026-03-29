@@ -7,7 +7,6 @@ mod first_map;
 mod fixed_map;
 pub mod grammar;
 pub mod indexed_grammar;
-mod iter_ones;
 mod kernel;
 mod kernel_table;
 pub mod lr_state_map;
