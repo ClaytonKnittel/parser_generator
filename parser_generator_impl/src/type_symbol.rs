@@ -32,7 +32,7 @@ impl Type {
         break;
       }
 
-      meta.merge(sym.take().meta()).intercept("callsite 3")?;
+      meta.merge(sym.take().meta())?;
     }
 
     Ok(Self { meta })

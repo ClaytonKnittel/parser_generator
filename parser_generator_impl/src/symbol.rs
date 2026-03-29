@@ -1,7 +1,7 @@
 use proc_macro2::{Delimiter, Spacing, Span, TokenStream, TokenTree};
 use std::fmt::{Display, Formatter};
 
-use crate::error::{InterceptResult, ParserGeneratorError, ParserGeneratorResult};
+use crate::error::{ParserGeneratorError, ParserGeneratorResult};
 
 fn is_leading_ident_char(c: char) -> bool {
   char::is_alphabetic(c) || c == '_'
@@ -267,7 +267,7 @@ impl PunctBuilder {
       },
       Self::PrevWasEq(prev_meta) => match punct.as_char() {
         '>' => {
-          prev_meta.merge(&meta).intercept("callsite 1")?;
+          prev_meta.merge(&meta)?;
           let symbol = Symbol::as_punctuation(Operator::Arrow, prev_meta.clone());
           *self = PunctBuilder::Empty;
           Some(symbol)
@@ -278,7 +278,7 @@ impl PunctBuilder {
       },
       Self::PrevWasColon(other_meta) => match punct.as_char() {
         ':' => {
-          other_meta.merge(&meta).intercept("callsite 2")?;
+          other_meta.merge(&meta)?;
           let symbol = Symbol::as_punctuation(Operator::Scope, other_meta.clone());
           *self = PunctBuilder::Empty;
           Some(symbol)

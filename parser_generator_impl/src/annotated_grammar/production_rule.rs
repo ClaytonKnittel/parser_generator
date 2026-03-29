@@ -6,7 +6,6 @@ use crate::{
     production_ref::{ProductionRef, ProductionRefName},
     util::expect_symbol_with,
   },
-  error::InterceptResult,
   symbol::{Operator, SymbolMeta, SymbolT},
   symbol_stream::SymbolStream,
   type_symbol::Type,
@@ -96,7 +95,7 @@ impl ProductionRule {
       }
 
       let node = ProductionNode::parse(stream)?;
-      meta.merge(node.meta()).intercept("callsite 4")?;
+      meta.merge(node.meta())?;
       rule.push(node);
     }
 

@@ -3,7 +3,6 @@ use std::fmt::Debug;
 use crate::{
   ParserGeneratorResult,
   annotated_grammar::util::expect_symbol_with,
-  error::InterceptResult,
   symbol::{Operator, SymbolMeta, SymbolT},
   symbol_stream::SymbolStream,
 };
@@ -44,7 +43,7 @@ impl ProductionRef {
       |sym| sym.is_op(Operator::EndProd),
       "Expected production name to end with '>'.",
     )?;
-    meta.merge(&end_meta).intercept("callsite 6")?;
+    meta.merge(&end_meta)?;
 
     Ok(Self { name, meta })
   }
