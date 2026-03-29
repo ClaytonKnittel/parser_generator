@@ -20,7 +20,7 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 [[package]]
 name = "cknittel-util"
 version = "0.1.0"
-source = "git+https://github.com/ClaytonKnittel/cknittel-util.git?rev=9133f2f8718f3bfaeb82a6521bdc4e1457a45885#9133f2f8718f3bfaeb82a6521bdc4e1457a45885"
+source = "git+https://github.com/ClaytonKnittel/cknittel-util.git?rev=0dabbfb79e5ef186a545b437119d5603a42cf89d#0dabbfb79e5ef186a545b437119d5603a42cf89d"
 dependencies = [
  "proc-macro-util",
 ]
@@ -137,7 +137,7 @@ dependencies = [
 [[package]]
 name = "proc-macro-util"
 version = "0.1.0"
-source = "git+https://github.com/ClaytonKnittel/cknittel-util.git?rev=9133f2f8718f3bfaeb82a6521bdc4e1457a45885#9133f2f8718f3bfaeb82a6521bdc4e1457a45885"
+source = "git+https://github.com/ClaytonKnittel/cknittel-util.git?rev=0dabbfb79e5ef186a545b437119d5603a42cf89d#0dabbfb79e5ef186a545b437119d5603a42cf89d"
 dependencies = [
  "proc-macro2",
 ]

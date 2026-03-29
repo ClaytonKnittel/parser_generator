@@ -1,12 +1,9 @@
 use std::{iter::Peekable, ops::Deref};
 
+use cknittel_util::result::{CloneErr, EraseOk};
 use proc_macro2::Span;
 
-use crate::{
-  error::{CloneErr, EraseOk, ParserGeneratorError},
-  symbol::Symbol,
-  ParserGeneratorResult,
-};
+use crate::{error::ParserGeneratorError, symbol::Symbol, ParserGeneratorResult};
 
 pub trait SymbolStream {
   type Iterator: Iterator<Item = ParserGeneratorResult<Symbol>>;
