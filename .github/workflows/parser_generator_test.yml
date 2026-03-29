@@ -10,8 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out Rust toolchain
-        uses: actions-rs/toolchain@v1
       - name: Check out parser_generator
         uses: actions/checkout@v2
         with:
