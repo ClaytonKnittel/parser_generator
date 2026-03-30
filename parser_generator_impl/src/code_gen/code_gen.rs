@@ -35,12 +35,13 @@ pub fn generate_parser(grammar_info: &GrammarInfo) -> TokenStreamResult {
       type Token = #token_type;
       type Value = #result_type;
 
-      fn parse<I, B>(
+      fn parse_fallible<I, B, E>(
         input_stream: I
-      ) -> ::parser_generator::error::ParserResult<Self::Value>
+      ) -> ::parser_generator::error::ParserResult<Self::Value, E>
       where
-        I: IntoIterator<Item = B>,
+        I: IntoIterator<Item = ::core::result::Result<B, E>>,
         B: ::std::borrow::Borrow<#token_type>,
+        E: Clone,
       {
         #dfa_states_enum
         #action_functions

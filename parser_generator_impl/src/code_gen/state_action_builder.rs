@@ -198,7 +198,10 @@ impl CollectLikeActions {
     let reduce_matches = self.reduce_match_and_return(state_id, grammar_info, state_map)?;
     let accept_matches = self.accept_match_and_return(state_id, grammar_info, state_map)?;
     let peek_next = quote! {
-      state.stream().peek_next().map(::std::borrow::Borrow::borrow)
+      state.stream().peek_next().map(|token| match token {
+        Ok(token) => Ok(token.borrow()),
+        Err(err) => Err(::parser_generator::error::ParserError::from_input_stream_error(err.clone())),
+      }).transpose()?
     };
     let return_err = quote! {
       return Err(::parser_generator::error::ParserError::new("Failed to parse"))
@@ -245,13 +248,14 @@ pub fn generate_state_action_function(
   let actions = action_map.generate_actions(state_id, grammar_info, state_map)?;
 
   Ok(quote! {
-    fn #fn_name<I, B: ::std::borrow::Borrow<#token_type>>(
-      state: &mut ::parser_generator::parser_state::ParserState<B, #enum_name, I>
+    fn #fn_name<I, B: ::std::borrow::Borrow<#token_type>, E: Clone>(
+      state: &mut ::parser_generator::parser_state::ParserState<::core::result::Result<B, E>, #enum_name, I>
     ) -> ::parser_generator::error::ParserResult<
       ::parser_generator::parser_state::ParserControl<#result_type>,
+      E,
     >
     where
-      I: Iterator<Item = B>,
+      I: Iterator<Item = ::core::result::Result<B, E>>,
     {
       #actions
     }

@@ -4,30 +4,41 @@ use std::{
 };
 
 #[derive(Clone)]
-pub struct ParserError {
-  message: String,
+pub enum ParserError<E> {
+  ParseError { message: String },
+  InputStreamError(E),
 }
 
-impl ParserError {
+impl<E> ParserError<E> {
   pub fn new(message: impl Into<String>) -> Self {
-    Self {
+    Self::ParseError {
       message: message.into(),
+    }
+  }
+
+  pub fn from_input_stream_error(err: E) -> Self {
+    Self::InputStreamError(err)
+  }
+}
+
+impl<E: Error> Error for ParserError<E> {}
+
+impl<E: Display> Display for ParserError<E> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      Self::ParseError { message } => write!(f, "{message}"),
+      Self::InputStreamError(err) => write!(f, "{err}"),
     }
   }
 }
 
-impl Error for ParserError {}
-
-impl Display for ParserError {
+impl<E: Debug> Debug for ParserError<E> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}", self.message)
+    match self {
+      Self::ParseError { message } => write!(f, "{message}"),
+      Self::InputStreamError(err) => write!(f, "{err:?}"),
+    }
   }
 }
 
-impl Debug for ParserError {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{self}")
-  }
-}
-
-pub type ParserResult<T = ()> = Result<T, ParserError>;
+pub type ParserResult<T, E> = Result<T, ParserError<E>>;
