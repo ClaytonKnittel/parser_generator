@@ -15,11 +15,29 @@ struct Ident(String);
 struct Literal(String);
 
 #[derive(Clone)]
+enum Op {
+  Eq,
+  Semicolon,
+}
+
+#[derive(Clone)]
+enum Spacing {
+  Alone,
+  Joint,
+}
+
+#[derive(Clone)]
+struct Operator {
+  op: Op,
+  spacing: Spacing,
+}
+
+#[derive(Clone)]
 enum Token {
   Keyword(Keyword),
   Ident(Ident),
-  Eq,
   Literal(Literal),
+  Operator(Operator),
 }
 
 #[derive(Clone, Debug)]
@@ -38,7 +56,7 @@ grammar! {
     MainMethod { name: #ident.0, value: #literal.0 }
   };
   <ident>: Ident => Ident(..);
-  <eq> => Eq;
+  <eq> => Operator(Operator { op: Op::Eq, spacing: Spacing::Alone });
   <literal>: Literal => Literal(..) {
     #0
   };
@@ -51,7 +69,10 @@ fn test_parse() {
     Token::Keyword(Keyword::Static),
     Token::Keyword(Keyword::Void),
     Token::Ident(Ident("main".to_string())),
-    Token::Eq,
+    Token::Operator(Operator {
+      op: Op::Eq,
+      spacing: Spacing::Alone,
+    }),
     Token::Literal(Literal("123".to_string())),
   ])
   .unwrap();
@@ -72,7 +93,10 @@ fn test_parse_fail() {
     Token::Keyword(Keyword::Public),
     Token::Keyword(Keyword::Void),
     Token::Ident(Ident("main".to_string())),
-    Token::Eq,
+    Token::Operator(Operator {
+      op: Op::Eq,
+      spacing: Spacing::Alone,
+    }),
     Token::Literal(Literal("123".to_string())),
   ]);
 
