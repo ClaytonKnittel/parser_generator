@@ -1,26 +1,6 @@
-use std::{
-  borrow::Borrow,
-  error::Error,
-  fmt::{Debug, Display},
-};
+use std::{borrow::Borrow, convert::Infallible};
 
 use crate::error::ParserResult;
-
-#[derive(Clone)]
-pub enum Infallible {}
-
-impl Debug for Infallible {
-  fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match *self {}
-  }
-}
-impl Display for Infallible {
-  fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match *self {}
-  }
-}
-
-impl Error for Infallible {}
 
 pub trait Parser {
   type Token;

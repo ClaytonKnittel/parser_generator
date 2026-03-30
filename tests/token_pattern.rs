@@ -52,11 +52,15 @@ grammar! {
 
   <root>: MainMethod =>
     Keyword(Keyword::Public) Keyword(Keyword::Static) Keyword(Keyword::Void)
-    <ident> <eq> <literal> {
+    <ident> <eq> <literal> <semicolon> {
     MainMethod { name: #ident.0, value: #literal.0 }
   };
   <ident>: Ident => Ident(..);
-  <eq> => Operator(Operator { op: Op::Eq, spacing: Spacing::Alone });
+  <eq> =>
+    Operator(Operator { op: Op::Eq, spacing: Spacing::Joint })
+    Operator(Operator { op: Op::Eq, spacing: Spacing::Alone });
+  <semicolon> =>
+    Operator(Operator { op: Op::Semicolon, spacing: Spacing::Alone });
   <literal>: Literal => Literal(..) {
     #0
   };
@@ -71,9 +75,17 @@ fn test_parse() {
     Token::Ident(Ident("main".to_string())),
     Token::Operator(Operator {
       op: Op::Eq,
+      spacing: Spacing::Joint,
+    }),
+    Token::Operator(Operator {
+      op: Op::Eq,
       spacing: Spacing::Alone,
     }),
     Token::Literal(Literal("123".to_string())),
+    Token::Operator(Operator {
+      op: Op::Semicolon,
+      spacing: Spacing::Alone,
+    }),
   ])
   .unwrap();
 
