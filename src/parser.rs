@@ -2,7 +2,6 @@ use std::{
   borrow::Borrow,
   error::Error,
   fmt::{Debug, Display},
-  hint::unreachable_unchecked,
 };
 
 use crate::error::ParserResult;
@@ -12,12 +11,12 @@ pub enum Infallible {}
 
 impl Debug for Infallible {
   fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    unsafe { unreachable_unchecked() }
+    match *self {}
   }
 }
 impl Display for Infallible {
   fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    unsafe { unreachable_unchecked() }
+    match *self {}
   }
 }
 
