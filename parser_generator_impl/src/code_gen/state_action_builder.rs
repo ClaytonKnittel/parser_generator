@@ -92,8 +92,7 @@ impl CollectLikeActions {
   /// reason about. This is a runtime check done on all tokens to verify that
   /// they match at most one pattern in the pattern list.
   ///
-  /// The check is only enabled if either `debug_assertions` or `test` config
-  /// is enabled.
+  /// The check is only enabled if the `debug_assertions` config is enabled.
   fn debug_check_token_conflict(&self, grammar_info: &GrammarInfo) -> TokenStreamResult {
     // We only need to check for pattern conflicts for enum terminals. We don't
     // support patterns for raw terminals.
@@ -125,16 +124,7 @@ impl CollectLikeActions {
       .try_collect_tokens()?;
 
     Ok(quote! {
-      if cfg!(any(debug_assertions, test)) {
-        let count_matches = #count_matches;
-        if count_matches > 1 {
-          return Err(
-            ::parser_generator::error::ParserError::overlapping_token_matchers(
-              format!("{:?}", #peeked_val)
-            )
-          );
-        }
-      }
+      ::parser_generator::debug_verify_no_overlapping_matches!(#count_matches, #peeked_val);
     })
   }
 

@@ -8,7 +8,7 @@ pub enum ParserError<E> {
   ParseError {
     message: String,
   },
-  #[cfg(any(debug_assertions, test))]
+  #[cfg(debug_assertions)]
   OverlappingTokenMatchers {
     token: String,
   },
@@ -22,7 +22,7 @@ impl<E> ParserError<E> {
     }
   }
 
-  #[cfg(any(debug_assertions, test))]
+  #[cfg(debug_assertions)]
   pub fn overlapping_token_matchers(token: String) -> Self {
     Self::OverlappingTokenMatchers { token }
   }
@@ -38,7 +38,7 @@ impl<E: Display> Display for ParserError<E> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
       Self::ParseError { message } => write!(f, "{message}"),
-      #[cfg(any(debug_assertions, test))]
+      #[cfg(debug_assertions)]
       Self::OverlappingTokenMatchers { token } => write!(
         f,
         "Token {token} matches multiple rules. Disambiguate matchers for tokens of this type."
@@ -52,7 +52,7 @@ impl<E: Debug> Debug for ParserError<E> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
       Self::ParseError { message } => write!(f, "{message}"),
-      #[cfg(any(debug_assertions, test))]
+      #[cfg(debug_assertions)]
       Self::OverlappingTokenMatchers { token } => write!(
         f,
         "Token {token} matches multiple rules. Disambiguate matchers for tokens of this type."

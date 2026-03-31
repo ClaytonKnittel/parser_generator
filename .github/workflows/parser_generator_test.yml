@@ -29,6 +29,10 @@ jobs:
         working-directory: parser_generator
         run: |
           cargo test
+      - name: Run unit tests in release mode
+        working-directory: parser_generator
+        run: |
+          cargo test --release
       - name: Clippy lint lr_table
         working-directory: parser_generator/lr_table
         run: |
