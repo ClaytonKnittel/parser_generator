@@ -1,7 +1,7 @@
 use crate::{
+  ParserGeneratorResult,
   symbol::{SymbolMeta, SymbolT},
   symbol_stream::SymbolStream,
-  ParserGeneratorResult,
 };
 
 pub struct Ident {

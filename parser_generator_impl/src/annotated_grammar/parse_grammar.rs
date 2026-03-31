@@ -90,10 +90,7 @@ impl TerminalType {
         let literal = symbol.as_literal()?;
         quote! { #literal }
       }
-      Self::Enum(enum_type) => {
-        let pattern = symbol.as_pattern(mode)?;
-        quote! { #enum_type::#pattern }
-      }
+      Self::Enum(enum_type) => symbol.as_pattern(enum_type, mode)?,
     })
   }
 

@@ -3,8 +3,8 @@ use std::{
   fmt::{Debug, Display},
 };
 
-use proc_macro2::Span;
 use proc_macro_error::abort;
+use proc_macro2::Span;
 
 #[derive(Clone)]
 pub struct ParserGeneratorError {

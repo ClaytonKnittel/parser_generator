@@ -14,7 +14,7 @@ use quote::quote;
 
 use crate::{
   annotated_grammar::{
-    parse_grammar::GrammarInfo,
+    parse_grammar::{GrammarInfo, TerminalType},
     terminal::{PatternMode, UserDefinedSymbol},
   },
   code_gen::{
@@ -61,6 +61,10 @@ struct CollectLikeActions {
 }
 
 impl CollectLikeActions {
+  fn peeked_val_ident() -> proc_macro2::Ident {
+    proc_macro2::Ident::new("__peeked_val", Span::call_site())
+  }
+
   /// Collects all actions from this state into groups which can be processed
   /// together, which leads to much smaller assembly code compared to simply
   /// matching on each token and applying some action.
@@ -82,6 +86,57 @@ impl CollectLikeActions {
     }
 
     action_map
+  }
+
+  /// We forbid all ambiguous overlapping patterns to make grammars easier to
+  /// reason about. This is a runtime check done on all tokens to verify that
+  /// they match at most one pattern in the pattern list.
+  ///
+  /// The check is only enabled if the `debug_assertions` config is enabled.
+  fn debug_check_token_conflict(&self, grammar_info: &GrammarInfo) -> TokenStreamResult {
+    // We only need to check for pattern conflicts for enum terminals. We don't
+    // support patterns for raw terminals.
+    if matches!(grammar_info.terminal_type(), TerminalType::Raw(_)) {
+      return Ok(quote! {});
+    }
+
+    let mut all_tokens = self
+      .reduce_map
+      .values()
+      .flatten()
+      .chain(self.shift_map.iter().map(|(tokens, _)| tokens))
+      .chain(self.accept.as_ref())
+      .filter(|token| token.token().is_some())
+      .peekable();
+    if all_tokens.peek().is_none() {
+      return Ok(quote! {});
+    }
+
+    let peeked_val = Self::peeked_val_ident();
+
+    let count_matches = all_tokens
+      .map(|token| {
+        let matcher = token_matcher(token, grammar_info, PatternMode::Unnamed)?;
+
+        Ok(quote! { (matches!(#peeked_val, #matcher) as usize) })
+      })
+      .join_with(|| Ok(quote! { + }))
+      .try_collect_tokens()?;
+
+    Ok(quote! {
+      #[cfg(debug_assertions)]
+      {
+        let count_matches = #count_matches;
+        if count_matches > 1 {
+          return Err(
+            ::parser_generator::error::ParserError::overlapping_token_matchers(format!(
+              "{:?}",
+              #peeked_val
+            )),
+          );
+        }
+      }
+    })
   }
 
   /// Produces the match arms for tokens which should be shift actions. These
@@ -195,21 +250,29 @@ impl CollectLikeActions {
     grammar_info: &GrammarInfo,
     state_map: &LRStateMap<UserDefinedSymbol>,
   ) -> TokenStreamResult {
-    let reduce_matches = self.reduce_match_and_return(state_id, grammar_info, state_map)?;
-    let accept_matches = self.accept_match_and_return(state_id, grammar_info, state_map)?;
+    let peeked_val = Self::peeked_val_ident();
     let peek_next = quote! {
       state.stream().peek_next().map(|token| match token {
         Ok(token) => Ok(token.borrow()),
         Err(err) => Err(::parser_generator::error::ParserError::from_input_stream_error(err.clone())),
       }).transpose()?
     };
+
+    let debug_check_token_conflict = self.debug_check_token_conflict(grammar_info)?;
+
+    let reduce_matches = self.reduce_match_and_return(state_id, grammar_info, state_map)?;
+    let accept_matches = self.accept_match_and_return(state_id, grammar_info, state_map)?;
+
     let return_err = quote! {
       return Err(::parser_generator::error::ParserError::new("Failed to parse"))
     };
 
     if self.shift_map.is_empty() {
       Ok(quote! {
-        match #peek_next {
+        let #peeked_val = #peek_next;
+        #debug_check_token_conflict
+
+        match #peeked_val {
           #reduce_matches
           #accept_matches
           _ => #return_err,
@@ -219,7 +282,10 @@ impl CollectLikeActions {
       let shift_matches = self.shift_match_and_yield(grammar_info)?;
 
       Ok(quote! {
-        let next_state = match #peek_next {
+        let #peeked_val = #peek_next;
+        #debug_check_token_conflict
+
+        let next_state = match #peeked_val {
           #shift_matches
           #reduce_matches
           #accept_matches

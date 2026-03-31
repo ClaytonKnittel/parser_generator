@@ -1,38 +1,41 @@
 use googletest::prelude::*;
 use parser_generator::{grammar, parser::Parser};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Keyword {
   Public,
   Static,
   Void,
 }
 
-#[derive(Clone)]
-struct Ident(String);
+#[derive(Clone, Debug)]
+struct Ident {
+  name: String,
+  spacing: Spacing,
+}
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Literal(String);
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Op {
   Eq,
   Semicolon,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Spacing {
   Alone,
   Joint,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Operator {
   op: Op,
   spacing: Spacing,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Token {
   Keyword(Keyword),
   Ident(Ident),
@@ -53,9 +56,9 @@ grammar! {
   <root>: MainMethod =>
     Keyword(Keyword::Public) Keyword(Keyword::Static) Keyword(Keyword::Void)
     <ident> <eq> <literal> <semicolon> {
-    MainMethod { name: #ident.0, value: #literal.0 }
+    MainMethod { name: #ident.name, value: #literal.0 }
   };
-  <ident>: Ident => Ident(..);
+  <ident>: Ident => Ident(Ident { spacing: Spacing::Alone, .. });
   <eq> =>
     Operator(Operator { op: Op::Eq, spacing: Spacing::Joint })
     Operator(Operator { op: Op::Eq, spacing: Spacing::Alone });
@@ -72,7 +75,10 @@ fn test_parse() {
     Token::Keyword(Keyword::Public),
     Token::Keyword(Keyword::Static),
     Token::Keyword(Keyword::Void),
-    Token::Ident(Ident("main".to_string())),
+    Token::Ident(Ident {
+      name: "main".to_string(),
+      spacing: Spacing::Alone,
+    }),
     Token::Operator(Operator {
       op: Op::Eq,
       spacing: Spacing::Joint,
@@ -104,12 +110,43 @@ fn test_parse_fail() {
     Token::Keyword(Keyword::Static),
     Token::Keyword(Keyword::Public),
     Token::Keyword(Keyword::Void),
-    Token::Ident(Ident("main".to_string())),
+    Token::Ident(Ident {
+      name: "main".to_string(),
+      spacing: Spacing::Alone,
+    }),
     Token::Operator(Operator {
       op: Op::Eq,
       spacing: Spacing::Alone,
     }),
     Token::Literal(Literal("123".to_string())),
+  ]);
+
+  expect_that!(result, err(anything()));
+}
+
+#[gtest]
+fn test_partial_pattern_enforced() {
+  let result = TokenPattern::parse([
+    Token::Keyword(Keyword::Public),
+    Token::Keyword(Keyword::Static),
+    Token::Keyword(Keyword::Void),
+    Token::Ident(Ident {
+      name: "main".to_string(),
+      spacing: Spacing::Joint,
+    }),
+    Token::Operator(Operator {
+      op: Op::Eq,
+      spacing: Spacing::Joint,
+    }),
+    Token::Operator(Operator {
+      op: Op::Eq,
+      spacing: Spacing::Alone,
+    }),
+    Token::Literal(Literal("123".to_string())),
+    Token::Operator(Operator {
+      op: Op::Semicolon,
+      spacing: Spacing::Alone,
+    }),
   ]);
 
   expect_that!(result, err(anything()));

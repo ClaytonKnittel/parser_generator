@@ -1,9 +1,9 @@
-use std::{borrow::Borrow, convert::Infallible};
+use std::{borrow::Borrow, convert::Infallible, fmt::Debug};
 
 use crate::error::ParserResult;
 
 pub trait Parser {
-  type Token;
+  type Token: Debug;
   type Value;
 
   fn parse_fallible<I, B, E>(input_stream: I) -> ParserResult<Self::Value, E>
