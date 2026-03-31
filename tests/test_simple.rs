@@ -3,7 +3,7 @@ use parser_generator::parser::Parser;
 
 #[gtest]
 fn test_simple() -> googletest::Result<()> {
-  parser_generator::grammar! {
+  parser_generator::pub_grammar! {
     name: Test;
     terminal: char;
 

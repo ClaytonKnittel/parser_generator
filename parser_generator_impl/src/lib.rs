@@ -20,20 +20,36 @@ use crate::{
   symbol_stream::SymbolStreamImpl,
 };
 
+pub(crate) enum Visibility {
+  Private,
+  Public,
+}
+
 fn build_grammar(
   tokens: proc_macro::TokenStream,
+  visibility: Visibility,
 ) -> ParserGeneratorResult<proc_macro::TokenStream> {
   let tokens = proc_macro2::TokenStream::from(tokens);
   let list = tokenize_from_stream(tokens);
   let grammar_info = parse_grammar(SymbolStreamImpl::new(list))?;
-  generate_parser(&grammar_info).map(proc_macro::TokenStream::from)
+  generate_parser(&grammar_info, visibility).map(proc_macro::TokenStream::from)
 }
 
 #[proc_macro_error]
 #[proc_macro]
 /// Constructs an LR(1) parser based on the definition provided.
 pub fn grammar(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream {
-  match build_grammar(tokens) {
+  match build_grammar(tokens, Visibility::Private) {
+    Ok(tokens) => tokens,
+    Err(err) => err.abort(),
+  }
+}
+
+#[proc_macro_error]
+#[proc_macro]
+/// Constructs an LR(1) parser based on the definition provided.
+pub fn pub_grammar(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream {
+  match build_grammar(tokens, Visibility::Public) {
     Ok(tokens) => tokens,
     Err(err) => err.abort(),
   }
