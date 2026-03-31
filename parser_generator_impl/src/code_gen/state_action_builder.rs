@@ -124,7 +124,18 @@ impl CollectLikeActions {
       .try_collect_tokens()?;
 
     Ok(quote! {
-      ::parser_generator::debug_verify_no_overlapping_matches!(#count_matches, #peeked_val);
+      #[cfg(debug_assertions)]
+      {
+        let count_matches = #count_matches;
+        if count_matches > 1 {
+          return Err(
+            ::parser_generator::error::ParserError::overlapping_token_matchers(format!(
+              "{:?}",
+              #peeked_val
+            )),
+          );
+        }
+      }
     })
   }
 
