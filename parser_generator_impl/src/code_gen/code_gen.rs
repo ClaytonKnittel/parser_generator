@@ -9,9 +9,10 @@ use crate::{
     states_enum::generate_dfa_states,
     util::TokenStreamResult,
   },
+  Visibility,
 };
 
-pub fn generate_parser(grammar_info: &GrammarInfo) -> TokenStreamResult {
+pub fn generate_parser(grammar_info: &GrammarInfo, visibility: Visibility) -> TokenStreamResult {
   let state_map = grammar_info.build_lr_state_map()?;
 
   let grammar_name = grammar_info.name().make_syn_ident();
@@ -29,8 +30,13 @@ pub fn generate_parser(grammar_info: &GrammarInfo) -> TokenStreamResult {
 
   let parse_loop = generate_parse_loop(grammar_info)?;
 
+  let maybe_pub = match visibility {
+    Visibility::Public => quote! { pub },
+    Visibility::Private => quote! {},
+  };
+
   Ok(quote! {
-    struct #grammar_name;
+    #maybe_pub struct #grammar_name;
     impl ::parser_generator::parser::Parser for #grammar_name {
       type Token = #token_type;
       type Value = #result_type;
