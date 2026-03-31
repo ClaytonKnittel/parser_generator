@@ -88,6 +88,12 @@ impl CollectLikeActions {
     action_map
   }
 
+  /// We forbid all ambiguous overlapping patterns to make grammars easier to
+  /// reason about. This is a runtime check done on all tokens to verify that
+  /// they match at most one pattern in the pattern list.
+  ///
+  /// The check is only enabled if either `debug_assertions` or `test` config
+  /// is enabled.
   fn debug_check_token_conflict(&self, grammar_info: &GrammarInfo) -> TokenStreamResult {
     // We only need to check for pattern conflicts for enum terminals. We don't
     // support patterns for raw terminals.
