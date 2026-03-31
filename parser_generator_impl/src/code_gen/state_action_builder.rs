@@ -95,12 +95,17 @@ impl CollectLikeActions {
       return Ok(quote! {});
     }
 
-    let all_tokens = self
+    let mut all_tokens = self
       .reduce_map
       .values()
       .flatten()
       .chain(self.shift_map.iter().map(|(tokens, _)| tokens))
-      .chain(self.accept.as_ref());
+      .chain(self.accept.as_ref())
+      .filter(|token| token.token().is_some())
+      .peekable();
+    if all_tokens.peek().is_none() {
+      return Ok(quote! {});
+    }
 
     let peeked_val = Self::peeked_val_ident();
 
