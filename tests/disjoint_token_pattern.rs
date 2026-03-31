@@ -39,7 +39,6 @@ fn no_conflicts() {
 }
 
 #[gtest]
-#[cfg(debug_assertions)]
 fn conflict() {
   // The runtime check for token resolution conflict only triggers if a token
   // matches more than one rule.
@@ -47,5 +46,9 @@ fn conflict() {
     field1: 9,
     field2: 100,
   })]);
+
+  #[cfg(debug_assertions)]
   expect_that!(res, err(anything()));
+  #[cfg(not(debug_assertions))]
+  expect_that!(res, ok(()));
 }
