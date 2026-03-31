@@ -1,41 +1,41 @@
 use googletest::prelude::*;
 use parser_generator::{grammar, parser::Parser};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Keyword {
   Public,
   Static,
   Void,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Ident {
   name: String,
   spacing: Spacing,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Literal(String);
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Op {
   Eq,
   Semicolon,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Spacing {
   Alone,
   Joint,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Operator {
   op: Op,
   spacing: Spacing,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Token {
   Keyword(Keyword),
   Ident(Ident),
@@ -59,7 +59,6 @@ grammar! {
     MainMethod { name: #ident.name, value: #literal.0 }
   };
   <ident>: Ident => Ident(Ident { spacing: Spacing::Alone, .. });
-  <ident>: Ident => Ident(Ident { spacing: Spacing::Alone, name: _ });
   <eq> =>
     Operator(Operator { op: Op::Eq, spacing: Spacing::Joint })
     Operator(Operator { op: Op::Eq, spacing: Spacing::Alone });
