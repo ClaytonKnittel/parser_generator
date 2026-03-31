@@ -42,17 +42,12 @@ fn extract_state(
       let matcher = qualified_enum_variant_name(state_id, grammar_info);
       if let LRStateType::Terminal(term) = state_type
         && let Some(token) = term.token()
+          && (token.is_pattern() || token.is_wildcard())
       {
         let terminal_type = grammar_info.terminal_type().inner_type();
         let token_pattern = token.as_ident();
-        if token.is_wildcard() || token.is_pattern() {
-          quote! {
-            #matcher(#terminal_type::#token_pattern(v)) => v,
-          }
-        } else {
-          quote! {
-            #matcher(v @ #terminal_type::#token_pattern) => v,
-          }
+        quote! {
+          #matcher(#terminal_type::#token_pattern(v)) => v,
         }
       } else {
         quote! {

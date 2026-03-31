@@ -56,9 +56,10 @@ grammar! {
   <root>: MainMethod =>
     Keyword(Keyword::Public) Keyword(Keyword::Static) Keyword(Keyword::Void)
     <ident> <eq> <literal> <semicolon> {
-    MainMethod { name: #ident.0, value: #literal.0 }
+    MainMethod { name: #ident.name, value: #literal.0 }
   };
   <ident>: Ident => Ident(Ident { spacing: Spacing::Alone, .. });
+  <ident>: Ident => Ident(Ident { spacing: Spacing::Alone, name: _ });
   <eq> =>
     Operator(Operator { op: Op::Eq, spacing: Spacing::Joint })
     Operator(Operator { op: Op::Eq, spacing: Spacing::Alone });
@@ -119,6 +120,34 @@ fn test_parse_fail() {
       spacing: Spacing::Alone,
     }),
     Token::Literal(Literal("123".to_string())),
+  ]);
+
+  expect_that!(result, err(anything()));
+}
+
+#[gtest]
+fn test_partial_pattern_enforced() {
+  let result = TokenPattern::parse([
+    Token::Keyword(Keyword::Public),
+    Token::Keyword(Keyword::Static),
+    Token::Keyword(Keyword::Void),
+    Token::Ident(Ident {
+      name: "main".to_string(),
+      spacing: Spacing::Joint,
+    }),
+    Token::Operator(Operator {
+      op: Op::Eq,
+      spacing: Spacing::Joint,
+    }),
+    Token::Operator(Operator {
+      op: Op::Eq,
+      spacing: Spacing::Alone,
+    }),
+    Token::Literal(Literal("123".to_string())),
+    Token::Operator(Operator {
+      op: Op::Semicolon,
+      spacing: Spacing::Alone,
+    }),
   ]);
 
   expect_that!(result, err(anything()));
