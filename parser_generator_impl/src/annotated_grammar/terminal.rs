@@ -1,13 +1,14 @@
 use std::{fmt::Display, str::FromStr};
 
 use lr_table::vocabulary::AugmentedVocabToken;
-use proc_macro2::{Delimiter, Spacing, Span, TokenStream, TokenTree};
+use proc_macro2::{Spacing, Span, TokenStream, TokenTree};
 use quote::{ToTokens, quote};
 
 use crate::{
   ParserGeneratorError, ParserGeneratorResult,
   symbol::{Operator, Symbol, SymbolMeta, SymbolT},
   symbol_stream::SymbolStream,
+  type_symbol::Type,
 };
 
 fn is_punct(tokens: &TokenTree, ch: char, spacing: Spacing) -> bool {
@@ -39,6 +40,7 @@ fn is_wildcard(tokens: TokenStream) -> bool {
   }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum PatternMode {
   /// Names the associated data of the pattern being matched using
   /// `UserDefinedSymbol::wildcard_bound_variable()`.
@@ -64,12 +66,20 @@ pub struct UserDefinedSymbol {
 }
 
 impl UserDefinedSymbol {
-  pub const fn wildcard_bound_variable() -> &'static str {
+  const fn wildcard_bound_variable() -> &'static str {
     "wildcard_var"
+  }
+
+  pub fn wildcard_bound_ident() -> proc_macro2::Ident {
+    proc_macro2::Ident::new(Self::wildcard_bound_variable(), Span::call_site())
   }
 
   pub fn is_wildcard(&self) -> bool {
     matches!(self.paren_group, ParenGroup::Wildcard)
+  }
+
+  pub fn is_pattern(&self) -> bool {
+    matches!(self.paren_group, ParenGroup::Pattern(_))
   }
 
   pub fn as_literal(&self) -> ParserGeneratorResult<proc_macro2::Literal> {
@@ -87,26 +97,31 @@ impl UserDefinedSymbol {
     proc_macro2::Ident::new(&self.name, Span::call_site())
   }
 
-  pub fn as_pattern(&self, mode: PatternMode) -> ParserGeneratorResult<proc_macro2::TokenStream> {
+  pub fn as_pattern(
+    &self,
+    enum_type: &Type,
+    mode: PatternMode,
+  ) -> ParserGeneratorResult<proc_macro2::TokenStream> {
     let ident = self.as_ident();
+    let bound_var = Self::wildcard_bound_ident();
+
     Ok(match &self.paren_group {
       ParenGroup::Pattern(pat) => {
-        let g = proc_macro2::Group::new(
-          Delimiter::Parenthesis,
-          proc_macro2::TokenStream::from_str(pat)
-            .expect("Failed to re-tokenize `UserDefinedSymbol::pat`"),
-        );
-        quote! { #ident #g }
-      }
-      ParenGroup::Wildcard => {
-        let bound_var = proc_macro2::Ident::new(Self::wildcard_bound_variable(), Span::call_site());
+        let pat = proc_macro2::TokenStream::from_str(pat)
+          .expect("Failed to re-tokenize `UserDefinedSymbol::pat`");
+
         match mode {
-          PatternMode::Named => quote! { #ident(#bound_var) },
-          PatternMode::Unnamed => quote! { #ident(..) },
-          PatternMode::Rhs => quote! { #ident(#bound_var.clone()) },
+          PatternMode::Named => quote! { #enum_type::#ident(ref #bound_var @ #pat) },
+          PatternMode::Unnamed => quote! { #enum_type::#ident(#pat) },
+          PatternMode::Rhs => quote! { #enum_type::#ident(#bound_var.clone()) },
         }
       }
-      ParenGroup::None => quote! { #ident },
+      ParenGroup::Wildcard => match mode {
+        PatternMode::Named => quote! { #enum_type::#ident(#bound_var) },
+        PatternMode::Unnamed => quote! { #enum_type::#ident(..) },
+        PatternMode::Rhs => quote! { #enum_type::#ident(#bound_var.clone()) },
+      },
+      ParenGroup::None => quote! { #enum_type::#ident },
     })
   }
 }

@@ -9,7 +9,10 @@ enum Keyword {
 }
 
 #[derive(Clone)]
-struct Ident(String);
+struct Ident {
+  name: String,
+  spacing: Spacing,
+}
 
 #[derive(Clone)]
 struct Literal(String);
@@ -55,7 +58,7 @@ grammar! {
     <ident> <eq> <literal> <semicolon> {
     MainMethod { name: #ident.0, value: #literal.0 }
   };
-  <ident>: Ident => Ident(..);
+  <ident>: Ident => Ident(Ident { spacing: Spacing::Alone, .. });
   <eq> =>
     Operator(Operator { op: Op::Eq, spacing: Spacing::Joint })
     Operator(Operator { op: Op::Eq, spacing: Spacing::Alone });
@@ -72,7 +75,10 @@ fn test_parse() {
     Token::Keyword(Keyword::Public),
     Token::Keyword(Keyword::Static),
     Token::Keyword(Keyword::Void),
-    Token::Ident(Ident("main".to_string())),
+    Token::Ident(Ident {
+      name: "main".to_string(),
+      spacing: Spacing::Alone,
+    }),
     Token::Operator(Operator {
       op: Op::Eq,
       spacing: Spacing::Joint,
@@ -104,7 +110,10 @@ fn test_parse_fail() {
     Token::Keyword(Keyword::Static),
     Token::Keyword(Keyword::Public),
     Token::Keyword(Keyword::Void),
-    Token::Ident(Ident("main".to_string())),
+    Token::Ident(Ident {
+      name: "main".to_string(),
+      spacing: Spacing::Alone,
+    }),
     Token::Operator(Operator {
       op: Op::Eq,
       spacing: Spacing::Alone,

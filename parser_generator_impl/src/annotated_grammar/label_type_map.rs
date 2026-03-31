@@ -1,7 +1,7 @@
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{HashMap, hash_map::Entry};
 
 use crate::{
-  annotated_grammar::production_ref::ProductionRefName, type_symbol::Type, ParserGeneratorResult,
+  ParserGeneratorResult, annotated_grammar::production_ref::ProductionRefName, type_symbol::Type,
 };
 
 fn types_equal(t1: Option<&Type>, t2: Option<&Type>) -> bool {
