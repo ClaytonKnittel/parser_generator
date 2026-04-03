@@ -2,14 +2,14 @@ use cknittel_util::proc_macro_util::collect_tokens::TryCollectTokens;
 use quote::quote;
 
 use crate::{
+  Visibility,
   annotated_grammar::parse_grammar::GrammarInfo,
   code_gen::{
     parse_loop::generate_parse_loop,
     state_action_builder::{generate_state_action_function, root_production_type},
     states_enum::generate_dfa_states,
-    util::TokenStreamResult,
+    util::{TokenStreamResult, unique_prefixed_ident},
   },
-  Visibility,
 };
 
 pub fn generate_parser(grammar_info: &GrammarInfo, visibility: Visibility) -> TokenStreamResult {
@@ -35,19 +35,24 @@ pub fn generate_parser(grammar_info: &GrammarInfo, visibility: Visibility) -> To
     Visibility::Private => quote! {},
   };
 
+  let input_stream = unique_prefixed_ident("input_stream");
+  let iter_generic = unique_prefixed_ident("I");
+  let token_generic = unique_prefixed_ident("B");
+  let err_generic = unique_prefixed_ident("E");
+
   Ok(quote! {
     #maybe_pub struct #grammar_name;
     impl ::parser_generator::parser::Parser for #grammar_name {
       type Token = #token_type;
       type Value = #result_type;
 
-      fn parse_fallible<I, B, E>(
-        input_stream: I
-      ) -> ::parser_generator::error::ParserResult<Self::Value, E>
+      fn parse_fallible<#iter_generic, #token_generic, #err_generic>(
+        #input_stream: #iter_generic
+      ) -> ::parser_generator::error::ParserResult<Self::Value, #err_generic>
       where
-        I: IntoIterator<Item = ::core::result::Result<B, E>>,
-        B: ::std::borrow::Borrow<#token_type>,
-        E: Clone,
+        #iter_generic: IntoIterator<Item = ::core::result::Result<#token_generic, #err_generic>>,
+        #token_generic: ::std::borrow::Borrow<#token_type>,
+        #err_generic: Clone,
       {
         #dfa_states_enum
         #action_functions

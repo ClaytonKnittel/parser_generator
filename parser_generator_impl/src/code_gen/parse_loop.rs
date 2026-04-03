@@ -6,7 +6,7 @@ use crate::{
   code_gen::{
     state_action_builder::state_action_function_name,
     states_enum::{enum_matcher, qualified_enum_variant_name},
-    util::TokenStreamResult,
+    util::{TokenStreamResult, unique_prefixed_ident},
   },
 };
 
@@ -24,10 +24,11 @@ pub fn generate_parse_loop(grammar_info: &GrammarInfo) -> TokenStreamResult {
       quote! { #enum_matcher => #action_fn(&mut state), }
     })
     .collect_tokens();
+  let input_stream = unique_prefixed_ident("input_stream");
 
   Ok(quote! {
     let mut state = ::parser_generator::parser_state::ParserState::new(
-      input_stream.into_iter(),
+      #input_stream.into_iter(),
       #root_enum_state(()),
     );
     loop {

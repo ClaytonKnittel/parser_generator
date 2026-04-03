@@ -64,9 +64,7 @@ grammar! {
     Operator(Operator { op: Op::Eq, spacing: Spacing::Alone });
   <semicolon> =>
     Operator(Operator { op: Op::Semicolon, spacing: Spacing::Alone });
-  <literal>: Literal => Literal(..) {
-    #0
-  };
+  <literal>: Literal => Literal(..);
 }
 
 #[gtest]

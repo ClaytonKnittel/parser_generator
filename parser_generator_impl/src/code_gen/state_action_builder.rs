@@ -21,7 +21,7 @@ use crate::{
     constructor::build_constructor,
     reduce_rule::{apply_goto, bind_production_nodes_to_locals},
     states_enum::{enum_name, qualified_enum_variant_name},
-    util::TokenStreamResult,
+    util::{TokenStreamResult, unique_prefixed_ident},
   },
 };
 
@@ -233,10 +233,11 @@ impl CollectLikeActions {
       vec![grammar_info.lr_table().root_state()]
     );
     let constructor = build_constructor(ProductionRuleIndex(0), grammar_info)?;
+    let state = unique_prefixed_ident("state");
     Ok(quote! {
       #matcher => {
         #extract_vars
-        state.verify_empty_stack();
+        #state.verify_empty_stack();
         return Ok(::parser_generator::parser_state::ParserControl::Accept(#constructor));
       }
     })
@@ -251,8 +252,9 @@ impl CollectLikeActions {
     state_map: &LRStateMap<UserDefinedSymbol>,
   ) -> TokenStreamResult {
     let peeked_val = Self::peeked_val_ident();
+    let state = unique_prefixed_ident("state");
     let peek_next = quote! {
-      state.stream().peek_next().map(|token| match token {
+      #state.stream().peek_next().map(|token| match token {
         Ok(token) => Ok(token.borrow()),
         Err(err) => Err(::parser_generator::error::ParserError::from_input_stream_error(err.clone())),
       }).transpose()?
@@ -280,6 +282,7 @@ impl CollectLikeActions {
       })
     } else {
       let shift_matches = self.shift_match_and_yield(grammar_info)?;
+      let state = unique_prefixed_ident("state");
 
       Ok(quote! {
         let #peeked_val = #peek_next;
@@ -292,8 +295,8 @@ impl CollectLikeActions {
           _ => #return_err,
         };
 
-        state.stream_mut().advance();
-        state.push(next_state);
+        #state.stream_mut().advance();
+        #state.push(next_state);
         Ok(::parser_generator::parser_state::ParserControl::Continue)
       })
     }
@@ -313,9 +316,11 @@ pub fn generate_state_action_function(
   let action_map = CollectLikeActions::build_for_state(state_id, grammar_info);
   let actions = action_map.generate_actions(state_id, grammar_info, state_map)?;
 
+  let state = unique_prefixed_ident("state");
+
   Ok(quote! {
     fn #fn_name<I, B: ::std::borrow::Borrow<#token_type>, E: Clone>(
-      state: &mut ::parser_generator::parser_state::ParserState<::core::result::Result<B, E>, #enum_name, I>
+      #state: &mut ::parser_generator::parser_state::ParserState<::core::result::Result<B, E>, #enum_name, I>
     ) -> ::parser_generator::error::ParserResult<
       ::parser_generator::parser_state::ParserControl<#result_type>,
       E,
