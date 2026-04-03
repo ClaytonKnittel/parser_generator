@@ -18,7 +18,7 @@ use crate::{
   code_gen::{
     constructor::build_constructor,
     states_enum::{enum_matcher, qualified_enum_variant_name},
-    util::TokenStreamResult,
+    util::{TokenStreamResult, unique_prefixed_ident},
   },
 };
 
@@ -42,7 +42,7 @@ fn extract_state(
       let matcher = qualified_enum_variant_name(state_id, grammar_info);
       if let LRStateType::Terminal(term) = state_type
         && let Some(token) = term.token()
-          && (token.is_pattern() || token.is_wildcard())
+        && (token.is_pattern() || token.is_wildcard())
       {
         let terminal_type = grammar_info.terminal_type().inner_type();
         let token_pattern = token.as_ident();
@@ -56,9 +56,10 @@ fn extract_state(
       }
     })
     .collect_tokens();
+  let state = unique_prefixed_ident("state");
 
   quote! {
-    match state.pop_state() {
+    match #state.pop_state() {
       #match_arms
       _ => unsafe { ::std::hint::unreachable_unchecked() }
     }
@@ -162,6 +163,7 @@ pub fn apply_goto(
   }
 
   let constructor = build_constructor(rule_applied, grammar_info)?;
+  let state = unique_prefixed_ident("state");
 
   if goto_map.len() == 1 {
     let goto_state = goto_map
@@ -170,7 +172,7 @@ pub fn apply_goto(
       .expect("Goto map was just verified to be nonempty...");
     let next_state = qualified_enum_variant_name(goto_state, grammar_info);
     Ok(quote! {
-      state.push(#next_state(#constructor));
+      #state.push(#next_state(#constructor));
     })
   } else {
     let match_arms = goto_map
@@ -179,13 +181,13 @@ pub fn apply_goto(
         let match_from = match_any(from_states, grammar_info);
         let next_state = qualified_enum_variant_name(goto_state, grammar_info);
         Ok(quote! {
-          #match_from => state.push(#next_state(__constructed)),
+          #match_from => #state.push(#next_state(__constructed)),
         })
       })
       .try_collect_tokens()?;
     Ok(quote! {
       let __constructed = #constructor;
-      match state.state() {
+      match #state.state() {
         #match_arms
         _ => unsafe { ::std::hint::unreachable_unchecked() }
       }
