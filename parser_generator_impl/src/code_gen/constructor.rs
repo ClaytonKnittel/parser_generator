@@ -27,7 +27,7 @@ fn generate_default_constructor(rule: &ProductionRule) -> TokenStreamResult {
 
   let var = bound_variable_ident(0);
   Ok(quote! {
-    { #var }
+    { #var.into() }
   })
 }
 

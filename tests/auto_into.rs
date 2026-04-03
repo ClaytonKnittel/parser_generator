@@ -31,8 +31,8 @@ grammar!(
 
   <root>: AOrB => <a_or_b>;
 
-  <a_or_b>: AOrB => <a> { #0.into() };
-  <a_or_b>: AOrB => <b> { #0.into() };
+  <a_or_b>: AOrB => <a>;
+  <a_or_b>: AOrB => <b>;
 
   <a>: A => 'a' { A(1) };
   <b>: B => 'b' { B(2) };
