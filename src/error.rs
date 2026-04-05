@@ -13,6 +13,9 @@ pub enum ParserError<E> {
     token: String,
   },
   InputStreamError(E),
+  ForeignError {
+    message: String,
+  },
 }
 
 impl<E> ParserError<E> {
@@ -30,6 +33,12 @@ impl<E> ParserError<E> {
   pub fn from_input_stream_error(err: E) -> Self {
     Self::InputStreamError(err)
   }
+
+  pub fn from_foreign_error<F: Error>(err: F) -> Self {
+    Self::ForeignError {
+      message: err.to_string(),
+    }
+  }
 }
 
 impl<E: Error> Error for ParserError<E> {}
@@ -44,6 +53,7 @@ impl<E: Display> Display for ParserError<E> {
         "Token {token} matches multiple rules. Disambiguate matchers for tokens of this type."
       ),
       Self::InputStreamError(err) => write!(f, "{err}"),
+      Self::ForeignError { message } => write!(f, "Foreign error: {message}"),
     }
   }
 }
@@ -58,6 +68,7 @@ impl<E: Debug> Debug for ParserError<E> {
         "Token {token} matches multiple rules. Disambiguate matchers for tokens of this type."
       ),
       Self::InputStreamError(err) => write!(f, "{err:?}"),
+      Self::ForeignError { message } => write!(f, "Foreign error: {message}"),
     }
   }
 }

@@ -1,12 +1,11 @@
-use std::collections::{HashMap, hash_map::Entry};
+use std::collections::{hash_map::Entry, HashMap};
 
 use lr_table::grammar::ProductionRuleIndex;
 use proc_macro2::{Delimiter, Spacing, Span, TokenStream, TokenTree};
-use quote::{TokenStreamExt, quote};
+use quote::{quote, TokenStreamExt};
 use syn::spanned::Spanned;
 
 use crate::{
-  ParserGeneratorError, ParserGeneratorResult,
   annotated_grammar::{
     parse_grammar::GrammarInfo,
     production_node::ProductionNode,
@@ -14,6 +13,7 @@ use crate::{
     production_rule::{Constructor, ProductionRule},
   },
   code_gen::{reduce_rule::bound_variable_ident, util::TokenStreamResult},
+  ParserGeneratorError, ParserGeneratorResult,
 };
 
 fn generate_default_constructor(rule: &ProductionRule) -> TokenStreamResult {
@@ -27,7 +27,7 @@ fn generate_default_constructor(rule: &ProductionRule) -> TokenStreamResult {
 
   let var = bound_variable_ident(0);
   Ok(quote! {
-    { #var.into() }
+    { #var.try_into().map_err(::parser_generator::error::ParserError::from_foreign_error)? }
   })
 }
 
