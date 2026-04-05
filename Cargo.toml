@@ -11,4 +11,4 @@ parser_generator_impl = { path = "./parser_generator_impl" }
 
 [dev-dependencies]
 itertools = "0.14.0"
-cknittel-util = { git = "https://github.com/ClaytonKnittel/cknittel-util.git", rev = "16279eb80e1e08b442161f758ad1fae550f12a24" }
+cknittel-util = { git = "https://github.com/ClaytonKnittel/cknittel-util.git", rev = "7e35310d1fde5753a1252900df1747390b1eb9a2" }
