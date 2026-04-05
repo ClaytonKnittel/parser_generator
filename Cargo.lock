@@ -20,10 +20,10 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 [[package]]
 name = "cknittel-util"
 version = "0.1.0"
-source = "git+https://github.com/ClaytonKnittel/cknittel-util.git?rev=63d07d74820add0967a0bfe76e61b6939a421efd#63d07d74820add0967a0bfe76e61b6939a421efd"
+source = "git+https://github.com/ClaytonKnittel/cknittel-util.git?rev=16279eb80e1e08b442161f758ad1fae550f12a24#16279eb80e1e08b442161f758ad1fae550f12a24"
 dependencies = [
- "num-traits",
  "proc-macro-util",
+ "util-impl",
 ]
 
 [[package]]
@@ -137,7 +137,7 @@ dependencies = [
 [[package]]
 name = "proc-macro-util"
 version = "0.1.0"
-source = "git+https://github.com/ClaytonKnittel/cknittel-util.git?rev=63d07d74820add0967a0bfe76e61b6939a421efd#63d07d74820add0967a0bfe76e61b6939a421efd"
+source = "git+https://github.com/ClaytonKnittel/cknittel-util.git?rev=16279eb80e1e08b442161f758ad1fae550f12a24#16279eb80e1e08b442161f758ad1fae550f12a24"
 dependencies = [
  "proc-macro2",
 ]
@@ -211,6 +211,14 @@ name = "unicode-ident"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
+
+[[package]]
+name = "util-impl"
+version = "0.1.0"
+source = "git+https://github.com/ClaytonKnittel/cknittel-util.git?rev=16279eb80e1e08b442161f758ad1fae550f12a24#16279eb80e1e08b442161f758ad1fae550f12a24"
+dependencies = [
+ "num-traits",
+]
 
 [[package]]
 name = "version_check"
