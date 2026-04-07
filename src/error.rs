@@ -12,10 +12,7 @@ pub enum ParserError<E> {
   OverlappingTokenMatchers {
     token: String,
   },
-  InputStreamError(E),
-  ForeignError {
-    message: String,
-  },
+  UserError(E),
 }
 
 impl<E> ParserError<E> {
@@ -30,14 +27,14 @@ impl<E> ParserError<E> {
     Self::OverlappingTokenMatchers { token }
   }
 
-  pub fn from_input_stream_error(err: E) -> Self {
-    Self::InputStreamError(err)
+  pub fn from_user_error<F: Into<E>>(err: F) -> Self {
+    Self::UserError(err.into())
   }
+}
 
-  pub fn from_foreign_error<F: Error>(err: F) -> Self {
-    Self::ForeignError {
-      message: err.to_string(),
-    }
+impl<E: Error> From<E> for ParserError<E> {
+  fn from(value: E) -> Self {
+    Self::from_user_error(value)
   }
 }
 
@@ -52,8 +49,7 @@ impl<E: Display> Display for ParserError<E> {
         f,
         "Token {token} matches multiple rules. Disambiguate matchers for tokens of this type."
       ),
-      Self::InputStreamError(err) => write!(f, "{err}"),
-      Self::ForeignError { message } => write!(f, "Foreign error: {message}"),
+      Self::UserError(err) => write!(f, "{err}"),
     }
   }
 }
@@ -67,8 +63,7 @@ impl<E: Debug> Debug for ParserError<E> {
         f,
         "Token {token} matches multiple rules. Disambiguate matchers for tokens of this type."
       ),
-      Self::InputStreamError(err) => write!(f, "{err:?}"),
-      Self::ForeignError { message } => write!(f, "Foreign error: {message}"),
+      Self::UserError(err) => write!(f, "{err:?}"),
     }
   }
 }

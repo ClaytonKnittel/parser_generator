@@ -1,7 +1,11 @@
-use std::{error::Error, fmt::Display};
+use std::{convert::Infallible, error::Error, fmt::Display};
 
 use googletest::prelude::*;
-use parser_generator::{error::ParserError, grammar, parser::Parser};
+use parser_generator::{
+  error::{ParserError, ParserResult},
+  grammar,
+  parser::Parser,
+};
 
 #[derive(Debug)]
 struct MyError {
@@ -38,14 +42,22 @@ impl TryFrom<A> for Container {
   }
 }
 
+fn test1(v: u32) -> ParserResult<Container, MyError> {
+  Ok(A(v).try_into()?)
+}
+
 grammar!(
   name: AutoInto;
   terminal: char;
+  error_type: MyError;
 
   <root>: Container => <a>;
 
   <a>: A => 'a' { A(1) };
   <a>: A => 'z' { A(100) };
+
+  <a>: A => 'b' { A(1).try_into()? };
+  <a>: A => 'y' { A(100).try_into()? };
 );
 
 #[gtest]

@@ -5,7 +5,7 @@ use lr_table::{
   lr_table::LRTable,
 };
 use proc_macro2::{Span, TokenStream};
-use quote::quote;
+use quote::{ToTokens, quote};
 
 use crate::{
   ParserGeneratorError, ParserGeneratorResult,
@@ -108,9 +108,26 @@ impl TerminalType {
   }
 }
 
+pub enum ErrorType {
+  Custom(Type),
+  Infallible,
+}
+
+impl ToTokens for ErrorType {
+  fn to_tokens(&self, tokens: &mut TokenStream) {
+    match self {
+      Self::Custom(ty) => ty.to_tokens(tokens),
+      Self::Infallible => {
+        tokens.extend(quote! { ::std::convert::Infallible });
+      }
+    }
+  }
+}
+
 pub struct GrammarInfo {
   name: Ident,
   terminal_type: TerminalType,
+  error_type: ErrorType,
   label_types: LabelTypeMap,
   production_rules: Vec<ProductionRule>,
   indexed_grammar: IndexedGrammar<UserDefinedSymbol, ProductionRefName>,
@@ -124,6 +141,10 @@ impl GrammarInfo {
 
   pub fn terminal_type(&self) -> &TerminalType {
     &self.terminal_type
+  }
+
+  pub fn error_type(&self) -> &ErrorType {
+    &self.error_type
   }
 
   pub fn label_type(&self, label: &ProductionRefName) -> Option<&Type> {
@@ -182,9 +203,29 @@ fn parse_terminal_symbol_type(
   }
 }
 
+fn maybe_parse_error_type(stream: &mut impl SymbolStream) -> ParserGeneratorResult<ErrorType> {
+  let next = stream
+    .peek_expect_symbol()
+    .intercept("Unexpected end of stream")?;
+
+  if !next.symbol_type().is_identifier_with_name("error_type") {
+    return Ok(ErrorType::Infallible);
+  }
+
+  next.take();
+  parse_option_remainder(stream, "error_type", |stream| {
+    Ok(ErrorType::Custom(Type::parse(stream)?))
+  })
+  .intercept(
+    "\"error_type: `type`;\" specifies the `type` of errors that either the \
+       input stream and/or constructors may yield.",
+  )
+}
+
 pub fn parse_grammar(mut stream: impl SymbolStream) -> ParserGeneratorResult<GrammarInfo> {
   let name = parse_name(&mut stream)?;
   let terminal_type = parse_terminal_symbol_type(&mut stream)?;
+  let error_type = maybe_parse_error_type(&mut stream)?;
 
   let mut label_types = LabelTypeMap::new();
 
@@ -210,6 +251,7 @@ pub fn parse_grammar(mut stream: impl SymbolStream) -> ParserGeneratorResult<Gra
   Ok(GrammarInfo {
     name,
     terminal_type,
+    error_type,
     label_types,
     production_rules,
     indexed_grammar,

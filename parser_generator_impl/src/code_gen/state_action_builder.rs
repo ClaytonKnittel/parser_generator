@@ -256,7 +256,7 @@ impl CollectLikeActions {
     let peek_next = quote! {
       #state.stream().peek_next().map(|token| match token {
         Ok(token) => Ok(token.borrow()),
-        Err(err) => Err(::parser_generator::error::ParserError::from_input_stream_error(err.clone())),
+        Err(err) => Err(::parser_generator::error::ParserError::from_user_error(err.clone())),
       }).transpose()?
     };
 
