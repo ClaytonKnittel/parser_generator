@@ -27,7 +27,7 @@ fn generate_default_constructor(rule: &ProductionRule) -> TokenStreamResult {
 
   let var = bound_variable_ident(0);
   Ok(quote! {
-    { #var.try_into().map_err(::parser_generator::error::ParserError::from_user_error)? }
+    { #var.try_into().map_err(|err| err.clone().into_user_error())? }
   })
 }
 

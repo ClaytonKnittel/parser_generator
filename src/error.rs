@@ -1,7 +1,26 @@
 use std::{
+  convert::Infallible,
   error::Error,
   fmt::{Debug, Display},
 };
+
+pub trait ParserUserError: Error {}
+
+pub trait ParserUserErrorOrInfallible<E>: Error {
+  fn into_user_error(self) -> ParserError<E>;
+}
+
+impl<E: ParserUserError> ParserUserErrorOrInfallible<E> for E {
+  fn into_user_error(self) -> ParserError<E> {
+    ParserError::UserError(self)
+  }
+}
+
+impl<E: ParserUserError> ParserUserErrorOrInfallible<E> for Infallible {
+  fn into_user_error(self) -> ParserError<E> {
+    match self {}
+  }
+}
 
 #[derive(Clone)]
 pub enum ParserError<E> {
@@ -26,15 +45,17 @@ impl<E> ParserError<E> {
   pub fn overlapping_token_matchers(token: String) -> Self {
     Self::OverlappingTokenMatchers { token }
   }
+}
 
-  pub fn from_user_error<F: Into<E>>(err: F) -> Self {
-    Self::UserError(err.into())
+impl<E: ParserUserError> From<E> for ParserError<E> {
+  fn from(value: E) -> Self {
+    Self::UserError(value)
   }
 }
 
-impl<E: Error> From<E> for ParserError<E> {
-  fn from(value: E) -> Self {
-    Self::from_user_error(value)
+impl<E: Error> From<Infallible> for ParserError<E> {
+  fn from(value: Infallible) -> Self {
+    match value {}
   }
 }
 

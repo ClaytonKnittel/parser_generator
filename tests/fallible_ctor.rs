@@ -42,10 +42,6 @@ impl TryFrom<A> for Container {
   }
 }
 
-fn test1(v: u32) -> ParserResult<Container, MyError> {
-  Ok(A(v).try_into()?)
-}
-
 grammar!(
   name: AutoInto;
   terminal: char;
