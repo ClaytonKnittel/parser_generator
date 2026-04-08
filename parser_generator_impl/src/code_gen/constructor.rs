@@ -171,6 +171,7 @@ impl SubstitutionMap {
 fn rewrite_provided_constructor(
   rule: &[ProductionNode],
   constructor: &Constructor,
+  grammar_info: &GrammarInfo,
 ) -> TokenStreamResult {
   if constructor.body().delimiter() != Delimiter::Brace {
     return Err(ParserGeneratorError::new(
@@ -180,12 +181,13 @@ fn rewrite_provided_constructor(
   }
   let subsitution_map = SubstitutionMap::build(rule);
 
+  let error_type = grammar_info.error_type();
   let body = proc_macro2::Group::new(
     Delimiter::Brace,
     subsitution_map.substitute_vars(constructor.body().stream(), rule)?,
   );
 
-  Ok(quote! { #body })
+  Ok(quote! {  (|| -> ::std::result::Result<_, #error_type> { Ok(#body) })()? })
 }
 
 pub fn build_constructor(
@@ -194,7 +196,7 @@ pub fn build_constructor(
 ) -> TokenStreamResult {
   let rule = grammar_info.production_rule(production_rule);
   match rule.constructor() {
-    Some(constructor) => rewrite_provided_constructor(rule.rule(), constructor),
+    Some(constructor) => rewrite_provided_constructor(rule.rule(), constructor, grammar_info),
     None => {
       if rule.return_type().is_some() {
         generate_default_constructor(rule)
