@@ -4,23 +4,23 @@ use std::{
   fmt::{Debug, Display},
 };
 
-pub trait ParserUserError: Error + Clone {}
+pub trait ParserUserError: Error + From<Infallible> + Clone {}
 
 pub trait ParserUserErrorOrInfallible<E>: Error {
   fn into_user_error(self) -> ParserError<E>;
 }
 
-impl<E: ParserUserError> ParserUserErrorOrInfallible<E> for E {
+impl<E: ParserUserError, F: Into<E> + Error> ParserUserErrorOrInfallible<E> for F {
   fn into_user_error(self) -> ParserError<E> {
-    ParserError::UserError(self)
+    ParserError::UserError(self.into())
   }
 }
 
-impl<E: ParserUserError> ParserUserErrorOrInfallible<E> for Infallible {
-  fn into_user_error(self) -> ParserError<E> {
-    match self {}
-  }
-}
+// impl<E: ParserUserError> ParserUserErrorOrInfallible<E> for Infallible {
+//   fn into_user_error(self) -> ParserError<E> {
+//     match self {}
+//   }
+// }
 
 #[derive(Clone, Debug)]
 pub struct NoUserErrorType;
@@ -28,6 +28,11 @@ impl Error for NoUserErrorType {}
 impl Display for NoUserErrorType {
   fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     Ok(())
+  }
+}
+impl From<Infallible> for NoUserErrorType {
+  fn from(value: Infallible) -> Self {
+    match value {}
   }
 }
 impl ParserUserError for NoUserErrorType {}

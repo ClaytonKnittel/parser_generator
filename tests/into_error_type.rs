@@ -14,6 +14,14 @@ struct MyError {
 
 impl Error for MyError {}
 
+impl From<MyOtherError> for MyError {
+  fn from(value: MyOtherError) -> Self {
+    Self {
+      message: value.message,
+    }
+  }
+}
+
 impl From<std::convert::Infallible> for MyError {
   fn from(value: std::convert::Infallible) -> Self {
     match value {}
@@ -22,6 +30,18 @@ impl From<std::convert::Infallible> for MyError {
 impl ParserUserError for MyError {}
 
 impl Display for MyError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{}", self.message)
+  }
+}
+
+#[derive(Debug)]
+struct MyOtherError {
+  message: String,
+}
+impl Error for MyOtherError {}
+
+impl Display for MyOtherError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{}", self.message)
   }
@@ -36,13 +56,13 @@ enum Container {
 }
 
 impl TryFrom<A> for Container {
-  type Error = MyError;
+  type Error = MyOtherError;
 
   fn try_from(value: A) -> std::result::Result<Self, Self::Error> {
     if value.0 < 10 {
       Ok(Container::A(value))
     } else {
-      Err(MyError {
+      Err(MyOtherError {
         message: format!("Value \"{}\" cannot be greater than 9", value.0),
       })
     }

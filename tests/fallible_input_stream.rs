@@ -13,6 +13,11 @@ impl Display for MyError {
 }
 
 impl Error for MyError {}
+impl From<std::convert::Infallible> for MyError {
+  fn from(value: std::convert::Infallible) -> Self {
+    match value {}
+  }
+}
 impl ParserUserError for MyError {}
 
 parser_generator::grammar! {
