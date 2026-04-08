@@ -8,6 +8,7 @@ edition = "2024"
 [dependencies]
 googletest = "0.14.2"
 parser_generator_impl = { path = "./parser_generator_impl" }
+parser-user-error = { path = "./parser-user-error" }
 
 [dev-dependencies]
 itertools = "0.14.0"

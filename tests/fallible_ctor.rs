@@ -1,25 +1,14 @@
 use std::{error::Error, fmt::Display};
 
 use googletest::prelude::*;
-use parser_generator::{
-  error::{ParserError, ParserUserError},
-  grammar,
-  parser::Parser,
-};
+use parser_generator::{ParserUserError, error::ParserError, grammar, parser::Parser};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, ParserUserError)]
 struct MyError {
   message: String,
 }
 
 impl Error for MyError {}
-
-impl From<std::convert::Infallible> for MyError {
-  fn from(value: std::convert::Infallible) -> Self {
-    match value {}
-  }
-}
-impl ParserUserError for MyError {}
 
 impl Display for MyError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

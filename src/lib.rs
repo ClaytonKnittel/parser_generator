@@ -5,3 +5,4 @@ pub mod parser_stream;
 
 pub use parser_generator_impl::grammar;
 pub use parser_generator_impl::pub_grammar;
+pub use parser_user_error::ParserUserError;
