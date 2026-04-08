@@ -17,6 +17,7 @@ pub fn generate_parser(grammar_info: &GrammarInfo, visibility: Visibility) -> To
 
   let grammar_name = grammar_info.name().make_syn_ident();
   let token_type = grammar_info.terminal_type().inner_type();
+  let error_type = grammar_info.error_type();
 
   let result_type = root_production_type(grammar_info);
 
@@ -45,14 +46,15 @@ pub fn generate_parser(grammar_info: &GrammarInfo, visibility: Visibility) -> To
     impl ::parser_generator::parser::Parser for #grammar_name {
       type Token = #token_type;
       type Value = #result_type;
+      type Error = #error_type;
 
       fn parse_fallible<#iter_generic, #token_generic, #err_generic>(
         #input_stream: #iter_generic
-      ) -> ::parser_generator::error::ParserResult<Self::Value, #err_generic>
+      ) -> ::parser_generator::error::ParserResult<Self::Value, Self::Error>
       where
         #iter_generic: IntoIterator<Item = ::core::result::Result<#token_generic, #err_generic>>,
         #token_generic: ::std::borrow::Borrow<#token_type>,
-        #err_generic: Clone,
+        #err_generic: ::parser_generator::error::ParserUserErrorOrInfallible<Self::Error> + Clone,
       {
         #dfa_states_enum
         #action_functions

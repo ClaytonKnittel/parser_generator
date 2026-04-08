@@ -1,7 +1,36 @@
 use std::{
+  convert::Infallible,
   error::Error,
   fmt::{Debug, Display},
 };
+
+pub trait ParserUserError: Error + Clone {}
+
+pub trait ParserUserErrorOrInfallible<E>: Error {
+  fn into_user_error(self) -> ParserError<E>;
+}
+
+impl<E: ParserUserError> ParserUserErrorOrInfallible<E> for E {
+  fn into_user_error(self) -> ParserError<E> {
+    ParserError::UserError(self)
+  }
+}
+
+impl<E: ParserUserError> ParserUserErrorOrInfallible<E> for Infallible {
+  fn into_user_error(self) -> ParserError<E> {
+    match self {}
+  }
+}
+
+#[derive(Clone, Debug)]
+pub struct NoUserErrorType;
+impl Error for NoUserErrorType {}
+impl Display for NoUserErrorType {
+  fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    Ok(())
+  }
+}
+impl ParserUserError for NoUserErrorType {}
 
 #[derive(Clone)]
 pub enum ParserError<E> {
@@ -12,10 +41,7 @@ pub enum ParserError<E> {
   OverlappingTokenMatchers {
     token: String,
   },
-  InputStreamError(E),
-  ForeignError {
-    message: String,
-  },
+  UserError(E),
 }
 
 impl<E> ParserError<E> {
@@ -29,15 +55,17 @@ impl<E> ParserError<E> {
   pub fn overlapping_token_matchers(token: String) -> Self {
     Self::OverlappingTokenMatchers { token }
   }
+}
 
-  pub fn from_input_stream_error(err: E) -> Self {
-    Self::InputStreamError(err)
+impl<E: ParserUserError> From<E> for ParserError<E> {
+  fn from(value: E) -> Self {
+    Self::UserError(value)
   }
+}
 
-  pub fn from_foreign_error<F: Error>(err: F) -> Self {
-    Self::ForeignError {
-      message: err.to_string(),
-    }
+impl<E: Error> From<Infallible> for ParserError<E> {
+  fn from(value: Infallible) -> Self {
+    match value {}
   }
 }
 
@@ -52,8 +80,7 @@ impl<E: Display> Display for ParserError<E> {
         f,
         "Token {token} matches multiple rules. Disambiguate matchers for tokens of this type."
       ),
-      Self::InputStreamError(err) => write!(f, "{err}"),
-      Self::ForeignError { message } => write!(f, "Foreign error: {message}"),
+      Self::UserError(err) => write!(f, "{err}"),
     }
   }
 }
@@ -67,8 +94,7 @@ impl<E: Debug> Debug for ParserError<E> {
         f,
         "Token {token} matches multiple rules. Disambiguate matchers for tokens of this type."
       ),
-      Self::InputStreamError(err) => write!(f, "{err:?}"),
-      Self::ForeignError { message } => write!(f, "Foreign error: {message}"),
+      Self::UserError(err) => write!(f, "{err:?}"),
     }
   }
 }

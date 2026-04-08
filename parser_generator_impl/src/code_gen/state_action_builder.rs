@@ -256,7 +256,7 @@ impl CollectLikeActions {
     let peek_next = quote! {
       #state.stream().peek_next().map(|token| match token {
         Ok(token) => Ok(token.borrow()),
-        Err(err) => Err(::parser_generator::error::ParserError::from_input_stream_error(err.clone())),
+        Err(err) => Err(err.clone().into_user_error()),
       }).transpose()?
     };
 
@@ -312,6 +312,7 @@ pub fn generate_state_action_function(
   let enum_name = enum_name(grammar_info);
   let fn_name = state_action_function_name(state_id);
   let result_type = root_production_type(grammar_info);
+  let error_type = grammar_info.error_type();
 
   let action_map = CollectLikeActions::build_for_state(state_id, grammar_info);
   let actions = action_map.generate_actions(state_id, grammar_info, state_map)?;
@@ -319,11 +320,15 @@ pub fn generate_state_action_function(
   let state = unique_prefixed_ident("state");
 
   Ok(quote! {
-    fn #fn_name<I, B: ::std::borrow::Borrow<#token_type>, E: Clone>(
+    fn #fn_name<
+      I,
+      B: ::std::borrow::Borrow<#token_type>,
+      E: ::parser_generator::error::ParserUserErrorOrInfallible<#error_type> + Clone
+    >(
       #state: &mut ::parser_generator::parser_state::ParserState<::core::result::Result<B, E>, #enum_name, I>
     ) -> ::parser_generator::error::ParserResult<
       ::parser_generator::parser_state::ParserControl<#result_type>,
-      E,
+      #error_type,
     >
     where
       I: Iterator<Item = ::core::result::Result<B, E>>,
