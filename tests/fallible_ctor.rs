@@ -57,11 +57,24 @@ fn parse_a() {
   let result = AutoInto::parse("a".chars());
 
   expect_that!(result, ok(pat!(Container::A(pat!(A(eq(&1)))))));
+
+  let result = AutoInto::parse("b".chars());
+
+  expect_that!(result, ok(pat!(Container::A(pat!(A(eq(&1)))))));
 }
 
 #[gtest]
 fn parse_b() {
   let result = AutoInto::parse("z".chars());
+
+  expect_that!(
+    result,
+    err(pat!(ParserError::UserError(displays_as(
+      contains_substring("Value \"100\" cannot be greater than 9")
+    ))))
+  );
+
+  let result = AutoInto::parse("y".chars());
 
   expect_that!(
     result,

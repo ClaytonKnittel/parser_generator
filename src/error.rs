@@ -16,12 +16,6 @@ impl<E: ParserUserError, F: Into<E> + Error> ParserUserErrorOrInfallible<E> for 
   }
 }
 
-// impl<E: ParserUserError> ParserUserErrorOrInfallible<E> for Infallible {
-//   fn into_user_error(self) -> ParserError<E> {
-//     match self {}
-//   }
-// }
-
 #[derive(Clone, Debug)]
 pub struct NoUserErrorType;
 impl Error for NoUserErrorType {}
