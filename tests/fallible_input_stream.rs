@@ -1,9 +1,9 @@
 use std::{error::Error, fmt::Display};
 
 use googletest::prelude::*;
-use parser_generator::{error::ParserUserError, parser::Parser};
+use parser_generator::{ParserUserError, parser::Parser};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, ParserUserError)]
 struct MyError;
 
 impl Display for MyError {
@@ -13,7 +13,6 @@ impl Display for MyError {
 }
 
 impl Error for MyError {}
-impl ParserUserError for MyError {}
 
 parser_generator::grammar! {
   name: Test;
