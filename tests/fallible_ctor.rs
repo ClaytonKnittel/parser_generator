@@ -1,18 +1,20 @@
-use std::{convert::Infallible, error::Error, fmt::Display};
+use std::{error::Error, fmt::Display};
 
 use googletest::prelude::*;
 use parser_generator::{
-  error::{ParserError, ParserResult},
+  error::{ParserError, ParserUserError},
   grammar,
   parser::Parser,
 };
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct MyError {
   message: String,
 }
 
 impl Error for MyError {}
+
+impl ParserUserError for MyError {}
 
 impl Display for MyError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -69,8 +71,8 @@ fn parse_b() {
 
   expect_that!(
     result,
-    err(pat!(ParserError::ForeignError {
-      message: contains_substring("Value \"100\" cannot be greater than 9")
-    }))
+    err(pat!(ParserError::UserError(displays_as(
+      contains_substring("Value \"100\" cannot be greater than 9")
+    ))))
   );
 }

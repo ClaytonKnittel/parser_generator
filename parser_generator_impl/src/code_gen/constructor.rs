@@ -26,9 +26,11 @@ fn generate_default_constructor(rule: &ProductionRule) -> TokenStreamResult {
   }
 
   let var = bound_variable_ident(0);
-  Ok(quote! {
-    { #var.try_into().map_err(|err| err.clone().into_user_error())? }
-  })
+  Ok(quote! {{
+    #var.try_into().map_err(
+      ::parser_generator::error::ParserUserErrorOrInfallible::<_>::into_user_error
+    )?
+  }})
 }
 
 struct SubstitutionMap {

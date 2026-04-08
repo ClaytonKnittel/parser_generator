@@ -4,7 +4,7 @@ use std::{
   fmt::{Debug, Display},
 };
 
-pub trait ParserUserError: Error {}
+pub trait ParserUserError: Error + Clone {}
 
 pub trait ParserUserErrorOrInfallible<E>: Error {
   fn into_user_error(self) -> ParserError<E>;
@@ -21,6 +21,16 @@ impl<E: ParserUserError> ParserUserErrorOrInfallible<E> for Infallible {
     match self {}
   }
 }
+
+#[derive(Clone, Debug)]
+pub struct NoUserErrorType;
+impl Error for NoUserErrorType {}
+impl Display for NoUserErrorType {
+  fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    Ok(())
+  }
+}
+impl ParserUserError for NoUserErrorType {}
 
 #[derive(Clone)]
 pub enum ParserError<E> {

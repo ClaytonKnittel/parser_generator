@@ -110,15 +110,15 @@ impl TerminalType {
 
 pub enum ErrorType {
   Custom(Type),
-  Infallible,
+  None,
 }
 
 impl ToTokens for ErrorType {
   fn to_tokens(&self, tokens: &mut TokenStream) {
     match self {
       Self::Custom(ty) => ty.to_tokens(tokens),
-      Self::Infallible => {
-        tokens.extend(quote! { ::std::convert::Infallible });
+      Self::None => {
+        tokens.extend(quote! { ::parser_generator::error::NoUserErrorType });
       }
     }
   }
@@ -209,7 +209,7 @@ fn maybe_parse_error_type(stream: &mut impl SymbolStream) -> ParserGeneratorResu
     .intercept("Unexpected end of stream")?;
 
   if !next.symbol_type().is_identifier_with_name("error_type") {
-    return Ok(ErrorType::Infallible);
+    return Ok(ErrorType::None);
   }
 
   next.take();

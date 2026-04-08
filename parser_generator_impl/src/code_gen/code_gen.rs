@@ -3,7 +3,7 @@ use quote::quote;
 
 use crate::{
   Visibility,
-  annotated_grammar::parse_grammar::{ErrorType, GrammarInfo},
+  annotated_grammar::parse_grammar::GrammarInfo,
   code_gen::{
     parse_loop::generate_parse_loop,
     state_action_builder::{generate_state_action_function, root_production_type},
@@ -18,12 +18,6 @@ pub fn generate_parser(grammar_info: &GrammarInfo, visibility: Visibility) -> To
   let grammar_name = grammar_info.name().make_syn_ident();
   let token_type = grammar_info.terminal_type().inner_type();
   let error_type = grammar_info.error_type();
-  let maybe_impl_user_error = match error_type {
-    ErrorType::Custom(_) => {
-      quote! { impl ::parser_generator::error::ParserUserError for #error_type {} }
-    }
-    ErrorType::Infallible => quote! {},
-  };
 
   let result_type = root_production_type(grammar_info);
 
@@ -48,7 +42,6 @@ pub fn generate_parser(grammar_info: &GrammarInfo, visibility: Visibility) -> To
   let err_generic = unique_prefixed_ident("E");
 
   Ok(quote! {
-    #maybe_impl_user_error
     #maybe_pub struct #grammar_name;
     impl ::parser_generator::parser::Parser for #grammar_name {
       type Token = #token_type;
@@ -61,7 +54,7 @@ pub fn generate_parser(grammar_info: &GrammarInfo, visibility: Visibility) -> To
       where
         #iter_generic: IntoIterator<Item = ::core::result::Result<#token_generic, #err_generic>>,
         #token_generic: ::std::borrow::Borrow<#token_type>,
-        #err_generic: Into<Self::Error> + Clone,
+        #err_generic: ::parser_generator::error::ParserUserErrorOrInfallible<Self::Error> + Clone,
       {
         #dfa_states_enum
         #action_functions
