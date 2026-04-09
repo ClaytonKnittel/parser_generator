@@ -266,7 +266,14 @@ impl CollectLikeActions {
     let accept_matches = self.accept_match_and_return(state_id, grammar_info, state_map)?;
 
     let return_err = quote! {
-      return Err(::parser_generator::error::ParserError::new("Failed to parse"))
+      Some(peeked_token) => return Err(::parser_generator::error::ParserError::new(
+        Some(peeked_token.clone()),
+        ::std::vec::Vec::new()
+      )),
+      None => return Err(::parser_generator::error::ParserError::new(
+        None,
+        ::std::vec::Vec::new()
+      )),
     };
 
     if self.shift_map.is_empty() {
@@ -277,7 +284,7 @@ impl CollectLikeActions {
         match #peeked_val {
           #reduce_matches
           #accept_matches
-          _ => #return_err,
+          #return_err
         }
       })
     } else {
@@ -292,7 +299,7 @@ impl CollectLikeActions {
           #shift_matches
           #reduce_matches
           #accept_matches
-          _ => #return_err,
+          #return_err
         };
 
         #state.stream_mut().advance();
@@ -323,11 +330,12 @@ pub fn generate_state_action_function(
     fn #fn_name<
       I,
       B: ::std::borrow::Borrow<#token_type>,
-      E: ::parser_generator::error::ParserUserErrorOrInfallible<#error_type> + Clone
+      E: ::parser_generator::error::ParserUserErrorOrInfallible<#token_type, #error_type> + Clone
     >(
       #state: &mut ::parser_generator::parser_state::ParserState<::core::result::Result<B, E>, #enum_name, I>
     ) -> ::parser_generator::error::ParserResult<
       ::parser_generator::parser_state::ParserControl<#result_type>,
+      #token_type,
       #error_type,
     >
     where
