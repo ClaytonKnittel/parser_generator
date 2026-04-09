@@ -88,6 +88,16 @@ impl CollectLikeActions {
     action_map
   }
 
+  /// Returns an iterator over all lookahead tokens for the current state.
+  fn all_lookahead_tokens(&self) -> impl Iterator<Item = &AugmentedVocabToken<UserDefinedSymbol>> {
+    self
+      .reduce_map
+      .values()
+      .flatten()
+      .chain(self.shift_map.iter().map(|(token, _)| token))
+      .chain(self.accept.as_ref())
+  }
+
   /// We forbid all ambiguous overlapping patterns to make grammars easier to
   /// reason about. This is a runtime check done on all tokens to verify that
   /// they match at most one pattern in the pattern list.
@@ -101,11 +111,7 @@ impl CollectLikeActions {
     }
 
     let mut all_tokens = self
-      .reduce_map
-      .values()
-      .flatten()
-      .chain(self.shift_map.iter().map(|(tokens, _)| tokens))
-      .chain(self.accept.as_ref())
+      .all_lookahead_tokens()
       .filter(|token| token.token().is_some())
       .peekable();
     if all_tokens.peek().is_none() {
@@ -264,6 +270,8 @@ impl CollectLikeActions {
 
     let reduce_matches = self.reduce_match_and_return(state_id, grammar_info, state_map)?;
     let accept_matches = self.accept_match_and_return(state_id, grammar_info, state_map)?;
+
+    let lookahead = self.all_lookahead_tokens();
 
     let return_err = quote! {
       Some(peeked_token) => return Err(::parser_generator::error::ParserError::new(
