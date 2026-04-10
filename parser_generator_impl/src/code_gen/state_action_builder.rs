@@ -88,6 +88,16 @@ impl CollectLikeActions {
     action_map
   }
 
+  /// Returns an iterator over all lookahead tokens for the current state.
+  fn all_lookahead_tokens(&self) -> impl Iterator<Item = &AugmentedVocabToken<UserDefinedSymbol>> {
+    self
+      .reduce_map
+      .values()
+      .flatten()
+      .chain(self.shift_map.iter().map(|(token, _)| token))
+      .chain(self.accept.as_ref())
+  }
+
   /// We forbid all ambiguous overlapping patterns to make grammars easier to
   /// reason about. This is a runtime check done on all tokens to verify that
   /// they match at most one pattern in the pattern list.
@@ -101,11 +111,7 @@ impl CollectLikeActions {
     }
 
     let mut all_tokens = self
-      .reduce_map
-      .values()
-      .flatten()
-      .chain(self.shift_map.iter().map(|(tokens, _)| tokens))
-      .chain(self.accept.as_ref())
+      .all_lookahead_tokens()
       .filter(|token| token.token().is_some())
       .peekable();
     if all_tokens.peek().is_none() {
@@ -266,7 +272,12 @@ impl CollectLikeActions {
     let accept_matches = self.accept_match_and_return(state_id, grammar_info, state_map)?;
 
     let return_err = quote! {
-      return Err(::parser_generator::error::ParserError::new("Failed to parse"))
+      Some(peeked_token) => return Err(::parser_generator::error::ParserError::new(
+        Some(peeked_token.clone())
+      )),
+      None => return Err(::parser_generator::error::ParserError::new(
+        None
+      )),
     };
 
     if self.shift_map.is_empty() {
@@ -277,7 +288,7 @@ impl CollectLikeActions {
         match #peeked_val {
           #reduce_matches
           #accept_matches
-          _ => #return_err,
+          #return_err
         }
       })
     } else {
@@ -292,7 +303,7 @@ impl CollectLikeActions {
           #shift_matches
           #reduce_matches
           #accept_matches
-          _ => #return_err,
+          #return_err
         };
 
         #state.stream_mut().advance();
@@ -323,11 +334,12 @@ pub fn generate_state_action_function(
     fn #fn_name<
       I,
       B: ::std::borrow::Borrow<#token_type>,
-      E: ::parser_generator::error::ParserUserErrorOrInfallible<#error_type> + Clone
+      E: ::parser_generator::error::ParserUserErrorOrInfallible<#token_type, #error_type> + Clone
     >(
       #state: &mut ::parser_generator::parser_state::ParserState<::core::result::Result<B, E>, #enum_name, I>
     ) -> ::parser_generator::error::ParserResult<
       ::parser_generator::parser_state::ParserControl<#result_type>,
+      #token_type,
       #error_type,
     >
     where

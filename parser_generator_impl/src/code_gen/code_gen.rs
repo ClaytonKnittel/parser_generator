@@ -50,11 +50,11 @@ pub fn generate_parser(grammar_info: &GrammarInfo, visibility: Visibility) -> To
 
       fn parse_fallible<#iter_generic, #token_generic, #err_generic>(
         #input_stream: #iter_generic
-      ) -> ::parser_generator::error::ParserResult<Self::Value, Self::Error>
+      ) -> ::parser_generator::error::ParserResult<Self::Value, Self::Token, Self::Error>
       where
         #iter_generic: IntoIterator<Item = ::core::result::Result<#token_generic, #err_generic>>,
         #token_generic: ::std::borrow::Borrow<#token_type>,
-        #err_generic: ::parser_generator::error::ParserUserErrorOrInfallible<Self::Error> + Clone,
+        #err_generic: ::parser_generator::error::ParserUserErrorOrInfallible<Self::Token, Self::Error> + Clone,
       {
         #dfa_states_enum
         #action_functions

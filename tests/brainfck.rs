@@ -7,7 +7,7 @@ use cknittel_util::iter::CollectResult;
 use googletest::prelude::*;
 use parser_generator::{grammar, parser::Parser};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum Instruction {
   IncTape,
   DecTape,
