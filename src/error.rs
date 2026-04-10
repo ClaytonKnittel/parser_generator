@@ -66,7 +66,7 @@ impl<T, E: Error> From<Infallible> for ParserError<T, E> {
   }
 }
 
-impl<T: Debug + Display, E: Error> Error for ParserError<T, E> {}
+impl<T: Debug, E: Error> Error for ParserError<T, E> {}
 
 impl<T: Debug, E: Display> Display for ParserError<T, E> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
