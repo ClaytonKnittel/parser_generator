@@ -19,6 +19,8 @@ pub fn generate_parser(grammar_info: &GrammarInfo, visibility: Visibility) -> To
   let token_type = grammar_info.terminal_type().inner_type();
   let error_type = grammar_info.error_type();
 
+  let table_size = grammar_info.lr_table().num_states();
+
   let result_type = root_production_type(grammar_info);
 
   let dfa_states_enum = generate_dfa_states(grammar_info, &state_map)?;
@@ -43,6 +45,9 @@ pub fn generate_parser(grammar_info: &GrammarInfo, visibility: Visibility) -> To
 
   Ok(quote! {
     #maybe_pub struct #grammar_name;
+    impl #grammar_name {
+      pub const TABLE_SIZE: usize = #table_size;
+    }
     impl ::parser_generator::parser::Parser for #grammar_name {
       type Token = #token_type;
       type Value = #result_type;
