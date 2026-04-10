@@ -30,6 +30,7 @@ fn test_simple() -> googletest::Result<()> {
   let res = Test::parse("21*42+1000".chars().peekable())?;
 
   expect_eq!(res, 1882);
+  expect_eq!(Test::TABLE_SIZE, 20);
 
   Ok(())
 }
