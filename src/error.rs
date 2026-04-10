@@ -4,8 +4,6 @@ use std::{
   fmt::{Debug, Display},
 };
 
-use itertools::Itertools;
-
 pub trait ParserUserError: Error + From<Infallible> + Clone {}
 
 pub trait ParserUserErrorOrInfallible<T, E>: Error {
@@ -37,7 +35,6 @@ impl ParserUserError for NoUserErrorType {}
 pub enum ParserError<T, E> {
   ParseError {
     next_token: Option<T>,
-    lookahead: Vec<Option<T>>,
   },
   #[cfg(debug_assertions)]
   OverlappingTokenMatchers {
@@ -47,11 +44,8 @@ pub enum ParserError<T, E> {
 }
 
 impl<T, E> ParserError<T, E> {
-  pub fn new(next_token: Option<T>, lookahead: impl Into<Vec<Option<T>>>) -> Self {
-    Self::ParseError {
-      next_token,
-      lookahead: lookahead.into(),
-    }
+  pub fn new(next_token: Option<T>) -> Self {
+    Self::ParseError { next_token }
   }
 
   #[cfg(debug_assertions)]
@@ -77,17 +71,7 @@ impl<T: Debug + Display, E: Error> Error for ParserError<T, E> {}
 impl<T: Debug, E: Display> Display for ParserError<T, E> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      Self::ParseError {
-        next_token,
-        lookahead,
-      } => write!(
-        f,
-        "Failed to parse: saw {next_token:?}, expected any of {{{}}}",
-        lookahead
-          .iter()
-          .map(|token| format!("{token:?}"))
-          .join(", ")
-      ),
+      Self::ParseError { next_token } => write!(f, "Failed to parse: unexpected {next_token:?}"),
       #[cfg(debug_assertions)]
       Self::OverlappingTokenMatchers { token } => write!(
         f,
@@ -101,17 +85,7 @@ impl<T: Debug, E: Display> Display for ParserError<T, E> {
 impl<T: Debug, E: Debug> Debug for ParserError<T, E> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      Self::ParseError {
-        next_token,
-        lookahead,
-      } => write!(
-        f,
-        "Failed to parse: saw {next_token:?}, expected any of {{{}}}",
-        lookahead
-          .iter()
-          .map(|token| format!("{token:?}"))
-          .join(", ")
-      ),
+      Self::ParseError { next_token } => write!(f, "Failed to parse: unexpected {next_token:?}"),
       #[cfg(debug_assertions)]
       Self::OverlappingTokenMatchers { token } => write!(
         f,

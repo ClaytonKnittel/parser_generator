@@ -271,16 +271,12 @@ impl CollectLikeActions {
     let reduce_matches = self.reduce_match_and_return(state_id, grammar_info, state_map)?;
     let accept_matches = self.accept_match_and_return(state_id, grammar_info, state_map)?;
 
-    let lookahead = self.all_lookahead_tokens();
-
     let return_err = quote! {
       Some(peeked_token) => return Err(::parser_generator::error::ParserError::new(
-        Some(peeked_token.clone()),
-        ::std::vec::Vec::new()
+        Some(peeked_token.clone())
       )),
       None => return Err(::parser_generator::error::ParserError::new(
-        None,
-        ::std::vec::Vec::new()
+        None
       )),
     };
 
