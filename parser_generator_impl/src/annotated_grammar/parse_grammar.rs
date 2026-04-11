@@ -108,6 +108,22 @@ impl TerminalType {
   }
 }
 
+pub enum ContextType {
+  Custom(Type),
+  None,
+}
+
+impl ToTokens for ContextType {
+  fn to_tokens(&self, tokens: &mut TokenStream) {
+    match self {
+      Self::Custom(ty) => ty.to_tokens(tokens),
+      Self::None => {
+        tokens.extend(quote! { () });
+      }
+    }
+  }
+}
+
 pub enum ErrorType {
   Custom(Type),
   None,
@@ -128,6 +144,7 @@ pub struct GrammarInfo {
   name: Ident,
   terminal_type: TerminalType,
   error_type: ErrorType,
+  context_type: ContextType,
   label_types: LabelTypeMap,
   production_rules: Vec<ProductionRule>,
   indexed_grammar: IndexedGrammar<UserDefinedSymbol, ProductionRefName>,
@@ -141,6 +158,10 @@ impl GrammarInfo {
 
   pub fn terminal_type(&self) -> &TerminalType {
     &self.terminal_type
+  }
+
+  pub fn context_type(&self) -> &ContextType {
+    &self.context_type
   }
 
   pub fn error_type(&self) -> &ErrorType {
@@ -203,28 +224,54 @@ fn parse_terminal_symbol_type(
   }
 }
 
-fn maybe_parse_error_type(stream: &mut impl SymbolStream) -> ParserGeneratorResult<ErrorType> {
+fn maybe_parse_type_decl(
+  stream: &mut impl SymbolStream,
+  name: &str,
+  description: &str,
+) -> ParserGeneratorResult<Option<Type>> {
   let next = stream
     .peek_expect_symbol()
     .intercept("Unexpected end of stream")?;
 
-  if !next.symbol_type().is_identifier_with_name("error_type") {
-    return Ok(ErrorType::None);
+  if !next.symbol_type().is_identifier_with_name(name) {
+    return Ok(None);
   }
 
   next.take();
-  parse_option_remainder(stream, "error_type", |stream| {
-    Ok(ErrorType::Custom(Type::parse(stream)?))
-  })
-  .intercept(
+  parse_option_remainder(stream, name, |stream| Ok(Some(Type::parse(stream)?)))
+    .intercept(description)
+}
+
+fn maybe_parse_error_type(stream: &mut impl SymbolStream) -> ParserGeneratorResult<ErrorType> {
+  let error_type = maybe_parse_type_decl(
+    stream,
+    "error_type",
     "\"error_type: `type`;\" specifies the `type` of errors that either the \
        input stream and/or constructors may yield.",
-  )
+  )?;
+  Ok(match error_type {
+    Some(ty) => ErrorType::Custom(ty),
+    None => ErrorType::None,
+  })
+}
+
+fn maybe_parse_context_type(stream: &mut impl SymbolStream) -> ParserGeneratorResult<ContextType> {
+  let context_type = maybe_parse_type_decl(
+    stream,
+    "context_type",
+    "\"context_type: `type`;\" specifies the `type` of the implicit mutable \
+        context passed to each production rule's constructor as #ctx.",
+  )?;
+  Ok(match context_type {
+    Some(ty) => ContextType::Custom(ty),
+    None => ContextType::None,
+  })
 }
 
 pub fn parse_grammar(mut stream: impl SymbolStream) -> ParserGeneratorResult<GrammarInfo> {
   let name = parse_name(&mut stream)?;
   let terminal_type = parse_terminal_symbol_type(&mut stream)?;
+  let context_type = maybe_parse_context_type(&mut stream)?;
   let error_type = maybe_parse_error_type(&mut stream)?;
 
   let mut label_types = LabelTypeMap::new();
@@ -251,6 +298,7 @@ pub fn parse_grammar(mut stream: impl SymbolStream) -> ParserGeneratorResult<Gra
   Ok(GrammarInfo {
     name,
     terminal_type,
+    context_type,
     error_type,
     label_types,
     production_rules,

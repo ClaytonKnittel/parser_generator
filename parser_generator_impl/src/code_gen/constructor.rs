@@ -13,7 +13,10 @@ use crate::{
     production_ref::ProductionRefName,
     production_rule::{Constructor, ProductionRule},
   },
-  code_gen::{reduce_rule::bound_variable_ident, util::TokenStreamResult},
+  code_gen::{
+    reduce_rule::bound_variable_ident,
+    util::{TokenStreamResult, unique_prefixed_ident},
+  },
 };
 
 fn generate_default_constructor(rule: &ProductionRule) -> TokenStreamResult {
@@ -124,7 +127,13 @@ impl SubstitutionMap {
     rule_span: Span,
   ) -> ParserGeneratorResult<impl Into<TokenTree>> {
     let index = match iter.next() {
-      Some(TokenTree::Ident(ident)) => self.lookup_label(&ident)?,
+      Some(TokenTree::Ident(ident)) => {
+        if ident == "ctx" {
+          return Ok(unique_prefixed_ident("parse_context"));
+        }
+
+        self.lookup_label(&ident)?
+      }
       Some(TokenTree::Literal(literal)) => self.literal_to_index(&literal, rule)?,
       _ => {
         return Err(ParserGeneratorError::new(
@@ -186,8 +195,12 @@ fn rewrite_provided_constructor(
     Delimiter::Brace,
     subsitution_map.substitute_vars(constructor.body().stream(), rule)?,
   );
+  let parse_context = unique_prefixed_ident("parse_context");
+  let context_type = grammar_info.context_type();
 
-  Ok(quote! {  (|| -> ::std::result::Result<_, #error_type> { Ok(#body) })()? })
+  Ok(
+    quote! {  (|#parse_context: &mut #context_type| -> ::std::result::Result<_, #error_type> { Ok(#body) })(#parse_context)? },
+  )
 }
 
 pub fn build_constructor(
