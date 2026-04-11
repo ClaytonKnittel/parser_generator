@@ -50,11 +50,9 @@ pub trait ParserNoContext: Parser<Context = ()> {
   }
 }
 
-impl<P, Token, Value, Error> ParserNoContext for P
+impl<P> ParserNoContext for P
 where
-  P: Parser<Token = Token, Value = Value, Error = Error, Context = ()>,
-  Token: Clone + Debug,
-  Error: ParserUserError + Clone,
+  P: Parser<Context = ()>,
 {
   fn parse_fallible<I, B, E>(input_stream: I) -> ParserResult<Self::Value, Self::Token, Self::Error>
   where
