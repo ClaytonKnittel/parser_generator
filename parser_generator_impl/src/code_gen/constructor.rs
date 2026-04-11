@@ -8,7 +8,7 @@ use syn::spanned::Spanned;
 use crate::{
   ParserGeneratorError, ParserGeneratorResult,
   annotated_grammar::{
-    parse_grammar::GrammarInfo,
+    parse_grammar::{ContextType, GrammarInfo},
     production_node::ProductionNode,
     production_ref::ProductionRefName,
     production_rule::{Constructor, ProductionRule},
@@ -36,7 +36,27 @@ fn generate_default_constructor(rule: &ProductionRule) -> TokenStreamResult {
   }})
 }
 
+struct ReservedProductionRef {
+  // Name of the production rule ref.
+  name: &'static str,
+
+  // What it should be subsituted to inside production rule constructors.
+  substitution: proc_macro2::Ident,
+
+  // Message for users about what this reserved ref's purpose.
+  description_debug_message: &'static str,
+}
+
+fn parse_context_reserved_ref() -> ReservedProductionRef {
+  ReservedProductionRef {
+    name: "ctx",
+    substitution: unique_prefixed_ident("parse_context"),
+    description_debug_message: "an implicit reference to this grammar's `context_type` object",
+  }
+}
+
 struct SubstitutionMap {
+  reserved_substitutions: HashMap<&'static str, ReservedProductionRef>,
   production_label_map: HashMap<ProductionRefName, usize>,
   num_nodes: usize,
 }
@@ -44,12 +64,31 @@ struct SubstitutionMap {
 impl SubstitutionMap {
   const DUPLICATE_SYMBOL: usize = usize::MAX;
 
-  fn build(rule: &[ProductionNode]) -> Self {
+  fn build(
+    rule: &[ProductionNode],
+    reserved_substitutions: impl IntoIterator<Item = ReservedProductionRef>,
+  ) -> ParserGeneratorResult<Self> {
+    let reserved_substitutions: HashMap<_, _> = reserved_substitutions
+      .into_iter()
+      .map(|r| (r.name, r))
+      .collect();
+
     let num_nodes = rule.len();
     let mut production_label_map = HashMap::new();
     for (idx, node) in rule.iter().enumerate() {
       match node {
         ProductionNode::Production(production) => {
+          if let Some(reserved) = reserved_substitutions.get(production.name().as_str()) {
+            return Err(ParserGeneratorError::new(
+              format!(
+                "Use of name `{}` in production rule constructor is reserved as {}",
+                production.name().as_str(),
+                reserved.description_debug_message
+              ),
+              *production.meta().span(),
+            ));
+          }
+
           match production_label_map.entry(production.name().clone()) {
             Entry::Occupied(mut entry) => {
               *entry.get_mut() = Self::DUPLICATE_SYMBOL;
@@ -63,10 +102,11 @@ impl SubstitutionMap {
       }
     }
 
-    Self {
+    Ok(Self {
+      reserved_substitutions,
       production_label_map,
       num_nodes,
-    }
+    })
   }
 
   fn lookup_label(&self, ident: &syn::Ident) -> ParserGeneratorResult<usize> {
@@ -128,8 +168,8 @@ impl SubstitutionMap {
   ) -> ParserGeneratorResult<impl Into<TokenTree>> {
     let index = match iter.next() {
       Some(TokenTree::Ident(ident)) => {
-        if ident == "ctx" {
-          return Ok(unique_prefixed_ident("parse_context"));
+        if let Some(reserved) = self.reserved_substitutions.get(&ident.to_string().as_str()) {
+          return Ok(reserved.substitution.clone());
         }
 
         self.lookup_label(&ident)?
@@ -188,7 +228,13 @@ fn rewrite_provided_constructor(
       constructor.body().delim_span().span(),
     ));
   }
-  let subsitution_map = SubstitutionMap::build(rule);
+
+  let mut reserved_refs = Vec::new();
+  if matches!(grammar_info.context_type(), ContextType::Custom(_)) {
+    reserved_refs.push(parse_context_reserved_ref());
+  }
+
+  let subsitution_map = SubstitutionMap::build(rule, reserved_refs)?;
 
   let error_type = grammar_info.error_type();
   let body = proc_macro2::Group::new(

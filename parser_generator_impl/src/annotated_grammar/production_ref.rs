@@ -10,6 +10,12 @@ use crate::{
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ProductionRefName(pub String);
 
+impl ProductionRefName {
+  pub fn as_str(&self) -> &str {
+    &self.0
+  }
+}
+
 #[derive(Clone)]
 pub struct ProductionRef {
   name: ProductionRefName,

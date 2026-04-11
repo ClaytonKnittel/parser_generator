@@ -26,17 +26,13 @@ pub trait Parser {
     B: Borrow<Self::Token>,
   {
     Self::parse_fallible_with_ctx(
-      input_stream.into_iter().map(|v| Ok::<_, Infallible>(v)),
+      input_stream.into_iter().map(Ok::<_, Infallible>),
       parse_context,
     )
   }
 }
 
-pub trait ParserNoContext {
-  type Token: Clone + Debug;
-  type Value;
-  type Error: ParserUserError + Clone;
-
+pub trait ParserNoContext: Parser<Context = ()> {
   fn parse_fallible<I, B, E>(
     input_stream: I,
   ) -> ParserResult<Self::Value, Self::Token, Self::Error>
@@ -60,10 +56,6 @@ where
   Token: Clone + Debug,
   Error: ParserUserError + Clone,
 {
-  type Token = Token;
-  type Value = Value;
-  type Error = Error;
-
   fn parse_fallible<I, B, E>(input_stream: I) -> ParserResult<Self::Value, Self::Token, Self::Error>
   where
     I: IntoIterator<Item = Result<B, E>>,
