@@ -329,6 +329,8 @@ pub fn generate_state_action_function(
   let actions = action_map.generate_actions(state_id, grammar_info, state_map)?;
 
   let state = unique_prefixed_ident("state");
+  let parse_context = unique_prefixed_ident("parse_context");
+  let context_type = grammar_info.context_type();
 
   Ok(quote! {
     fn #fn_name<
@@ -336,7 +338,8 @@ pub fn generate_state_action_function(
       B: ::std::borrow::Borrow<#token_type>,
       E: ::parser_generator::error::ParserUserErrorOrInfallible<#token_type, #error_type> + Clone
     >(
-      #state: &mut ::parser_generator::parser_state::ParserState<::core::result::Result<B, E>, #enum_name, I>
+      #state: &mut ::parser_generator::parser_state::ParserState<::core::result::Result<B, E>, #enum_name, I>,
+      #parse_context: &mut #context_type,
     ) -> ::parser_generator::error::ParserResult<
       ::parser_generator::parser_state::ParserControl<#result_type>,
       #token_type,

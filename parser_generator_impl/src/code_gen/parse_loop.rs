@@ -15,13 +15,14 @@ pub fn generate_parse_loop(grammar_info: &GrammarInfo) -> TokenStreamResult {
 
   let root_state = lr_table.root_state();
   let root_enum_state = qualified_enum_variant_name(root_state, grammar_info);
+  let parse_context = unique_prefixed_ident("parse_context");
 
   let state_matchers = lr_table
     .states()
     .map(|state_id| {
       let enum_matcher = enum_matcher(state_id, grammar_info);
       let action_fn = state_action_function_name(state_id);
-      quote! { #enum_matcher => #action_fn(&mut state), }
+      quote! { #enum_matcher => #action_fn(&mut state, #parse_context), }
     })
     .collect_tokens();
   let input_stream = unique_prefixed_ident("input_stream");

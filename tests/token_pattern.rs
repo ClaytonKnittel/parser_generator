@@ -1,5 +1,5 @@
 use googletest::prelude::*;
-use parser_generator::{grammar, parser::Parser};
+use parser_generator::{grammar, parser::ParserNoContext};
 
 #[derive(Clone, Debug)]
 enum Keyword {
