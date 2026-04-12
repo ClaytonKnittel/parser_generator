@@ -1,8 +1,5 @@
 use googletest::prelude::*;
-use parser_generator::{
-  grammar,
-  parser::{Parser, ParserNoContext},
-};
+use parser_generator::{grammar, parser::Parser};
 
 #[derive(Default)]
 struct ParseContext {

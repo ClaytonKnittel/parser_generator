@@ -1,5 +1,5 @@
 use googletest::prelude::*;
-use parser_generator::parser::ParserNoContext;
+use parser_generator::parser::Parser;
 
 #[gtest]
 fn test_large_or() -> googletest::Result<()> {

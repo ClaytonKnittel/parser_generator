@@ -1,7 +1,7 @@
 use std::{error::Error, fmt::Display};
 
 use googletest::prelude::*;
-use parser_generator::{ParserUserError, error::ParserError, grammar, parser::ParserNoContext};
+use parser_generator::{ParserUserError, error::ParserError, grammar, parser::Parser};
 
 #[derive(Clone, Debug, ParserUserError)]
 struct MyError {
