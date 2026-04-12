@@ -1,5 +1,5 @@
 use googletest::prelude::*;
-use parser_generator::parser::Parser;
+use parser_generator::parser::ParserNoContext;
 
 #[gtest]
 fn test_simple() -> googletest::Result<()> {

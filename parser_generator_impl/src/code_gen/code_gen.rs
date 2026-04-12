@@ -17,6 +17,7 @@ pub fn generate_parser(grammar_info: &GrammarInfo, visibility: Visibility) -> To
 
   let grammar_name = grammar_info.name().make_syn_ident();
   let token_type = grammar_info.terminal_type().inner_type();
+  let context_type = grammar_info.context_type();
   let error_type = grammar_info.error_type();
 
   let table_size = grammar_info.lr_table().num_states();
@@ -39,6 +40,7 @@ pub fn generate_parser(grammar_info: &GrammarInfo, visibility: Visibility) -> To
   };
 
   let input_stream = unique_prefixed_ident("input_stream");
+  let parse_context = unique_prefixed_ident("parse_context");
   let iter_generic = unique_prefixed_ident("I");
   let token_generic = unique_prefixed_ident("B");
   let err_generic = unique_prefixed_ident("E");
@@ -51,10 +53,12 @@ pub fn generate_parser(grammar_info: &GrammarInfo, visibility: Visibility) -> To
     impl ::parser_generator::parser::Parser for #grammar_name {
       type Token = #token_type;
       type Value = #result_type;
+      type Context = #context_type;
       type Error = #error_type;
 
-      fn parse_fallible<#iter_generic, #token_generic, #err_generic>(
-        #input_stream: #iter_generic
+      fn parse_fallible_with_ctx<#iter_generic, #token_generic, #err_generic>(
+        #input_stream: #iter_generic,
+        #parse_context: &mut #context_type,
       ) -> ::parser_generator::error::ParserResult<Self::Value, Self::Token, Self::Error>
       where
         #iter_generic: IntoIterator<Item = ::core::result::Result<#token_generic, #err_generic>>,
