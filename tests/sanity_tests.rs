@@ -1,5 +1,5 @@
 use googletest::prelude::*;
-use parser_generator::{grammar, parser::ParserNoContext};
+use parser_generator::{grammar, parser::Parser};
 
 grammar! {
   name: TestSimple;
