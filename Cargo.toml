@@ -12,4 +12,4 @@ parser-user-error = { path = "./parser-user-error" }
 
 [dev-dependencies]
 itertools = "0.14.0"
-cknittel-util = { git = "https://github.com/ClaytonKnittel/cknittel-util.git", rev = "46bbe47dd0df740028a30726d09122b57a2602a4" }
+cknittel-util = { git = "https://github.com/ClaytonKnittel/cknittel-util.git", rev = "9fcb8c19bbc5e21e0c947d5c7674a1cdfbb158c2" }
